@@ -24,6 +24,7 @@ return [
     'invitation_email_mismatch' => 'Lời mời này được gửi tới một địa chỉ email khác.',
     'password_reset_link_sent' => 'Nếu email tồn tại trong hệ thống, chúng tôi đã gửi liên kết đặt lại mật khẩu.',
     'invalid_state_transition' => 'Không thể chuyển sang trạng thái này.',
+    'membership_changed' => 'Thành viên vừa được người khác thay đổi. Vui lòng tải lại trang và thử lại.',
     'cannot_suspend_self' => 'Bạn không thể tự khóa tài khoản của mình.',
     'cannot_change_own_platform_role' => 'Bạn không thể tự đổi vai trò quản trị của mình.',
     'last_super_admin' => 'Phải còn ít nhất một SUPER_ADMIN.',

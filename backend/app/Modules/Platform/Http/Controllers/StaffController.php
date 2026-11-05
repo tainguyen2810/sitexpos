@@ -11,6 +11,7 @@ use SiteXPost\Kernel\Http\ApiException;
 use SiteXPost\Modules\Audit\Audit;
 use SiteXPost\Modules\Identity\Domain\User;
 use SiteXPost\Modules\Identity\Enums\PlatformRole;
+use SiteXPost\Modules\Platform\Domain\ImpersonationSession;
 use SiteXPost\Modules\Platform\Http\Requests\StaffRequest;
 use SiteXPost\Modules\Platform\Http\Resources\AdminUserResource;
 
@@ -78,6 +79,26 @@ final class StaffController
             'to' => $role?->value,
         ], actorType: 'platform_staff');
 
+        if ($from !== $role) {
+            $this->endImpersonations($user);
+        }
+
         return new JsonResponse(['data' => (new AdminUserResource($user))->resolve()], $status);
+    }
+
+    /**
+     * A role change ends every open support session of that staff member
+     * (they are re-checked per request anyway; this keeps the record accurate).
+     */
+    private function endImpersonations(User $user): void
+    {
+        ImpersonationSession::query()
+            ->where('staff_user_id', $user->id)
+            ->whereNull('ended_at')
+            ->get()
+            ->each(function (ImpersonationSession $session): void {
+                $session->forceFill(['ended_at' => now()])->save();
+                Audit::record('platform.impersonation.ended', $session, ['reason' => 'staff_role_changed'], workspaceId: $session->workspace_id, actorType: 'platform_staff');
+            });
     }
 }

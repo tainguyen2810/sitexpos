@@ -21,6 +21,7 @@ Nguyên tắc: **fail-closed**, quyền tối thiểu, không tin dữ liệu t�
 - **Xác minh email** bắt buộc trước khi tạo workspace/kết nối site.
 - **2FA (TOTP)**: tùy chọn với khách hàng; **bắt buộc** với SUPER_ADMIN/SUPPORT/BILLING_ADMIN. Admin SPA từ chối truy cập nếu chưa xác nhận 2FA.
 - **Phiên**: regenerate session ID khi đăng nhập/đổi quyền; danh sách phiên đang hoạt động, đăng xuất từ xa; hết hạn phiên admin ngắn hơn (2 giờ không hoạt động).
+- **Thu hồi phiên**: "đăng xuất thiết bị khác", đổi/đặt lại mật khẩu và admin khóa tài khoản đều xoay `remember_token`, để cookie "Ghi nhớ đăng nhập" trên thiết bị khác cũng mất hiệu lực (không chỉ xóa dòng trong `sessions`).
 - **Đăng nhập thất bại**: rate limit theo email+IP (5/phút), thông báo lỗi chung chung (không lộ email tồn tại).
 - **Reset mật khẩu**: token một lần, 60 phút, vô hiệu hóa các phiên khác sau khi đổi.
 
@@ -42,7 +43,7 @@ Nguyên tắc: **fail-closed**, quyền tối thiểu, không tin dữ liệu t�
 | Quản lý staff platform | ✓ | – | – |
 | Xem audit log toàn hệ thống | ✓ | ✓ (không gồm billing) | ✓ (chỉ billing) |
 
-Platform staff **không** tự động là thành viên workspace. Truy cập dữ liệu tenant chỉ qua impersonation session có audit.
+Platform staff **không** tự động là thành viên workspace. Truy cập dữ liệu tenant chỉ qua impersonation session có audit. Phiên impersonation được kiểm tra lại ở **mọi request**: staff phải còn quyền `platform.impersonate`, 2FA đã xác nhận và tài khoản active; đổi vai trò staff sẽ đóng mọi phiên đang mở.
 
 ### 3.2 Vai trò tenant (`workspace_members.role`)
 
@@ -58,6 +59,8 @@ Platform staff **không** tự động là thành viên workspace. Truy cập d�
 | Xem audit log workspace | ✓ | ✓ | – | – |
 
 \* EDITOR duyệt được nếu workspace bật `editors_can_publish` (mặc định tắt).
+
+Thay đổi thành viên (chuyển OWNER, đổi vai trò, xóa) chạy trong transaction, khóa dòng workspace trước rồi đọc lại thành viên dưới khóa (`LocksMembership`), nên luôn giữ bất biến "đúng một OWNER" kể cả khi request chạy đồng thời.
 
 Cài đặt: enum `WorkspaceRole` + `Permission` enum + map `role → permissions[]` trong code; Policy gọi `$context->can(Permission::SitesManage)`. Mọi controller action gọi `authorize()`; arch test kiểm tra controller tenant đều có authorize.
 

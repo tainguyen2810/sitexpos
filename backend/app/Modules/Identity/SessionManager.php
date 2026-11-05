@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\Identity;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use SiteXPost\Modules\Identity\Domain\User;
 
 /**
@@ -68,6 +69,8 @@ final class SessionManager
 
     public function revokeOthers(User $user): int
     {
+        $this->invalidateRememberTokens($user);
+
         if (! $this->supported()) {
             return 0;
         }
@@ -80,11 +83,24 @@ final class SessionManager
 
     public function revokeAll(User $user): int
     {
+        $this->invalidateRememberTokens($user);
+
         if (! $this->supported()) {
             return 0;
         }
 
         return DB::table((string) config('session.table', 'sessions'))->where('user_id', $user->id)->delete();
+    }
+
+    /**
+     * Deleting session rows is not enough: a "remember me" cookie on another
+     * device would silently log it back in. Rotating the token invalidates
+     * every existing recaller cookie (PHASE1-AUDIT A6).
+     */
+    public function invalidateRememberTokens(User $user): void
+    {
+        $user->setRememberToken(Str::random(60));
+        $user->saveQuietly();
     }
 
     public static function handle(string $sessionId): string
