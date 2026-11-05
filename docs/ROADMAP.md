@@ -187,15 +187,16 @@ Kết quả thực tế: xem `PHASE3-REPORT.md` (đã chạy với fake provider
 
 **Nghiệm thu**: không thể vượt quota dưới tải đồng thời (test race); webhook lặp không kích hoạt hai lần; webhook sai chữ ký bị từ chối; hết hạn gói → chặn tác vụ tốn quota với 402.
 
-## Phase 5 — (chờ chủ dự án xác định; phần Research/Keywords/Cluster/Calendar đã làm ở Phase 4)
-- Hồ sơ doanh nghiệp mở rộng (offerings) và các phần chưa làm ở Phase 4: tự tạo bài từ lịch, tự đăng — chỉ bắt đầu khi chủ dự án xác nhận.
+## Phase 5 — AI Content Writer, Evidence Research & Fact-check ✦ (đã triển khai, chờ nghiệm thu)
+Nhánh `feature/phase5-ai-writer`. Gộp phần "Pipeline viết bài & kiểm chứng" trước đây dự kiến cho Phase 6. Xem `PHASE5-IMPLEMENTATION.md`, `PHASE5-TEST-REPORT.md`.
+- Wizard 17 bước / 10 loại nội dung, Writing Preset (brand voice có provenance), nghiên cứu dựa trên bằng chứng, brief, dàn ý, viết từng section qua AI Gateway.
+- Claim risk LOW/MEDIUM/HIGH/CRITICAL, verdict theo quy tắc, xác minh thủ công, kiểm tra nhất quán, sửa tự động có giới hạn, rubric chất lượng, kiểm tra trùng lặp.
+- Editor (autosave, phiên bản, diff, khôi phục, AI rewrite, trích dẫn), duyệt bài (CRITICAL chặn, sửa làm mất duyệt), bulk, chi phí/quota, Super Admin.
 
-**Nghiệm thu**: không có search volume nào hiển thị mà không có `provider` + `fetched_at`; mọi nhận định research liên kết nguồn đã tải; nội dung độc hại trong trang đối thủ (prompt injection test fixtures) không thay đổi hành vi hệ thống.
+**Nghiệm thu**: không VERIFIED khi không có bằng chứng nguyên văn; "không tìm thấy" không thành CONTRADICTED; claim CRITICAL chưa xác minh chặn duyệt (UI + API); sửa nội dung làm mất phê duyệt; mọi citation trỏ bằng chứng đã tải; không model ID trong code; không đăng WordPress.
 
-## Phase 6 — Pipeline viết bài & kiểm chứng
-- Brief → sourcing → drafting → verification; phiên bản nội dung; editor chỉnh sửa; diff/khôi phục phiên bản; kiểm tra trùng lặp với nguồn.
-
-**Nghiệm thu**: citation chỉ trỏ nguồn đã tải; claim severity cao không có evidence → `failed`; mỗi chỉnh sửa tạo phiên bản mới; job idempotent khi retry.
+## Phase 6 trở đi
+Nội dung Phase 6–9 do chủ dự án xác định. Các mục dưới là kế hoạch ban đầu, giữ để tham khảo.
 
 ## Phase 7 — Media & SEO
 - Ảnh stock (license), ảnh AI (gắn nhãn), infographic, alt text; metadata, schema, internal link, SEO checklist.

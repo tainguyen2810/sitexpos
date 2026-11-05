@@ -236,7 +236,43 @@ Tiền tố: `/workspaces/{ws}/research`. Quyền: xem = mọi thành viên; tha
 | GET · PUT | `/campaigns/{c}/search-console/properties` · `/property` | |
 | GET | `/api/v1/oauth/google/callback` | công khai, throttle 20/phút/IP, state ký + hết hạn, redirect về UI `?gsc=` |
 
-### 2.6 Content, Verification, Media, SEO, Publishing (Phase 6–8)
+### 2.5b AI Writer (Phase 5) ✦
+Tiền tố `/api/v1/workspaces/{ws}/writer`. Danh sách dùng envelope cursor `{data, meta: {next_cursor, prev_cursor, per_page}}`. Route có `throttle:writer-ai` giới hạn 20/phút; autosave 30/phút. POST tạo bài/lô/khởi chạy workflow nhận header `Idempotency-Key`. Không lời gọi AI nào chạy trong request: các POST khởi chạy trả 202 kèm workflow run. Quyền: xem = thành viên; sửa = `content.edit`; duyệt bài, xác minh claim CRITICAL = `content.publish`.
+
+| Method | Path | Ghi chú |
+|---|---|---|
+| GET | `/overview` · `/options` · `/ideas` · `/estimate` | Tổng quan, lựa chọn wizard (site, preset, cluster), ý tưởng Phase 4, ước tính chi phí |
+| GET | `/history?kind=&status=&article_id=&cursor=` | Lịch sử workflow của workspace, mỗi dòng kèm `article {id, title, status}` |
+| GET · POST · GET · PATCH · DELETE | `/presets` · `/presets/{p}` | `presets` trả `{data: [...]}` (không phân trang). Mỗi fact của brand voice có `provenance` |
+| GET | `/batches?status=queued\|running\|paused\|completed\|canceled\|failed` · `/batches/{b}` | |
+| POST | `/batches/preview` · `/batches` | Tối đa `max_batch_size` bài; cần email đã xác minh |
+| POST | `/batches/{b}/pause` · `/resume` · `/cancel` · `/retry` | |
+| GET | `/articles?q=&status=&content_type=&site_id=&campaign_id=&needs_review=&sort=&direction=` | `q` tìm theo tiêu đề |
+| POST | `/articles` | Tạo từ wizard (10 `content_type`, `review_mode: step_by_step\|brief_only\|final_only`, `research_depth`, `budget_limit_micro_usd`…) |
+| GET · PATCH | `/articles/{a}` | PATCH: `title`, `review_mode`, `budget_limit_micro_usd`, `writing_preset_id` (không sửa được status/nội dung/chi phí qua đây) |
+| POST | `/articles/{a}/cancel` | |
+| GET · POST | `/articles/{a}/workflows` | POST `{kind: research\|outline\|draft\|recheck}`; 429 `writer_concurrency_limit` khi vượt giới hạn đồng thời |
+| POST | `/articles/{a}/workflows/resume` · `/workflows/cancel` | Resume sau FAILED/hết ngân sách |
+| GET | `/articles/{a}/research` · `/evidence` | Hồ sơ nghiên cứu, nguồn (trạng thái tải, lý do bị chặn), bằng chứng nguyên văn |
+| GET · POST | `/articles/{a}/brief` · `/brief/approve` | Approve nhận brief đã sửa |
+| GET · POST | `/articles/{a}/outline` · `/outline/approve` | Approve nhận sections (heading nullable cho phần mở bài, `word_range`, `required_facts[].evidence_refs`, `subheadings`, `internal_links`) |
+| GET | `/articles/{a}/editor` | Nội dung hiện tại + `lock_version` |
+| PUT | `/articles/{a}/autosave` | 409 khi xung đột phiên bản |
+| GET · POST | `/articles/{a}/versions` | Lưu phiên bản |
+| GET | `/articles/{a}/versions/{v}` · `/diff?from=&to=` | |
+| POST | `/articles/{a}/versions/{v}/restore` | |
+| GET · POST | `/articles/{a}/revisions` | POST = yêu cầu AI viết lại đoạn/section → đề xuất |
+| GET · POST | `/articles/{a}/revisions/{r}` · `/apply` · `/discard` | |
+| GET | `/articles/{a}/claims` · `/claims/{c}` | |
+| POST | `/articles/{a}/claims/{c}/verify` | `{verdict, note (≥10), evidence_ids?, reference_url?}`; VERIFIED/CONTRADICTED cần bằng chứng |
+| GET | `/articles/{a}/fact-checks` · `/quality` | |
+| POST | `/articles/{a}/quality/audit` | Chấm lại rubric cho phiên bản hiện tại |
+| GET | `/articles/{a}/approval` | Checklist `{ok, blocking[], warnings[], stats}` |
+| POST | `/articles/{a}/approve` `{version_id, acknowledge_high_risk?, note?}` · `/request-changes` `{note}` | 422 khi còn mục chặn; `version_id` phải là phiên bản hiện tại |
+| POST | `/articles/{a}/duplicate-decision` | `{decision: create_new\|update_existing\|merge\|reject, note?}` |
+| GET | `/articles/{a}/usage` | Chi phí AI theo bước |
+
+### 2.6 Media, SEO, Publishing (thiết kế cũ — phần bài viết/kiểm chứng đã thay bằng §2.5b)
 | Method | Path |
 |---|---|
 | GET/POST | `/workspaces/{ws}/sites/{site}/articles` |
@@ -308,6 +344,12 @@ Yêu cầu `platform_role` + 2FA đã xác nhận. User thường nhận **404**
 | GET · PUT · DELETE | `/research/limits` · `/research/limits/{id}` (Phase 4) | SUPER_ADMIN — upsert `{scope: global|workspace, workspace_id?, max_campaigns, max_runs_per_month, max_ideas_per_run, max_competitors_per_campaign, max_calendar_items_per_month, max_concurrent_runs, max_ai_cost_per_run_micro_usd}` |
 | GET | `/research/runs?status=&workspace_id=&cursor=` · `/research/failures` (Phase 4) | `platform.jobs.manage` — chỉ đọc |
 | GET | `/research/costs` · `/research/usage` (Phase 4) | `platform.ai.view_costs` |
+| GET · PATCH | `/writer/settings` (Phase 5) | `platform.ai.manage` — giới hạn, nghiên cứu, chính sách duyệt, ngưỡng lạm dụng (xem `WriterSettings::DEFAULTS`) |
+| GET · PATCH | `/writer/workspaces/{ws}/settings` (Phase 5) | `platform.ai.manage` — ghi đè theo workspace |
+| GET | `/writer/routing` (Phase 5) | `platform.ai.manage` — chỉ đọc task writer → route AI Gateway |
+| GET | `/writer/costs` (Phase 5) | `platform.ai.view_costs` |
+| GET | `/writer/runs` · `/writer/failures` (Phase 5) | `platform.jobs.manage` |
+| GET | `/writer/abuse` (Phase 5) | `platform.ai.manage` — workspace vượt ngưỡng bài/giờ, chi phí/ngày, tỷ lệ lỗi |
 | GET | `/system/health` | SUPER_ADMIN — queue backlog, failed jobs, provider status |
 
 ---

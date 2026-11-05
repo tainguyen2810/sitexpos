@@ -208,6 +208,8 @@ Test đặt trong `backend/tests/{Feature,Unit}/<Module>/` để chạy chung b�
 
 ## 7. Pipeline AI nội dung (tổng quan)
 
+> Sơ đồ dưới là thiết kế ban đầu. Phần idea → brief → sourcing → drafting → verification → duyệt đã được triển khai ở Phase 5 với trạng thái riêng — xem §8c và `AI-WRITER-PIPELINE.md`. Media, lịch đăng và đăng bài vẫn là phase sau.
+
 Mỗi bước là một job idempotent, ghi `job_runs`, đặt trước credit (reserve) và chốt (commit) khi thành công.
 
 ```
@@ -251,6 +253,14 @@ Quy tắc cứng:
 - **Phân tích** thuần PHP, không cần AI: `KeywordExtractor` (n-gram tiếng Việt có dấu, từ điển từ ghép + liên kết đồng xuất hiện), `IntentClassifier`, `ResearchAnalyzer` (độ phủ/cannibalization/gap/cụm), `OpportunityScorer` (minh bạch, thành phần thiếu dữ liệu không tính), `IdeaPlanner`, `InternalLinkPlanner`, `CalendarPlanner`.
 - **AI** (`Ai/ResearchAi`) gọi AI Gateway với route `research.profile`, `keywords.expand`, `topics.ideas` — model do registry/Super Admin cấu hình, có trần chi phí mỗi lần chạy.
 - **Ranh giới**: Research đọc dữ liệu WordPress đã đồng bộ qua contract `Sites\Contracts\SiteDirectory` (read-only), không dùng `Sites\Domain` hay `Sites\Connector`, không gọi trực tiếp provider AI (arch test).
+
+## 8c. AI Writer (Phase 5 — module `app/Modules/Writer`, xem `PHASE5-IMPLEMENTATION.md`)
+
+- **Pipeline** (chi tiết `AI-WRITER-PIPELINE.md`): ResearchWorkflow → (duyệt brief) → OutlineWorkflow → (duyệt dàn ý) → DraftWorkflow (write → claims → factcheck → revise ≤ N vòng → quality) → biên tập → RecheckWorkflow → ApprovalGate. Trạng thái do `ArticleStateMachine` quản lý.
+- **AI**: 11 task key (`writer.*`, `content.draft`, `verification.claims`) đăng ký trong AI Gateway; Super Admin chọn model. Không model ID trong code.
+- **Bằng chứng**: chỉ nguồn do hệ thống tải (`SourceRetriever` dùng `Research\Contracts\PublicWebFetcher`), đoạn trích phải khớp nguyên văn; verdict quyết định bằng quy tắc (`VerdictRules`, `FACT-CHECK-POLICY.md`).
+- **Ranh giới**: Writer đọc dữ liệu Phase 4 qua `Research\Contracts\PlannerDirectory`, dùng engine `Workflows`, gọi AI qua `AiGateway`. Không đăng WordPress (phase sau).
+- **Bảo mật nội dung**: HTML sanitize ở backend (`HtmlSanitizer`) và frontend (`sanitizeArticleHtml`, chỉ render qua `SafeHtml`).
 
 ## 9. Dịch vụ dữ liệu bên ngoài (adapter, cấu hình qua .env)
 

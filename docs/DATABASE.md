@@ -235,7 +235,7 @@ Migration: `app/Modules/Research/Database/Migrations/2026_11_09_000100_create_re
 | `research_notifications` | thông báo cơ hội/kết quả chạy |
 | `research_usage_counters` · `research_limits` · `research_source_settings` | quota theo tháng (used/reserved); giới hạn global/workspace; cấu hình nguồn + khóa mã hóa + bộ đếm lỗi |
 
-### 3.10 Content & Verification
+### 3.10 Content & Verification (thiết kế ban đầu — đã được thay bằng §3.10b ở Phase 5)
 
 **articles**
 | Cột | Ghi chú |
@@ -275,6 +275,31 @@ Migration: `app/Modules/Research/Database/Migrations/2026_11_09_000100_create_re
 **citations**: id, workspace_id, content_version_id, research_source_id, anchor_text, position.
 
 **verification_reports**: id, workspace_id, article_id, content_version_id, result (`passed`,`failed`), score, summary JSON, overridden_by null, override_reason null.
+
+### 3.10b Writer ✦ Phase 5 (đã triển khai — thay thiết kế §3.10 cho phần bài viết & kiểm chứng)
+
+Một migration `app/Modules/Writer/Database/Migrations/2026_11_10_000100_create_writer_tables.php` tạo 25 bảng mới, không sửa bảng cũ. Mọi bảng có `workspace_id` (trừ `writer_settings` cho phép null = cấu hình nền tảng), model dùng `BelongsToWorkspace` (fail-closed). ID dạng ULID.
+
+| Bảng | Vai trò |
+|---|---|
+| `writing_presets` | Brand voice: giọng văn, cụm từ cấm/ưu tiên, CTA, `facts[]` mỗi fact có `provenance` (`user_provided`, `website_extracted`, `source_verified`, `ai_inferred`) |
+| `writing_batches`, `writing_batch_items` | Lô viết bài, trạng thái từng bài |
+| `articles` | Bài viết: `status` (13 trạng thái của `ArticleStatus`), cấu hình wizard, ngân sách, `current_version_id`, `duplicate_check`, bộ đếm claim chưa xử lý |
+| `article_versions`, `article_sections` | Phiên bản bất biến; section có `content_hash` để phát hiện section đổi |
+| `research_dossiers`, `research_questions` | Hồ sơ nghiên cứu, câu hỏi |
+| `evidence_sources`, `evidence_snapshots`, `evidence_items` | Nguồn (URL, loại, độ tin cậy, trạng thái tải/bị chặn), bản chụp văn bản đã tải (hash), đoạn trích nguyên văn |
+| `content_briefs`, `article_outlines` | Brief và dàn ý (có trạng thái duyệt) |
+| `article_claims`, `claim_evidence` | Khẳng định (risk, category, status, section) và liên kết bằng chứng (supports/contradicts) |
+| `fact_check_runs`, `fact_check_results` | Lần kiểm chứng và verdict từng claim (đề xuất của model + verdict cuối + `rule_notes`, `reviewer_type`) |
+| `article_revisions` | Đề xuất sửa (tự động hoặc AI rewrite) kèm diff, trạng thái apply/discard |
+| `quality_reports` | Kết quả rubric theo phiên bản |
+| `editorial_approvals` | Duyệt/từ chối; `invalidated_at` khi nội dung đổi |
+| `article_workflow_runs` | Liên kết bài ↔ `workflow_runs` (kind: research/outline/draft/recheck/rewrite) |
+| `article_ai_usage` | Chi phí AI theo bước (micro-USD, token, task key) |
+| `writer_usage_counters` | Quota tháng theo workspace |
+| `writer_settings` | Ghi đè cấu hình nền tảng/workspace |
+
+Rollback: `php artisan migrate:rollback --step=1` (xóa toàn bộ dữ liệu writer). Dữ liệu DEMO: `WriterDemoSeeder` (cờ `is_demo`, tiêu đề `[DEMO]`, chặn ở production).
 
 ### 3.11 Media
 
