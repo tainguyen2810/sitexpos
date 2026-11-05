@@ -73,7 +73,7 @@ Xem `docs/VERIFICATION.md` (log cài thử composer/npm trong môi trường s�
                     │   Storage: local (1 server) / S3-compatible (nhiều server)   │  được)       │ │
                     └──────────────────────────────────────────────────────────────┴──────┬───────┘ │
                                                                                           │
-         Lệnh có chữ ký Ed25519 (SaaS → WP)          ┌──────────────────────┐  AI Gateway │
+         Lệnh có chữ ký HMAC (SaaS → WP)             ┌──────────────────────┐  AI Gateway │
    ┌─────────────────────────────────────────────────┤ Website WordPress    │  ┌──────────▼───────┐
    │  /wp-json/sitex-post/v1/*                       │ + plugin sitex-post  │  │ OpenAI / Gemini /│
    └────────────────────────────────────────────────►└──────────────────────┘  │ Claude, SERP,    │
@@ -178,7 +178,7 @@ Test đặt trong `backend/tests/{Feature,Unit}/<Module>/` để chạy chung b�
 | **Audit** | Ghi log bất biến mọi hành động nhạy cảm | | Kernel |
 | **Billing** | Plan, giá, subscription, hóa đơn, cổng thanh toán (adapter), webhook thanh toán | Đếm usage | Workspace |
 | **Usage** | Định nghĩa quota theo plan, usage ledger, credit wallet, reserve/commit/release | Thu tiền | Billing (đọc entitlement) |
-| **Sites** | Kết nối WP: pairing, khóa Ed25519, chữ ký, health check, thu hồi, client gọi plugin | Nội dung bài | Workspace, Usage |
+| **Sites** | Kết nối WP: pairing, khóa HMAC từng site, chữ ký, health check, thu hồi, client gọi plugin | Nội dung bài | Workspace, Usage |
 | **BusinessProfile** | Ngành hàng, sản phẩm/dịch vụ, thị trường, đối tượng, giọng văn, từ cấm | | Workspace, Sites |
 | **Research** | Thu thập nguồn web, phân tích ngành, đối thủ, SERP — lưu provenance mọi dữ liệu | Viết bài | AiGateway, Usage |
 | **Keywords** | Khám phá từ khóa, ý tưởng, tiêu đề; số liệu chỉ từ nguồn thật (DataForSEO/GSC...) | Bịa search volume | Research, AiGateway |
@@ -283,7 +283,7 @@ Horizon cấu hình supervisor riêng cho nhóm AI để giới hạn đồng th
 ## 12. Plugin WordPress
 
 - Tối thiểu WP 6.4, PHP 7.4. Không phụ thuộc Composer khi chạy (vendor được bundle hoặc không dùng).
-- REST namespace `sitex-post/v1`. Mọi endpoint (trừ `ping` công khai tối thiểu) yêu cầu chữ ký Ed25519 từ Cloud + chống replay.
+- REST namespace `sitex-post/v1`. Mọi endpoint (trừ `ping` công khai tối thiểu) yêu cầu chữ ký HMAC-SHA256 từ Cloud + chống replay (SECURITY §6.2).
 - Ghép nối (pairing) bằng mã một lần do Cloud cấp; plugin tự sinh cặp khóa; không lưu mật khẩu WP, không dùng Application Passwords.
 - Bài viết được tạo dưới **tài khoản WP được chỉ định** khi ghép nối (role Author/Editor), kiểm tra capability trước mỗi thao tác.
 - Trang cài đặt trong WP admin: trạng thái kết nối, website Cloud đã ghép, nút ngắt kết nối, log gần nhất.
@@ -312,7 +312,7 @@ Horizon cấu hình supervisor riêng cho nhóm AI để giới hạn đồng th
 | ADR-004 | Vai trò cố định bằng enum + Policy, không dùng `spatie/laravel-permission` | 3 vai trò platform + 4 vai trò tenant cố định; ma trận quyền nằm trong code, dễ test |
 | ADR-005 | ULID làm khóa chính | Không đoán được ID, sắp xếp theo thời gian, an toàn khi lộ URL |
 | ADR-006 | Sanctum SPA cookie auth (không lưu token trong localStorage) | Giảm rủi ro XSS đánh cắp token |
-| ADR-007 | Connector WP dùng Ed25519 hai chiều + nonce/timestamp | Không chia sẻ secret đối xứng; thu hồi được từng site |
+| ADR-007 | ~~Connector WP dùng Ed25519 hai chiều~~ → **Phase 2: khóa riêng từng site + HMAC-SHA256 (`SITEX-HMAC-V1`) hai chiều, ký cả response, nonce/timestamp** | Theo yêu cầu Phase 2 (per-site token + HMAC); chạy trên mọi host PHP 7.4, test vector chung; thu hồi/xoay từng site. Đánh đổi: Cloud giữ secret (mã hóa at-rest) — xem SECURITY §6 |
 | ADR-008 | Pest 4 thay vì Pest 5 | Giữ tương thích PHP 8.3 cho môi trường dev hiện có |
 | ADR-009 | TypeScript 6.0 thay vì 7.0 | `vue-tsc`/Volar chưa hỗ trợ TS 7 native |
 | ADR-010 | MySQL 8.4 LTS | 8.0 đã EOL 04/2026 |

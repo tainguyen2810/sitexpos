@@ -19,4 +19,7 @@ echo "==> Frontend: unit tests"
 echo "==> Frontend: build"
 (cd "$ROOT/frontend" && npm run --silent build)
 
+echo "==> WordPress plugin: lint, PHP 7.4 check, signer test, translations, zip"
+"$ROOT/wordpress-plugin/scripts/build-plugin.sh"
+
 echo "All checks passed."

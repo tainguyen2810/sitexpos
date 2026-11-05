@@ -102,12 +102,31 @@ Nguyên tắc: **chỉ làm phase được yêu cầu**, không tự chuyển ph
 
 ---
 
-## Phase 2 — Kết nối WordPress
-- Plugin `sitex-post` (pairing, Ed25519, chống replay, trang admin WP, ngắt kết nối, uninstall sạch).
-- Module Sites: thêm site, mã ghép nối, health check định kỳ, đồng bộ taxonomy & index bài, xoay khóa, thu hồi.
-- SsrfGuard áp dụng cho mọi request tới site.
+## Phase 2 — Kết nối WordPress ✦ (đã triển khai, chờ nghiệm thu — xem `PHASE2-REPORT.md`)
+
+### 2A. Bảo mật kết nối
+- [x] Ghép nối bằng mã dùng một lần + quản trị WP xem trước và xác nhận (không hỏi mật khẩu WP).
+- [x] Khóa riêng từng site + HMAC-SHA256 `SITEX-HMAC-V1` hai chiều, ký cả response (thay Ed25519 — ADR-007 sửa đổi).
+- [x] Timestamp ±300 s, nonce dùng một lần (Cloud cache, plugin bảng riêng), xoay khóa có grace 10 phút, thu hồi từ cả hai phía.
+- [x] SsrfGuard + IP pinning cho mọi request tới site; giới hạn kích thước response; không theo redirect.
+- [x] Không gửi API key AI tới WordPress (arch test).
+
+### 2B. Module Sites (Cloud)
+- [x] Thêm/sửa/xóa site, mã ghép nối, health check (thủ công + định kỳ 30 phút), đồng bộ chuyên mục/thẻ/bài/trang/sản phẩm WooCommerce, chỉ mục nội dung + map ID bài WP.
+- [x] Tải ảnh (featured + inline), tạo/cập nhật bài idempotent, SEO metadata, đăng bài thử.
+- [x] Nhật ký kết nối, lịch sử kiểm tra, trạng thái lỗi; scheduler `sitex:sites:health`, `sitex:sites:prune`; queue `connector`.
+
+### 2C. Plugin `sitex-post`
+- [x] Wizard 3 bước, trang đã kết nối, nhật ký, chẩn đoán; ngắt kết nối; uninstall sạch.
+- [x] REST `sitex-post/v1` có chữ ký; fallback `?rest_route=`; sanitize HTML; kiểm tra MIME ảnh thật.
+- [x] Adapter SEO: Yoast, Rank Math, thẻ meta tích hợp.
+- [x] Bản dịch tiếng Việt, readme.txt, script build zip, kiểm tra cú pháp PHP 7.4.
+
+### 2D. Giao diện SaaS
+- [x] Danh sách website, thêm website (mã + hướng dẫn), chi tiết (trạng thái, phiên bản, tính năng, cảnh báo), kiểm tra kết nối, đồng bộ thủ công, đăng thử, đổi khóa, ngắt kết nối, xóa; tab nội dung/chuyên mục/nhật ký/lịch sử.
 
 **Nghiệm thu**: ghép nối thành công với WP 6.4 và bản mới nhất (PHP 7.4 và 8.3); request có chữ ký sai/timestamp lệch/nonce lặp đều bị từ chối (test cả hai phía); thu hồi từ Cloud hoặc WP làm request sau thất bại ngay; site trỏ tới IP private bị từ chối; plugin qua `WP_DEBUG` không notice, Plugin Check không lỗi bảo mật.
+Kết quả thực tế: xem `PHASE2-REPORT.md` (đã chạy trên WP 6.4.5 và 6.8.3 với PHP 8.3; **chưa** chạy trên PHP 7.4 thật và chưa chạy Plugin Check).
 
 ## Phase 3 — Gói dịch vụ, quota, credit, thanh toán
 - Plans/prices/limits, subscription, trial, usage ledger + counters (reserve/commit/release), credit wallet.

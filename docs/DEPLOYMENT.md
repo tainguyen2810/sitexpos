@@ -164,6 +164,13 @@ cd <APP_DIR>/backend && php artisan schedule:run >> /dev/null 2>&1
 
 Dashboard Horizon tại `https://api.<domain>/horizon`, chỉ SUPER_ADMIN truy cập (gate `viewHorizon`).
 
+**Phase 2 — kết nối WordPress:**
+- Horizon có thêm supervisor `supervisor-connector` cho queue `connector` (health check, đồng bộ, đăng thử; timeout 300 s, không retry tự động). `retry_after` của queue mặc định 330 s để lớn hơn timeout này. Khi chạy `queue:work` thay Horizon: `php artisan queue:work redis --queue=critical,default,notifications,connector`.
+- Scheduler (cần cron `schedule:run` ở trên): `sitex:sites:health` mỗi 5 phút (xếp health check cho site quá 30 phút chưa kiểm tra) và `sitex:sites:prune` hằng ngày (xóa nhật ký kết nối/lịch sử kiểm tra quá 30 ngày).
+- `.env`: `SITEX_CONNECTOR_PUBLIC_URL` = URL công khai của API (plugin gọi `<URL>/connector/v1`). **Không** bật `SITEX_SSRF_ALLOW_HTTP`/`SITEX_SSRF_ALLOW_HOSTS` trên production — chỉ dùng cho test cục bộ.
+- Plugin mặc định gọi `https://api.sitexpost.com` (tên miền thật chưa chốt — câu hỏi mở Q2). Trước khi phát hành plugin phải sửa hằng mặc định trong `wordpress-plugin/sitex-post/sitex-post.php` hoặc hướng dẫn khách đặt `SITEX_POST_CLOUD_URL`.
+- Đóng gói plugin: `wordpress-plugin/scripts/build-plugin.sh` → `wordpress-plugin/dist/sitex-post-<version>.zip`. Hướng dẫn cài: `docs/WORDPRESS-PLUGIN.md`.
+
 ## 7. Nâng cấp (zero-downtime cơ bản)
 
 ```bash

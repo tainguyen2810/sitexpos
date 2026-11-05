@@ -62,7 +62,7 @@ scripts/check.sh
 
 ## Plugin WordPress
 - Tương thích WP ≥ 6.4, PHP ≥ 7.4 (không dùng cú pháp PHP 8). Prefix `sitex_post_`, text domain `sitex-post`.
-- Mọi endpoint REST xác minh chữ ký Ed25519 + chống replay. Sanitize đầu vào, escape đầu ra. Không chứa API key AI.
+- Mọi endpoint REST xác minh chữ ký HMAC-SHA256 `SITEX-HMAC-V1` (khóa riêng từng site) + timestamp + nonce chống replay; response cũng được ký. Xem SECURITY §6. Sanitize đầu vào, escape đầu ra. Không chứa API key AI.
 
 ## Quy tắc chất lượng nội dung (không được vi phạm)
 - Không bịa search volume, thứ hạng, nguồn trích dẫn. Không có dữ liệu → hiển thị "Chưa có dữ liệu".
@@ -77,6 +77,8 @@ scripts/check.sh
 - Production: Ubuntu + aaPanel, Nginx, PHP-FPM 8.4, MySQL 8.4, Redis, Supervisor.
 
 ## Trạng thái hiện tại
-- Phase 0 (thiết kế) và Phase 1 (SaaS Core) hoàn thành — xem `docs/PHASE1-REPORT.md`. Phase 2 **chưa bắt đầu** — chờ người dùng yêu cầu.
+- Phase 0 (thiết kế) và Phase 1 (SaaS Core) hoàn thành — xem `docs/PHASE1-REPORT.md`.
+- Phase 2 (WordPress Connector) đã triển khai trên nhánh `feature/phase2-wp-connector`, **chờ người dùng nghiệm thu** — xem `docs/PHASE2-REPORT.md`. Phase 3 **chưa bắt đầu** — chờ người dùng yêu cầu.
+- Bản đồ code Phase 2: `backend/app/Modules/Sites` (Connector/Signer, WordPressClient, Actions, Jobs), `wordpress-plugin/sitex-post` (plugin), `wordpress-plugin/tests/e2e` (E2E với WordPress thật), `frontend/src/apps/customer/pages/Site*.vue`.
 - Bản đồ code Phase 1: `backend/app/Kernel` (tenancy, HTTP, bảo mật), `backend/app/Modules/{Identity,Workspace,Audit,Platform}`; `frontend/src/shared` (API client, UI, auth, layout), `frontend/src/apps/{customer,admin}`.
 - Test cross-tenant tự động liệt kê mọi route tenant (`tests/Feature/Tenancy/CrossTenantIsolationTest.php`): route tenant mới tự được kiểm tra, nhưng vẫn cần test phân quyền riêng.

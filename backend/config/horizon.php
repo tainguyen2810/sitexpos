@@ -211,7 +211,22 @@ return [
             'timeout' => 60,
             'nice' => 0,
         ],
-        // Reserved for Phase 2+ (connector, publishing, AI, media, analytics).
+        // Phase 2: calls to WordPress sites (health checks, sync, test
+        // publish). Separate pool so a slow site never delays core jobs.
+        'supervisor-connector' => [
+            'connection' => 'redis',
+            'queue' => ['connector'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 2,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 192,
+            'tries' => 1,
+            'timeout' => 300,
+            'nice' => 0,
+        ],
+        // Reserved for later phases (publishing, AI, media, analytics).
         // Configure per server role with HORIZON_ROLE when workers are split.
     ],
 
@@ -221,6 +236,9 @@ return [
                 'maxProcesses' => 5,
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
+            ],
+            'supervisor-connector' => [
+                'maxProcesses' => 4,
             ],
         ],
 

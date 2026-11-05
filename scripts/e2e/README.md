@@ -19,3 +19,11 @@ node scripts/e2e/admin.js ./shots      # chặn non-staff → buộc 2FA → das
 
 Biến môi trường tùy chọn: `SITEX_APP_URL`, `SITEX_ADMIN_URL`, `SITEX_LOG` (đường dẫn file log Laravel chứa email).
 `admin.js` cần DB vừa seed lại (super admin demo chưa bật 2FA).
+
+## Phase 2 — `sites.js`
+
+Đăng ký → tạo workspace → **Website → Thêm website** → lấy mã → ghép nối qua wp-admin thật → chờ "Đã kết nối" → **Đồng bộ ngay** → tab chuyên mục → **Đăng bài thử** → tab nhật ký → **Ngắt kết nối** → danh sách → dashboard trên màn hình điện thoại. Cần Cloud + queue worker + WordPress chạy như `wordpress-plugin/tests/e2e/README.md`.
+
+```bash
+SITEX_APP_URL=http://127.0.0.1:5173 SITEX_WP_URL=http://127.0.0.1:8081 node scripts/e2e/sites.js /tmp/shots
+```

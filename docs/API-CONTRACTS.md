@@ -6,8 +6,8 @@ Phiên bản: `v1`. Mọi API trả JSON UTF-8. Thời gian ISO-8601 UTC (`2026-
 |---|---|---|
 | Customer API | `https://api.<domain>/api/v1` | Sanctum SPA cookie + CSRF |
 | Admin API | `https://api.<domain>/api/admin/v1` | Sanctum SPA cookie + CSRF + `platform_role` + 2FA |
-| Connector API (Cloud, plugin gọi) | `https://api.<domain>/connector/v1` | Chữ ký Ed25519 (SECURITY.md §6.2) |
-| Plugin API (WP, Cloud gọi) | `https://<site>/wp-json/sitex-post/v1` | Chữ ký Ed25519 |
+| Connector API (Cloud, plugin gọi) | `https://api.<domain>/connector/v1` | Chữ ký HMAC-SHA256 `SITEX-HMAC-V1` (SECURITY.md §6.2) |
+| Plugin API (WP, Cloud gọi) | `https://<site>/wp-json/sitex-post/v1` (hoặc `?rest_route=`) | Chữ ký HMAC-SHA256, response cũng được ký |
 | Webhooks | `https://api.<domain>/webhooks/{provider}` | Chữ ký provider |
 
 ## 1. Quy ước chung
@@ -155,18 +155,29 @@ Workspace response:
 }
 ```
 
-### 2.3 Sites (Phase 2)
-| Method | Path | Quyền |
-|---|---|---|
-| GET | `/workspaces/{ws}/sites` | OAEV |
-| POST | `/workspaces/{ws}/sites` | OA — `{name, url, content_language}` → site `pending_pairing` + `pairing_code`, `expires_at` (chỉ trả một lần) |
-| GET/PATCH | `/workspaces/{ws}/sites/{site}` | OAEV / OA — `{name, approval_mode, settings}` |
-| POST | `/workspaces/{ws}/sites/{site}/pairing-code` | OA — cấp lại mã |
-| POST | `/workspaces/{ws}/sites/{site}/health-check` | OAE → 202 |
-| POST | `/workspaces/{ws}/sites/{site}/rotate-keys` | OA |
-| POST | `/workspaces/{ws}/sites/{site}/revoke` | OA |
-| DELETE | `/workspaces/{ws}/sites/{site}` | OA |
-| GET | `/workspaces/{ws}/sites/{site}/taxonomies` | OAEV |
+### 2.3 Sites (Phase 2) ✦
+Quyền: O=OWNER, A=ADMIN, E=EDITOR, V=VIEWER. `{site}` luôn được tra trong workspace của route (scoped binding) → site của workspace khác trả 404.
+
+| Method | Path | Quyền | Ghi chú |
+|---|---|---|---|
+| GET | `/workspaces/{ws}/sites` | OAEV | Kèm `counts.content`, `counts.taxonomies` |
+| POST | `/workspaces/{ws}/sites` | OA | `{name, url, content_language?}` → 201, site `pending_pairing`; `meta.pairing_code`, `meta.pairing_expires_at`, `meta.cloud_url` (mã chỉ trả một lần). URL phải HTTPS công khai (SsrfGuard) và chưa có trong workspace |
+| GET | `/workspaces/{ws}/sites/{site}` | OAEV | `SiteResource`: status, versions, publish_author, features, issues, last_error, các mốc thời gian |
+| PATCH | `/workspaces/{ws}/sites/{site}` | OA | `{name?, content_language?, settings?: {default_post_status, default_category_id}}` |
+| DELETE | `/workspaces/{ws}/sites/{site}` | OA | Thu hồi khóa rồi **xóa cứng** site và dữ liệu con (bài trên WP giữ nguyên) |
+| POST | `/workspaces/{ws}/sites/{site}/pairing-code` | OA | Cấp mã mới (vô hiệu mã cũ) → `{pairing_code, expires_at, cloud_url}` |
+| POST | `/workspaces/{ws}/sites/{site}/health-check` | OAE | 202 `{job_run}` |
+| POST | `/workspaces/{ws}/sites/{site}/sync` | OAE | 202 `{job_run}` — đồng bộ chuyên mục, thẻ, bài, trang (+ sản phẩm, danh mục sản phẩm nếu có WooCommerce) |
+| POST | `/workspaces/{ws}/sites/{site}/test-publish` | OA | 202 `{job_run}` — tạo/cập nhật **một** bài nháp thử (2 ảnh, SEO noindex), idempotent |
+| POST | `/workspaces/{ws}/sites/{site}/rotate-keys` | OA | 200 site; 502 `rotation_failed` nếu plugin không xác nhận (khóa cũ giữ nguyên) |
+| POST | `/workspaces/{ws}/sites/{site}/revoke` | OA | 200 site + `meta.plugin_notified`; 409 nếu đã ngắt |
+| GET | `/workspaces/{ws}/sites/{site}/taxonomies?filter[taxonomy]=` | OAEV | Tối đa 1000 term |
+| GET | `/workspaces/{ws}/sites/{site}/content?filter[post_type]=&q=&cursor=` | OAEV | Cursor pagination; `wp_post_id`, `url`, `is_managed`, `product` |
+| GET | `/workspaces/{ws}/sites/{site}/logs?filter[level]=&cursor=` | OAEV | Nhật ký kết nối (không chứa secret/payload) |
+| GET | `/workspaces/{ws}/sites/{site}/health-checks` | OAEV | 50 lần kiểm tra gần nhất |
+| GET | `/workspaces/{ws}/job-runs/{id}` | OAEV | Trạng thái tác vụ nền (`queued/running/succeeded/failed`, `error`) |
+
+Thao tác 202 trên site chưa kết nối → `409 not_connected`.
 
 ### 2.4 Billing & Usage (Phase 3)
 | Method | Path | Quyền |
@@ -247,22 +258,25 @@ Yêu cầu `platform_role` + 2FA đã xác nhận. User thường nhận **404**
 
 ---
 
-## 4. Connector API trên Cloud (`/connector/v1`) — plugin gọi (Phase 2)
+## 4. Connector API trên Cloud (`/connector/v1`) — plugin gọi (Phase 2) ✦
 
 | Method | Path | Xác thực | Mô tả |
 |---|---|---|---|
-| POST | `/pair` | Mã ghép nối (không chữ ký) | Ghép nối, trả khóa Cloud |
-| POST | `/heartbeat` | Chữ ký plugin | `{wp_version, php_version, plugin_version, site_url}` |
-| POST | `/revoke` | Chữ ký plugin | Plugin chủ động ngắt |
-| POST | `/events` | Chữ ký plugin | `{type: "post.updated"|"post.deleted", wp_post_id, ...}` |
+| POST | `/pair/preview` | Mã ghép nối | Xem trước: workspace, site, URL, danh sách quyền. Không cấp gì |
+| POST | `/pair` | Mã ghép nối + xác nhận của quản trị WP | Ghép nối, trả `key_id` + `secret` **một lần** |
+| POST | `/heartbeat` | Chữ ký `w2c` | `{site_url, wp_version, php_version, plugin_version, features?, publish_author?}` |
+| POST | `/revoke` | Chữ ký `w2c` | Quản trị WP ngắt kết nối |
+
+Giới hạn: `pair/*` 10 lần/giờ/IP; `heartbeat`/`revoke` 60 lần/phút/site; body tối đa 64 KB. (`/events` của thiết kế Phase 0 chưa triển khai.)
 
 `POST /pair` request:
 ```json
 {
   "pairing_code": "K7Q2-M9XA",
   "site_url": "https://example.com",
-  "plugin_public_key": "base64...",
+  "rest_url": "https://example.com/wp-json/",
   "publish_author": { "wp_user_id": 3, "display_name": "Biên tập viên" },
+  "confirmed_by": { "wp_user_id": 1, "display_name": "Admin" },
   "environment": { "wp_version": "6.8.3", "php_version": "8.2.12", "plugin_version": "1.0.0", "locale": "vi" }
 }
 ```
@@ -270,30 +284,35 @@ Response `200`:
 ```json
 {
   "data": {
-    "site_id": "01JE...", "key_id": "01JE...", "cloud_public_key": "base64...",
-    "cloud_api_base": "https://api.<domain>/connector/v1", "signature_version": "SITEX-V1"
+    "site_id": "01JE...", "site_name": "Blog", "workspace_name": "Cửa hàng Hoa Mai",
+    "key_id": "01JE...", "secret": "base64url-32-bytes",
+    "signature_version": "SITEX-HMAC-V1", "cloud_api_base": "https://api.<domain>/connector/v1"
   }
 }
 ```
-Lỗi: `422 invalid_pairing_code`, `409 site_url_mismatch`, `429 rate_limited`.
+Lỗi: `422 invalid_pairing_code` (sai/hết hạn/đã dùng/quá số lần), `409 site_url_mismatch`, `422 validation_failed` (`rest_url` khác host), `429 rate_limited`. Chữ ký sai: `401 invalid_signature` (mọi lý do cùng một mã).
 
-## 5. Plugin API trên WordPress (`/wp-json/sitex-post/v1`) — Cloud gọi (Phase 2, 8)
+## 5. Plugin API trên WordPress (`/wp-json/sitex-post/v1`) — Cloud gọi (Phase 2) ✦
+
+Fallback khi site dùng permalink mặc định: `/?rest_route=/sitex-post/v1/...` (Cloud tự chọn theo `rest_url` đã ghép nối). Mọi endpoint trừ `/ping` yêu cầu chữ ký `c2w`; response có chữ ký `resp`.
 
 | Method | Path | Mô tả |
 |---|---|---|
-| GET | `/ping` | Công khai, chỉ trả `{plugin: "sitex-post", version, paired: bool}` |
-| GET | `/health` | Có chữ ký: trạng thái, phiên bản, quyền user đăng bài |
-| GET | `/site-info` | Tên site, ngôn ngữ, timezone, post types, permalink structure |
-| GET | `/taxonomies?type=category|post_tag` | Danh sách term |
-| GET | `/posts?per_page&page&modified_after` | Index bài (id, url, title, excerpt, dates) cho internal link |
-| POST | `/posts` | Tạo bài: `{idempotency_key, title, content_html, excerpt, slug, status, date_gmt, categories[], tags[], featured_media_id, meta: {seo_title, seo_description, focus_keyword}, sitex: {article_id, version_id}}` |
-| PUT | `/posts/{id}` | Cập nhật bài do SiteX quản lý |
-| POST | `/media` | multipart: file + `{alt, caption, title, idempotency_key}` → `{media_id, url}` |
-| POST | `/disconnect` | Xóa khóa cục bộ |
+| GET | `/ping` | Công khai: `{plugin: "sitex-post", version, paired}` |
+| GET | `/health` | Phiên bản WP/PHP/plugin/WooCommerce/Yoast, `features` (woocommerce, yoast, rank_math, seo_adapter, pretty_permalinks, https), `author` (id, tên, `can_publish`, `can_upload`), `limits.max_upload_bytes` |
+| GET | `/terms?taxonomy=category\|post_tag\|product_cat\|product_tag&page&per_page` | `{items: [{id, name, slug, parent, count}], total, total_pages}` |
+| GET | `/content?type=post\|page\|product&page&per_page` | `{items: [{id, type, status, title, url, slug, excerpt, date_gmt, modified_gmt, term_ids, managed, product?: {sku, price, regular_price, sale_price, currency, stock_status, type}}], total, total_pages}` |
+| POST | `/posts` | Tạo hoặc trả lại bài theo `idempotency_key`: `{idempotency_key, post_type: post\|page, title, content_html, excerpt?, slug?, status: draft\|pending\|publish\|future, date_gmt?, categories?: [id\|tên], tags?: [tên], featured_media_id?, seo?: {title, description, focus_keyword, canonical, noindex}, sitex?: {...}}` → 201 `{id, created: true, post_type, status, url, seo_adapter}` hoặc 200 `created: false` |
+| PUT | `/posts/{id}` | Cập nhật bài do SiteX quản lý (bài khác → 403, bài trong thùng rác → 410) |
+| POST | `/media?idempotency_key&filename&alt&title&caption` | Body = byte ảnh thô (`Content-Type: image/*`) → `{id, url, created}`; idempotent theo key |
+| POST | `/credentials/rotate` | `{key_id, secret, grace_seconds}` (ký bằng khóa hiện tại) |
+| POST | `/disconnect` | Xóa secret cục bộ (response vẫn được ký bằng khóa vừa xóa) |
 
-SEO meta: plugin ghi vào Yoast/Rank Math nếu có cài, nếu không lưu post meta `_sitex_seo_*` và in thẻ meta qua `wp_head`.
+Ảnh nội dung: Cloud tải ảnh lên trước, rồi thay placeholder `{{sitex-image:KEY}}` (URL) và `{{sitex-image-id:KEY}}` (ID) trong `content_html`.
 
-Idempotency: plugin lưu `idempotency_key` trong post meta; request lặp trả lại bài đã tạo.
+SEO meta: Yoast (`_yoast_wpseo_*`), Rank Math (`rank_math_*`) nếu đang bật; nếu không, plugin in thẻ `<title>`/description/robots/canonical qua `wp_head`. Plugin luôn lưu bản sao `_sitex_post_seo_*`.
+
+Idempotency: Cloud lưu `site_publications (site_id, idempotency_key) → wp_post_id`; plugin lưu `_sitex_post_idempotency_key` + khóa tạm, nên kể cả khi Cloud mất response và gửi lại, WordPress vẫn chỉ có một bài.
 
 ## 6. Webhooks (`/webhooks/{provider}`) — Phase 3
 

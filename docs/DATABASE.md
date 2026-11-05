@@ -162,42 +162,58 @@ Ràng buộc nghiệp vụ: mỗi workspace có **đúng một** OWNER active (k
 
 **credit_ledger** (append-only): id, workspace_id, delta (int), balance_after, reason (`purchase`, `grant`, `consume`, `refund`, `expire`), reference_type, reference_id, expires_at null, created_by.
 
-### 3.6 Sites (WordPress)
+### 3.6 Sites (WordPress) ✦ Phase 2
+
+Migration: `backend/app/Modules/Sites/Database/Migrations/2026_11_06_000100_create_sites_tables.php`. Mọi bảng con có `workspace_id` + FK ghép `(workspace_id, site_id) → sites(workspace_id, id)` (không thể gắn dữ liệu của site sang workspace khác), model dùng `BelongsToWorkspace` (scope fail-closed, có arch test).
+
+**Sai khác so với thiết kế Phase 0 (có chủ đích):**
+- `sites` **không** có `deleted_at`: xóa site là xóa cứng (sau khi thu hồi khóa), dữ liệu con xóa theo `ON DELETE CASCADE`. Bài trên WordPress không bị ảnh hưởng. Lịch sử thao tác vẫn còn trong `audit_logs`.
+- Không có trạng thái `disconnected`: ngắt kết nối từ bất kỳ phía nào → `revoked` (+ `revoked_by` = `cloud` | `wordpress`).
+- `site_credentials` lưu **secret HMAC** (`secret_encrypted`, mã hóa bằng `Crypt`/`APP_KEY`) thay cho cặp khóa Ed25519 + envelope encryption (xem SECURITY §5, §6).
+- `site_posts_index` đổi tên thành `site_content_items` (gồm cả trang và sản phẩm WooCommerce); thêm `site_publications`, `site_media`, `site_activity_logs`.
 
 **sites**
 | Cột | Ghi chú |
 |---|---|
 | id, workspace_id | UNIQUE(workspace_id, id) |
 | name | |
-| url | URL gốc đã chuẩn hóa (https, không path thừa) |
-| url_hash | UNIQUE(workspace_id, url_hash) |
-| status | `pending_pairing`, `connected`, `degraded`, `disconnected`, `revoked` |
-| content_language | `vi`, `en`... |
-| wp_version, plugin_version, php_version | báo cáo từ plugin |
-| publish_author_wp_id | user WP dùng để đăng |
-| approval_mode | `manual`, `auto` |
-| settings | JSON: category mặc định, post status mặc định... |
-| last_seen_at, connected_at, revoked_at | |
-| timestamps, deleted_at | |
+| url | URL gốc đã chuẩn hóa (scheme + host + path, không query/fragment, không `/` cuối) |
+| url_hash | sha256 của URL bỏ scheme; UNIQUE(workspace_id, url_hash) |
+| status | `pending_pairing`, `connected`, `degraded`, `revoked` |
+| content_language | `vi`, `en` |
+| wp_version, php_version, plugin_version | báo cáo từ plugin |
+| publish_author_wp_id, publish_author_name | tài khoản WP dùng để đăng (do quản trị WP chọn khi ghép nối) |
+| approval_mode | `manual` (mặc định), `auto` — dùng từ Phase 8 |
+| settings | JSON: `default_post_status`, `default_category_id` |
+| capabilities | JSON từ health check: `rest_url`, `features`, `issues`, `author`, `limits` |
+| last_error_code, last_error_message | lỗi kết nối gần nhất |
+| last_seen_at, last_health_at, last_synced_at, connected_at, revoked_at, revoked_by | |
+| created_by, timestamps | |
 
-**site_pairings**: id, workspace_id, site_id, code_hash, expires_at (15 phút), used_at, attempts, created_by.
+**site_pairings**: id, workspace_id, site_id, code_hash (HMAC-SHA256 với `APP_KEY`, UNIQUE), expires_at (15 phút), used_at, invalidated_at, attempts (tối đa 5), created_by.
 
-**site_credentials** (một bản active / site)
+**site_credentials** (tối đa một bản `active` / site)
 | Cột | Ghi chú |
 |---|---|
 | id, workspace_id, site_id | |
-| key_id | ULID, gửi trong header `X-SiteX-Key-Id` |
-| cloud_public_key | base64 Ed25519 |
-| cloud_secret_key_encrypted | mã hóa envelope |
-| plugin_public_key | base64 Ed25519 do plugin sinh |
-| status | `active`, `rotated`, `revoked` |
-| created_at, rotated_at, revoked_at | |
+| key_id | ULID, UNIQUE, gửi trong header `X-SiteX-Key-Id` |
+| secret_encrypted | secret 32 byte (base64url) mã hóa bằng `Crypt`; không bao giờ trả qua API (trừ đúng một lần trong response `/connector/v1/pair`) |
+| status | `active`, `rotated` (còn hiệu lực tới `grace_until`), `revoked` |
+| grace_until, last_used_at, rotated_at, revoked_at, timestamps | |
 
-**site_health_checks**: id, workspace_id, site_id, checked_at, ok, http_status, latency_ms, error_code, details JSON. Giữ 30 ngày.
+**site_health_checks**: id, workspace_id, site_id, checked_at, ok, http_status, latency_ms, error_code, details JSON. Dọn sau `log_retention_days` (30 ngày) bằng `sitex:sites:prune`.
 
-**site_taxonomies**: id, workspace_id, site_id, type (`category`,`tag`), wp_term_id, name, slug, parent_wp_id — đồng bộ từ plugin.
+**site_taxonomies**: id, workspace_id, site_id, taxonomy (`category`, `post_tag`, `product_cat`, `product_tag`), wp_term_id, name, slug, parent_wp_id, count, synced_at. UNIQUE(site_id, taxonomy, wp_term_id). Term không còn trên WP bị xóa ở lần đồng bộ đầy đủ kế tiếp.
 
-**site_posts_index**: id, workspace_id, site_id, wp_post_id, url, title, excerpt, published_at, modified_at, is_managed (do SiteX tạo) — phục vụ internal linking và phát hiện bài cũ.
+**site_content_items** (chỉ mục nội dung + map ID bài WP): id, workspace_id, site_id, post_type (`post`, `page`, `product`), wp_post_id, status, title, url (chỉ giữ URL cùng host với site), slug, excerpt, term_ids JSON, product JSON (sku, price, regular_price, sale_price, currency, stock_status, type), is_managed (do SiteX tạo), published_at, modified_at, synced_at. UNIQUE(site_id, post_type, wp_post_id).
+
+**site_publications** (idempotency phía Cloud): id, workspace_id, site_id, idempotency_key, source_type, source_id, post_type, wp_post_id, wp_status, url, payload_hash, status (`pending`, `succeeded`, `failed`), attempts, last_error_code, published_at. UNIQUE(site_id, idempotency_key).
+
+**site_media**: id, workspace_id, site_id, idempotency_key, sha256, mime, bytes, wp_media_id, url. UNIQUE(site_id, idempotency_key) — ảnh tải lại không tạo bản thứ hai.
+
+**site_activity_logs** (nhật ký kết nối, không chứa secret/payload): id (bigint), workspace_id, site_id, direction (`in`/`out`), operation, level, http_status, error_code, message, latency_ms, request_id, created_at. Dọn sau 30 ngày.
+
+**Phía WordPress (plugin):** option `sitex_post_connection` (autoload = no, chứa key_id/secret/tác giả/khóa cũ trong grace); bảng `{prefix}sitex_post_nonces` (key_id + nonce PRIMARY KEY, expires_at); bảng `{prefix}sitex_post_logs` (giữ 500 dòng); post meta `_sitex_post_managed`, `_sitex_post_idempotency_key`, `_sitex_post_source`, `_sitex_post_seo_*`. Gỡ plugin xóa option và hai bảng; post meta được giữ lại cùng bài viết (bài không bị xóa).
 
 ### 3.7 BusinessProfile
 
@@ -351,3 +367,7 @@ AI chỉ được đề xuất từ khóa (`origin=ai_suggested`) — **không**
 ## 5. Phạm vi migration của Phase 1
 
 Chỉ tạo: `users` (+ cột platform_role, 2FA, locale, timezone, status), `sessions`, `password_reset_tokens`, `workspaces`, `workspace_members`, `workspace_invitations`, `audit_logs`, `impersonation_sessions`, `system_settings`, `job_runs`, bảng hệ thống của Laravel (`jobs`, `failed_jobs`, `job_batches`, `cache`, `notifications`). Các bảng khác thuộc phase sau (xem ROADMAP.md).
+
+## 6. Phạm vi migration của Phase 2
+
+Một migration của module Sites tạo 9 bảng ở §3.6. Không sửa bảng của Phase 1. Đã chạy được trên MySQL 8.0 (tên index ≤ 64 ký tự) và SQLite (test).
