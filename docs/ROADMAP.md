@@ -173,15 +173,22 @@ Kết quả thực tế: xem `PHASE3-REPORT.md` (đã chạy với fake provider
 
 **Nghiệm thu 3E**: gọi DeepSeek thật bằng khóa của chủ dự án; Test Connection báo đúng model; chi phí khớp bảng giá DeepSeek theo giờ. Kết quả thực tế: xem mục 3E trong `PHASE3-REPORT.md` (**chưa** gọi DeepSeek thật do chưa có khóa và mạng sandbox chặn).
 
-## Phase 4 — Gói dịch vụ, quota, credit, thanh toán
+## Phase 4 — SEO Planner: AI Topic Discovery & SEO Planning ✦ (đã triển khai, chờ nghiệm thu — xem `PHASE4-REPORT.md`, ADR-016)
+- Website Intelligence (hồ sơ + nhận định sửa được), keyword discovery đa nguồn (WordPress, WooCommerce, website, đối thủ, Search Console, DataForSEO, AI gợi ý), phân tích intent/độ phủ/cụm/gap/liên kết nội bộ, điểm cơ hội minh bạch, ý tưởng 9 dạng nội dung, Content Brief, lịch nội dung (không tự tạo/đăng bài).
+- Tự động hóa trên queue Phase 3: lịch định kỳ, quota/đồng thời/ngân sách AI, retry/cancel/idempotency.
+- Super Admin: nguồn & nhà cung cấp (khóa ghi-một-chiều), cài đặt crawl, giới hạn tenant, giám sát run, chi phí, lỗi nguồn.
+
+**Nghiệm thu**: không có search volume/KD nào hiển thị mà không có provider + thời điểm thu thập ("Chưa có dữ liệu" nếu thiếu); mọi ý tưởng truy được bằng chứng; đối thủ tuân thủ robots, không lưu nội dung; chạy lại không tạo trùng; cách ly tenant. Checklist chi tiết: `PHASE4-REPORT.md` §7.
+
+## Phase tiếp theo — Gói dịch vụ, quota, credit, thanh toán (dời từ Phase 4 theo ADR-016)
 - Plans/prices/limits, subscription, trial, usage ledger + counters (reserve/commit/release), credit wallet — tái sử dụng cơ chế reservation của AI Gateway.
 - Adapter cổng thanh toán (chờ quyết định cổng), webhook an toàn, hóa đơn.
 - Admin: quản lý plan, credit pack, cấp credit, xem hóa đơn.
 
 **Nghiệm thu**: không thể vượt quota dưới tải đồng thời (test race); webhook lặp không kích hoạt hai lần; webhook sai chữ ký bị từ chối; hết hạn gói → chặn tác vụ tốn quota với 402.
 
-## Phase 5 — Hồ sơ doanh nghiệp, Research, Keywords, Topic Cluster, Calendar
-- Business profile & offerings; research ngành/đối thủ với nguồn thật (provenance); keyword discovery với số liệu từ DataForSEO (hoặc "Chưa có dữ liệu"); topic cluster; content calendar.
+## Phase 5 — (chờ chủ dự án xác định; phần Research/Keywords/Cluster/Calendar đã làm ở Phase 4)
+- Hồ sơ doanh nghiệp mở rộng (offerings) và các phần chưa làm ở Phase 4: tự tạo bài từ lịch, tự đăng — chỉ bắt đầu khi chủ dự án xác nhận.
 
 **Nghiệm thu**: không có search volume nào hiển thị mà không có `provider` + `fetched_at`; mọi nhận định research liên kết nguồn đã tải; nội dung độc hại trong trang đối thủ (prompt injection test fixtures) không thay đổi hành vi hệ thống.
 

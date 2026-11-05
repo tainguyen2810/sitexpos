@@ -203,19 +203,38 @@ HTTP không bao giờ gọi provider AI trực tiếp: tác vụ chạy trên qu
 | POST | `/workspaces/{ws}/credits/checkout` | O — `{credit_pack_id}` |
 | GET | `/workspaces/{ws}/credits/ledger` | O |
 
-### 2.5 Business profile, Research, Keywords, Planning (Phase 5)
-| Method | Path |
-|---|---|
-| GET/PUT | `/workspaces/{ws}/sites/{site}/business-profile` |
-| CRUD | `/workspaces/{ws}/sites/{site}/offerings` |
-| POST | `/workspaces/{ws}/sites/{site}/research-runs` `{type}` → 202 |
-| GET | `/workspaces/{ws}/research-runs/{id}` (gồm `sources[]` với `url`, `fetched_at`, `provider`) |
-| GET/POST | `/workspaces/{ws}/sites/{site}/competitors` |
-| POST | `/workspaces/{ws}/sites/{site}/keyword-discovery` → 202 |
-| GET | `/workspaces/{ws}/sites/{site}/keywords` — mỗi keyword có `metrics: null` hoặc `{search_volume, provider, fetched_at}` |
-| PATCH | `/workspaces/{ws}/keywords/{kw}` `{status}` |
-| CRUD | `/workspaces/{ws}/sites/{site}/topic-clusters` |
-| GET/POST/PATCH | `/workspaces/{ws}/sites/{site}/calendar` |
+### 2.5 SEO Planner (Phase 4) ✦
+
+Tiền tố: `/workspaces/{ws}/research`. Quyền: xem = mọi thành viên; thao tác (`operate`) = Owner/Admin/Editor; Search Console & xóa chiến dịch = quyền `sites.manage`; impersonation chỉ xem. Danh sách dùng cursor (`?cursor=`), mặc định 25–50/trang. Tham số con dạng `{x:id}` được scope theo chiến dịch (404 nếu không thuộc).
+
+| Method | Path | Ghi chú |
+|---|---|---|
+| GET | `/usage` | quota tháng, giới hạn hiệu lực, nguồn khả dụng (không lộ cấu hình bí mật) |
+| GET · POST | `/notifications` · `/notifications/{id}/read` | `meta.unread` |
+| GET | `/calendar?from=&to=&campaign_id=&site_id=&cluster_id=&status=` | lịch toàn workspace |
+| GET · POST | `/campaigns` | POST cần site đã xác minh; 429 `research_quota_exceeded` khi vượt `max_campaigns` |
+| GET · PATCH · DELETE | `/campaigns/{c}` | |
+| GET | `/campaigns/{c}/overview` | |
+| GET · PATCH | `/campaigns/{c}/settings` | `ideas_per_run` ≤ `max_ideas_per_run` (422) |
+| GET · PUT | `/campaigns/{c}/schedule` | `{is_enabled, frequency, day_of_week?, day_of_month?, hour_utc}` |
+| GET | `/campaigns/{c}/intelligence` | `{profile, knowledge[]}` |
+| POST · PATCH · DELETE | `/campaigns/{c}/intelligence/knowledge[/{id}]` | DELETE = đánh dấu `rejected` (giữ lại để AI không thêm lại) |
+| GET · POST | `/campaigns/{c}/runs` | POST → 202 `{research_run, job_run}`; header `Idempotency-Key`; 409 `research_in_progress`; 429 quota; throttle 6/phút |
+| GET | `/campaigns/{c}/runs/{id}` · `/snapshots` | `sources[]` có `url`, `status`, `robots_allowed`, `fetched_at` |
+| POST | `/campaigns/{c}/runs/{id}/cancel` · `/retry` | |
+| GET | `/campaigns/{c}/keywords?intent=&status=&source=&cluster_id=&topic=&min_score=&has_metrics=1&q=&sort=score|keyword|created&direction=` | `metrics.search_volume/difficulty/cpc_micro_usd` = `null` nếu không có nguồn thật; `metrics.provider{source, collected_at}` |
+| POST · PATCH | `/campaigns/{c}/keywords` · `/keywords/{id}` · POST `/keywords/bulk` `{ids, status}` | |
+| GET · PATCH | `/campaigns/{c}/ideas[/{id}]` (lọc `status, search_intent, content_type, priority, source, cluster_id, research_run_id, unscheduled=1, q`) | |
+| POST | `/campaigns/{c}/ideas/{id}/brief` | dựng Content Brief từ dữ liệu đã lưu, không gọi AI |
+| GET · PATCH | `/campaigns/{c}/clusters[/{id}]` · `/gaps[/{id}]` · GET `/internal-links?cluster_id=` | link có `from/to {type, id, label}` |
+| GET · POST · PATCH · DELETE | `/campaigns/{c}/competitors[/{id}]` · GET `/competitors/{id}/findings` | URL qua SsrfGuard; 422 nếu trỏ tới mạng nội bộ hoặc chính website; 429 khi vượt `max_competitors_per_campaign` |
+| GET · POST | `/campaigns/{c}/calendar` | 409 `already_scheduled` |
+| PATCH · DELETE | `/campaigns/{c}/calendar/{id}` | kéo thả = PATCH `scheduled_for`, `position`; `status` `proposed|approved|paused|canceled|done` |
+| POST | `/campaigns/{c}/calendar/auto-plan` | `{scheduled, skipped_limit}` — chỉ xếp lịch, không tạo bài |
+| GET · DELETE | `/campaigns/{c}/search-console` | trạng thái kết nối (không có token) |
+| POST | `/campaigns/{c}/search-console/connect` | `{authorization_url}`; 409 `gsc_not_configured` |
+| GET · PUT | `/campaigns/{c}/search-console/properties` · `/property` | |
+| GET | `/api/v1/oauth/google/callback` | công khai, throttle 20/phút/IP, state ký + hết hạn, redirect về UI `?gsc=` |
 
 ### 2.6 Content, Verification, Media, SEO, Publishing (Phase 6–8)
 | Method | Path |
@@ -284,6 +303,11 @@ Yêu cầu `platform_role` + 2FA đã xác nhận. User thường nhận **404**
 | POST | `/jobs/workflows/{id}/cancel` · `/retry` ✦ | SUPER_ADMIN, SUPPORT — ghi audit |
 | GET | `/jobs/dead-letters` ✦ · POST `/{id}/retry` · `/{id}/discard` | SUPER_ADMIN, SUPPORT |
 (✦ ở các dòng `/ai/*`, `/jobs/*` = Phase 3.)
+| GET · PATCH | `/research/sources` · `/research/sources/{source}` (Phase 4) | SUPER_ADMIN (`platform.ai.manage`) — bật/tắt, `rate_limit_per_minute`, `timeout_seconds`, `secret` (ghi-một-chiều; `null`/rỗng = xóa), `config.location_code`, `reset_failures`. Chỉ trả `has_secret`, `secret_managed_by` |
+| GET · PATCH | `/research/settings` (Phase 4) | SUPER_ADMIN — user-agent, crawl delay, kích thước trang, giới hạn sitemap, bật/tắt crawl website/đối thủ, lưu snapshot, làm mới hồ sơ |
+| GET · PUT · DELETE | `/research/limits` · `/research/limits/{id}` (Phase 4) | SUPER_ADMIN — upsert `{scope: global|workspace, workspace_id?, max_campaigns, max_runs_per_month, max_ideas_per_run, max_competitors_per_campaign, max_calendar_items_per_month, max_concurrent_runs, max_ai_cost_per_run_micro_usd}` |
+| GET | `/research/runs?status=&workspace_id=&cursor=` · `/research/failures` (Phase 4) | `platform.jobs.manage` — chỉ đọc |
+| GET | `/research/costs` · `/research/usage` (Phase 4) | `platform.ai.view_costs` |
 | GET | `/system/health` | SUPER_ADMIN — queue backlog, failed jobs, provider status |
 
 ---

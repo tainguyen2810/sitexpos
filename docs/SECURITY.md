@@ -147,6 +147,13 @@ Mọi request ra ngoài tới URL do khách hoặc nội dung web cung cấp (si
 - Timeout kết nối 5s, tổng 20s; giới hạn kích thước phản hồi (5 MB HTML, 15 MB ảnh); chỉ chấp nhận content-type mong đợi.
 - Môi trường dev có thể bật danh sách cho phép `SITEX_SSRF_ALLOW_HOSTS` (ví dụ `localhost` cho WP local); **bị bỏ qua khi `APP_ENV=production`**.
 
+### 7.1 Crawler research (Phase 4)
+- Chỉ đọc trang **công khai**; mọi URL (website khách, sitemap, đối thủ, redirect) qua `SsrfGuard`. URL đối thủ trỏ tới IP nội bộ/metadata hoặc chính website khách bị từ chối (422).
+- Tuân thủ **robots.txt** (RFC 9309, nhóm user-agent cụ thể trước `*`, `Allow`/`Disallow` dài nhất thắng, `Crawl-delay`); robots 4xx = cho phép, 5xx/không tới được = không đọc.
+- User-Agent riêng có thông tin liên hệ (Super Admin cấu hình), giới hạn tốc độ theo host + delay giữa 2 yêu cầu, timeout, giới hạn byte mỗi trang và số trang mỗi lần chạy.
+- Đối thủ: **chỉ lưu** URL, title, heading, thời điểm thu thập — không lưu thân bài, không đưa nguyên văn vào prompt.
+- Khóa DataForSEO/Google Trends lưu mã hóa (`encrypted`), ghi-một-chiều; token Search Console mã hóa, không trả qua API, không ghi audit/log. Khách hàng chỉ thấy nguồn "khả dụng/không".
+
 ## 8. Chống prompt injection
 
 Nội dung lấy từ website khách, đối thủ, SERP, nguồn research đều là **dữ liệu không tin cậy**.

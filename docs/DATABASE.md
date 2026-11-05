@@ -215,52 +215,25 @@ Migration: `backend/app/Modules/Sites/Database/Migrations/2026_11_06_000100_crea
 
 **Phía WordPress (plugin):** option `sitex_post_connection` (autoload = no, chứa key_id/secret/tác giả/khóa cũ trong grace); bảng `{prefix}sitex_post_nonces` (key_id + nonce PRIMARY KEY, expires_at); bảng `{prefix}sitex_post_logs` (giữ 500 dòng); post meta `_sitex_post_managed`, `_sitex_post_idempotency_key`, `_sitex_post_source`, `_sitex_post_seo_*`. Gỡ plugin xóa option và hai bảng; post meta được giữ lại cùng bài viết (bài không bị xóa).
 
-### 3.7 BusinessProfile
+### 3.7–3.9 Research, Keywords & Planning ✦ Phase 4 (đã triển khai — thay thiết kế dự kiến trước đây)
 
-**business_profiles**: id, workspace_id, site_id null (null = dùng chung workspace), industry, description, target_markets JSON (quốc gia/khu vực/ngôn ngữ), audiences JSON, tone_of_voice, brand_terms JSON, banned_terms JSON, competitors JSON (domain do khách khai báo), compliance_notes.
+Migration: `app/Modules/Research/Database/Migrations/2026_11_09_000100_create_research_tables.php`. Mọi bảng có `workspace_id` + global scope fail-closed, trừ `research_limits` và `research_source_settings` (cấu hình nền tảng).
 
-**offerings**: id, workspace_id, business_profile_id, type (`product`,`service`), name, description, url, attributes JSON, has_real_photos (bool).
-
-### 3.8 Research
-
-**research_runs**: id, workspace_id, site_id, type (`industry`, `competitor`, `serp`, `article_sources`), status, input JSON, summary JSON, job_run_id, started_at, finished_at.
-
-**research_sources**
-| Cột | Ghi chú |
+| Bảng | Nội dung chính |
 |---|---|
-| id, workspace_id, research_run_id | |
-| url, canonical_url, domain | |
-| title, author, published_at | trích từ trang, null nếu không có |
-| fetched_at, http_status, content_hash | bằng chứng đã tải thật |
-| content_text_path | file văn bản trích xuất trên storage (không nhét vào DB) |
-| source_kind | `web`, `serp`, `customer_provided`, `gsc` |
-| trust_tier | `high`, `medium`, `low`, `blocked` |
-| provider | adapter đã trả kết quả |
-
-**competitors**: id, workspace_id, site_id, domain, source (`customer`, `serp_discovered`), notes, last_analyzed_at.
-
-### 3.9 Keywords & Planning
-
-**keywords**: id, workspace_id, site_id, keyword, normalized UNIQUE(site_id, normalized), language, country, intent (null nếu chưa phân loại), status (`suggested`,`accepted`,`rejected`,`used`), origin (`ai_suggested`, `serp`, `gsc`, `customer`).
-
-**keyword_metrics** — chỉ ghi khi có dữ liệu thật
-| Cột | Ghi chú |
-|---|---|
-| id, workspace_id, keyword_id | |
-| provider | `dataforseo`, `gsc`... **bắt buộc** |
-| search_volume, cpc_minor, competition, difficulty | null nếu provider không trả |
-| location_code, language_code | |
-| fetched_at | |
-
-AI chỉ được đề xuất từ khóa (`origin=ai_suggested`) — **không** có cột số liệu do AI sinh.
-
-**title_ideas**: id, workspace_id, site_id, keyword_id, title, angle, status.
-
-**topic_clusters**: id, workspace_id, site_id, name, pillar_keyword_id, description, status.
-
-**topic_cluster_items**: id, workspace_id, topic_cluster_id, keyword_id, role (`pillar`, `cluster`), title_idea_id null.
-
-**calendar_items**: id, workspace_id, site_id, topic_cluster_id null, title_idea_id null, article_id null, planned_date, status (`planned`,`in_progress`,`done`,`skipped`).
+| `website_profiles` | hồ sơ website theo site: title, tagline, mô tả, ngôn ngữ, sitemap, thống kê, chủ đề đã có, trạng thái crawl |
+| `website_knowledge` | nhận định theo `kind` (industry, product_line, audience, usp…), `source` (website/ai/user/demo), `confidence`, `evidence`, `status` (suggested/confirmed/rejected), unique theo fingerprint — quyết định của user không bị AI ghi đè |
+| `seo_campaigns` · `campaign_settings` · `research_schedules` | chiến dịch theo site; cài đặt phạm vi/số ý tưởng/trần AI/lịch đăng; lịch nghiên cứu định kỳ (`next_run_at`) |
+| `research_runs` · `research_sources` · `source_snapshots` | mỗi lần chạy (trạng thái, stage, stats, warnings, cost, `idempotency_key` unique); nguồn đã thu thập (URL, HTTP, robots, `fetched_at`); snapshot title/heading/câu hỏi (không lưu HTML) |
+| `keywords` | unique `(campaign_id, fingerprint)`; intent + nguồn của intent; `sources` JSON; `evidence`; `opportunity_score` + `score_breakdown`; `covered_by` (bài đã có) |
+| `keyword_metrics` | **chỉ ghi khi có dữ liệu thật**: `source` bắt buộc (dataforseo/search_console), volume/KD/CPC/impressions/clicks/position, `collected_at`. Không có cột nào do AI sinh |
+| `topic_clusters` · `content_gaps` · `internal_link_suggestions` | cụm (pillar, độ phủ), khoảng trống (missing/competitor/unanswered/cannibalization/overlap/striking_distance), gợi ý liên kết — đều unique theo fingerprint |
+| `content_ideas` · `content_idea_keywords` | ý tưởng (9 `content_type`, intent, ưu tiên, nguồn ai/rule/user/demo, evidence, brief, overlap), unique theo fingerprint; pivot role primary/secondary |
+| `competitor_websites` · `competitor_findings` | đối thủ theo chiến dịch; finding = kind/title/URL/headings/`fetched_at` (không thân bài) |
+| `content_calendar_items` | một ý tưởng tối đa một slot; `scheduled_for`, `position`, `status`, `source` |
+| `search_console_connections` | token OAuth mã hóa, property, trạng thái |
+| `research_notifications` | thông báo cơ hội/kết quả chạy |
+| `research_usage_counters` · `research_limits` · `research_source_settings` | quota theo tháng (used/reserved); giới hạn global/workspace; cấu hình nguồn + khóa mã hóa + bộ đếm lỗi |
 
 ### 3.10 Content & Verification
 

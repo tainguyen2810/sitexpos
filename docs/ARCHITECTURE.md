@@ -244,6 +244,14 @@ Quy tắc cứng:
 - **Chống prompt injection**: xem SECURITY.md §8. API key AI: nhập từ trang admin (mã hóa bằng APP_KEY, ADR-015) hoặc đặt trong `.env`; khóa trong DB được ưu tiên (SECURITY §5).
 - **Test Connection / Test Model** (Phase 3E): Test Connection gọi danh sách model (miễn phí) và báo model nào đã cấu hình có tồn tại upstream; Test Model chạy một lời gọi thật nhỏ (tối đa 200 token ra) qua gateway với `AiTask(modelId, platform: true)`: chỉ áp ngân sách global, ghi `ai_requests` với workspace null, được cả với model đang tắt. Cả hai giới hạn 10 lần/phút/admin và được ghi audit.
 
+## 8b. SEO Planner (Phase 4 — module `app/Modules/Research`, xem `PHASE4-REPORT.md`)
+
+- **Workflow** `research.discovery` (12 bước) chạy trên workflow engine Phase 3: prepare → collect_website → collect_search_console → collect_competitors → analyze_profile → extract_keywords → expand_keywords → enrich_metrics → analyze → generate_ideas → plan_calendar → finalize. Mỗi bước idempotent (upsert theo fingerprint), retry/replay không tạo trùng.
+- **Crawler** (`Crawler/PublicFetcher`): SsrfGuard + robots.txt (RFC 9309, cache, crawl-delay) + giới hạn tốc độ theo host + timeout + giới hạn byte + kiểm tra từng redirect. Đối thủ chỉ lưu title/heading/URL/thời điểm, không lưu thân bài.
+- **Phân tích** thuần PHP, không cần AI: `KeywordExtractor` (n-gram tiếng Việt có dấu, từ điển từ ghép + liên kết đồng xuất hiện), `IntentClassifier`, `ResearchAnalyzer` (độ phủ/cannibalization/gap/cụm), `OpportunityScorer` (minh bạch, thành phần thiếu dữ liệu không tính), `IdeaPlanner`, `InternalLinkPlanner`, `CalendarPlanner`.
+- **AI** (`Ai/ResearchAi`) gọi AI Gateway với route `research.profile`, `keywords.expand`, `topics.ideas` — model do registry/Super Admin cấu hình, có trần chi phí mỗi lần chạy.
+- **Ranh giới**: Research đọc dữ liệu WordPress đã đồng bộ qua contract `Sites\Contracts\SiteDirectory` (read-only), không dùng `Sites\Domain` hay `Sites\Connector`, không gọi trực tiếp provider AI (arch test).
+
 ## 9. Dịch vụ dữ liệu bên ngoài (adapter, cấu hình qua .env)
 
 | Nhu cầu | Adapter dự kiến | Ghi chú |
@@ -337,3 +345,5 @@ Bất biến thời gian: timeout job (300 s) < `retry_after` của Redis (330 s
 | ADR-013 | Workflow engine tự viết trên DB (state machine + lease + checkpoint) thay vì chỉ dựa vào queue | Queue không đảm bảo trạng thái sau khi worker chết; DB là nguồn sự thật, job chỉ là tín hiệu "hãy chạy run X". Không dùng Laravel Workflow/Temporal để giữ hạ tầng đơn giản |
 | ADR-014 | Tiền là số nguyên micro-USD, bảng giá có version bất biến | Tránh sai số float; hóa đơn/chi phí cũ giữ nguyên giá đã áp dụng (`ai_requests.price_id`) |
 | ADR-015 | API key AI có thể lưu trong DB, mã hóa bằng APP_KEY (cast `encrypted`), ghi-một-chiều | Super Admin cần thêm provider tùy chỉnh và đổi khóa không cần SSH. Thay quy tắc "chỉ `.env`" của Phase 3. Khóa không bao giờ trả qua API (chỉ `has_api_key`, 4 ký tự cuối, nguồn), không vào audit/log. Đánh đổi: lộ APP_KEY + DB thì lộ khóa, nên xoay APP_KEY phải nhập lại khóa |
+| ADR-016 | Đổi thứ tự phase lần 2: Phase 4 = SEO Planner (Topic Discovery), gói/thanh toán lùi sang sau | Theo yêu cầu Phase 4 của chủ dự án. Quota/ngân sách riêng cho research (`research_limits`, `research_usage_counters`) dùng cùng cơ chế reservation nguyên tử, sẽ gộp vào hệ thống gói khi làm billing |
+| ADR-017 | Ý tưởng chủ đề sinh từ bằng chứng bằng quy tắc; AI chỉ mở rộng gợi ý từ khóa và diễn đạt tiêu đề, có kiểm tra lạc đề | Đảm bảo hệ thống hữu ích cả khi AI lỗi/tắt, mọi ý tưởng truy được nguồn, và không có số liệu do AI bịa. Đánh đổi: tiêu đề theo quy tắc kém tự nhiên hơn |
