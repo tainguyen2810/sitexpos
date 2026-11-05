@@ -2,11 +2,14 @@
 
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use SiteXPost\Kernel\Support\JobRun;
 use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\Audit\Audit;
 use SiteXPost\Modules\Identity\Domain\User;
 use SiteXPost\Modules\Sites\Domain\Site;
+use SiteXPost\Modules\Workflows\Domain\WorkflowRun;
+use SiteXPost\Modules\Workflows\Engine\WorkflowEngine;
 use SiteXPost\Modules\Workspace\Domain\WorkspaceInvitation;
 use SiteXPost\Modules\Workspace\Enums\WorkspaceRole;
 use Tests\Support\FakeWordPress;
@@ -31,6 +34,7 @@ function tenantRoutes(): array
 function twoTenants(): array
 {
     Notification::fake();
+    seedAi();
     $a = workspaceWithRoles('Tenant A');
     $b = workspaceWithRoles('Tenant B');
     $ctx = app(TenantContext::class);
@@ -54,6 +58,13 @@ function twoTenants(): array
         return $job;
     });
 
+    $runB = $ctx->runAs($b['workspace'], null, function () {
+        Queue::fake();
+
+        return app(WorkflowEngine::class)
+            ->start('ai.test', ['task_key' => 'system.test', 'prompt' => 'secret B prompt', 'structured' => false, 'web_search' => false])[0];
+    });
+
     $wpB = (new FakeWordPress)->install();
     $siteB = connectedSite($b['workspace'], $wpB, 'Site B');
 
@@ -65,6 +76,7 @@ function twoTenants(): array
             'invitation' => $invB->id,
             'jobRun' => $jobB->id,
             'site' => $siteB->id,
+            'workflowRun' => $runB->id,
         ],
         'siteB' => $siteB,
         'wpB' => $wpB,
@@ -82,7 +94,7 @@ function fillUri(string $uri, string $workspaceId, array $ids): string
 }
 
 it('covers at least the known tenant routes', function () {
-    expect(count(tenantRoutes()))->toBeGreaterThanOrEqual(13);
+    expect(count(tenantRoutes()))->toBeGreaterThanOrEqual(19);
 });
 
 it('returns 404 when a tenant A owner targets tenant B workspace ids', function () {
@@ -105,7 +117,7 @@ it('returns 404 when tenant A uses its own workspace with tenant B child ids', f
     ['a' => $a, 'b' => $b, 'ids' => $ids] = twoTenants();
 
     foreach (tenantRoutes() as [$method, $uri]) {
-        if (! preg_match('/\{(member|invitation|jobRun|site)\}/', $uri)) {
+        if (! preg_match('/\{(member|invitation|jobRun|site|workflowRun)\}/', $uri)) {
             continue;
         }
         $url = fillUri($uri, $a['workspace']->id, $ids);
@@ -114,7 +126,8 @@ it('returns 404 when tenant A uses its own workspace with tenant B child ids', f
         expect($res->status())->toBe(404, "{$method} {$url} returned {$res->status()}");
     }
 
-    expect(memberOf($b['workspace'], $b['editor'])->role->value)->toBe('EDITOR');
+    expect(memberOf($b['workspace'], $b['editor'])->role->value)->toBe('EDITOR')
+        ->and(app(TenantContext::class)->runAs($b['workspace'], null, fn () => WorkflowRun::query()->sole()->status->value))->toBe('pending');
 });
 
 it('never lets tenant A operate tenant B WordPress sites', function () {
@@ -155,6 +168,10 @@ it('never leaks another tenant in listings or audit logs', function () {
 
     $invitations = $this->actingAs($a['owner'])->getJson("/api/v1/workspaces/{$a['workspace']->id}/invitations")->json('data');
     expect(collect($invitations)->pluck('email'))->not->toContain('pending-b@example.com');
+
+    $tasks = $this->actingAs($a['owner'])->getJson("/api/v1/workspaces/{$a['workspace']->id}/ai/tasks")->json('data');
+    expect($tasks)->toBeEmpty();
+    expect($this->actingAs($a['owner'])->getJson("/api/v1/workspaces/{$a['workspace']->id}/ai/usage")->json('data.totals.requests'))->toBe(0);
 
     $workspaces = collect($this->actingAs($a['owner'])->getJson('/api/v1/workspaces')->json('data'))->pluck('id');
     expect($workspaces->all())->toBe([$a['workspace']->id]);

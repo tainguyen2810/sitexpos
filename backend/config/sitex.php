@@ -18,6 +18,7 @@ return [
         'login_per_minute' => (int) env('SITEX_RATE_LOGIN_PER_MINUTE', 5),
         'login_per_hour_ip' => (int) env('SITEX_RATE_LOGIN_PER_HOUR_IP', 60),
         'auth_per_minute_ip' => (int) env('SITEX_RATE_AUTH_PER_MINUTE_IP', 30),
+        'ai_tasks_per_minute' => (int) env('SITEX_RATE_AI_TASKS_PER_MINUTE', 20),
     ],
 
     // Phase 2 — WordPress connector (SECURITY.md §6)
@@ -39,6 +40,52 @@ return [
         'sync_max_pages' => (int) env('SITEX_SYNC_MAX_PAGES', 50),
         'min_plugin_version' => '1.0.0',
         'log_retention_days' => 30,
+    ],
+
+    // Phase 3 — AI Gateway & Queue (ARCHITECTURE.md §8, §10). API keys live ONLY here (.env),
+    // never in the database. Base URLs are not editable from the admin UI (SSRF).
+    'ai' => [
+        'providers' => [
+            'openai' => [
+                'api_key' => env('OPENAI_API_KEY'),
+                'base_url' => rtrim((string) env('OPENAI_BASE_URL', 'https://api.openai.com'), '/'),
+            ],
+            'gemini' => [
+                'api_key' => env('GEMINI_API_KEY'),
+                'base_url' => rtrim((string) env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com'), '/'),
+            ],
+            'anthropic' => [
+                'api_key' => env('ANTHROPIC_API_KEY'),
+                'base_url' => rtrim((string) env('ANTHROPIC_BASE_URL', 'https://api.anthropic.com'), '/'),
+                // Raw-HTTP API version header (verified 05/11/2026: 2026-10-21 rejects temperature/top_p/top_k).
+                'version' => env('ANTHROPIC_API_VERSION', '2026-10-21'),
+            ],
+        ],
+        // Deterministic offline provider for development/tests. Always disabled in production.
+        'fake_provider' => (bool) env('SITEX_AI_FAKE_PROVIDER', env('APP_ENV', 'production') !== 'production'),
+        'connect_timeout' => (int) env('SITEX_AI_CONNECT_TIMEOUT', 5),
+        'max_backoff_seconds' => (int) env('SITEX_AI_MAX_BACKOFF_SECONDS', 8),
+        // Total time one gateway call may spend on retries/fallbacks (< job timeout 300 s).
+        'call_deadline_seconds' => (int) env('SITEX_AI_CALL_DEADLINE_SECONDS', 240),
+        // Estimated characters per token used for pre-call cost reservations (conservative).
+        'chars_per_token' => (int) env('SITEX_AI_CHARS_PER_TOKEN', 3),
+        'reservation_ttl_minutes' => (int) env('SITEX_AI_RESERVATION_TTL_MINUTES', 30),
+        'max_prompt_chars' => (int) env('SITEX_AI_MAX_PROMPT_CHARS', 20000),
+        'request_log_retention_days' => (int) env('SITEX_AI_REQUEST_LOG_RETENTION_DAYS', 90),
+    ],
+
+    'workflows' => [
+        // Max workflow runs executing at the same time for one workspace (fairness).
+        'tenant_concurrency' => (int) env('SITEX_WORKFLOW_TENANT_CONCURRENCY', 2),
+        // Seconds a worker owns a run before recovery may take it over (> job timeout).
+        'lease_seconds' => (int) env('SITEX_WORKFLOW_LEASE_SECONDS', 360),
+        'backoff_base_seconds' => (int) env('SITEX_WORKFLOW_BACKOFF_BASE', 15),
+        'backoff_max_seconds' => (int) env('SITEX_WORKFLOW_BACKOFF_MAX', 900),
+        // Delay before re-checking a run deferred by the tenant concurrency limit.
+        'defer_seconds' => (int) env('SITEX_WORKFLOW_DEFER_SECONDS', 10),
+        // A pending run with no worker activity for this long is re-dispatched by recovery.
+        'stale_pending_seconds' => (int) env('SITEX_WORKFLOW_STALE_PENDING_SECONDS', 600),
+        'retention_days' => (int) env('SITEX_WORKFLOW_RETENTION_DAYS', 90),
     ],
 
     'ssrf' => [

@@ -97,7 +97,17 @@ return [
     */
 
     'waits' => [
+        'redis:critical' => 30,
         'redis:default' => 60,
+        'redis:notifications' => 120,
+        'redis:billing' => 60,
+        'redis:connector' => 120,
+        'redis:publishing' => 120,
+        'redis:research' => 300,
+        'redis:writing' => 300,
+        'redis:factcheck' => 300,
+        'redis:media' => 600,
+        'redis:analytics' => 900,
     ],
 
     /*
@@ -200,7 +210,7 @@ return [
         // Short tasks: webhooks, revocations, email.
         'supervisor-core' => [
             'connection' => 'redis',
-            'queue' => ['critical', 'default', 'notifications'],
+            'queue' => ['critical', 'default', 'notifications', 'billing'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 2,
@@ -226,8 +236,60 @@ return [
             'timeout' => 300,
             'nice' => 0,
         ],
-        // Reserved for later phases (publishing, AI, media, analytics).
-        // Configure per server role with HORIZON_ROLE when workers are split.
+        // Phase 3: publishing jobs share the connector pool's long timeout.
+        'supervisor-publishing' => [
+            'connection' => 'redis',
+            'queue' => ['publishing'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 2,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 192,
+            'tries' => 1,
+            'timeout' => 300,
+            'nice' => 0,
+        ],
+        // Phase 3: AI workflows. Paid API calls; the workflow engine owns
+        // retries (tries/backoff are in WorkflowRun), so Horizon tries stay
+        // low and timeout < queue retry_after (330) < workflow lease (360).
+        'supervisor-ai' => [
+            'connection' => 'redis',
+            'queue' => ['writing', 'research', 'factcheck'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'size',
+            'maxProcesses' => 3,
+            'maxTime' => 3600,
+            'maxJobs' => 500,
+            'memory' => 256,
+            'tries' => 3,
+            'timeout' => 300,
+            'nice' => 0,
+        ],
+        'supervisor-media' => [
+            'connection' => 'redis',
+            'queue' => ['media'],
+            'balance' => 'simple',
+            'maxProcesses' => 1,
+            'maxTime' => 3600,
+            'maxJobs' => 200,
+            'memory' => 384,
+            'tries' => 3,
+            'timeout' => 300,
+            'nice' => 5,
+        ],
+        'supervisor-analytics' => [
+            'connection' => 'redis',
+            'queue' => ['analytics'],
+            'balance' => 'simple',
+            'maxProcesses' => 1,
+            'maxTime' => 3600,
+            'maxJobs' => 500,
+            'memory' => 256,
+            'tries' => 3,
+            'timeout' => 300,
+            'nice' => 10,
+        ],
     ],
 
     'environments' => [
@@ -239,6 +301,15 @@ return [
             ],
             'supervisor-connector' => [
                 'maxProcesses' => 4,
+            ],
+            'supervisor-publishing' => [
+                'maxProcesses' => 3,
+            ],
+            'supervisor-ai' => [
+                'maxProcesses' => 6,
+            ],
+            'supervisor-media' => [
+                'maxProcesses' => 2,
             ],
         ],
 

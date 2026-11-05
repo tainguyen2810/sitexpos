@@ -4,6 +4,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use SiteXPost\Kernel\Security\SsrfGuard;
 use SiteXPost\Kernel\Tenancy\TenantContext;
+use SiteXPost\Modules\AiGateway\Domain\AiBudget;
+use SiteXPost\Modules\AiGateway\Domain\AiModel;
+use SiteXPost\Modules\AiGateway\Domain\AiTaskRoute;
+use SiteXPost\Modules\AiGateway\Registry\AiRegistry;
 use SiteXPost\Modules\Identity\Domain\User;
 use SiteXPost\Modules\Sites\Connector\Signer;
 use SiteXPost\Modules\Sites\Domain\Site;
@@ -137,4 +141,63 @@ function pluginHeaders(string $keyId, string $secret, string $path, array $body,
         ),
         'Content-Type' => 'application/json',
     ];
+}
+
+/**
+ * Phase 3 helpers --------------------------------------------------------
+ */
+
+/**
+ * Seed the AI registry (providers, models, versioned prices, task routes).
+ * Real providers have no key in tests, so the fake provider answers unless
+ * a test sets keys and fakes HTTP.
+ */
+function seedAi(): void
+{
+    config(['sitex.ai.fake_provider' => true]);
+    foreach (['openai', 'gemini', 'anthropic'] as $p) {
+        config(["sitex.ai.providers.{$p}.api_key" => null]);
+    }
+    app(AiRegistry::class)->sync();
+}
+
+function aiModel(string $modelKey): AiModel
+{
+    return AiModel::query()->where('model_key', $modelKey)->firstOrFail();
+}
+
+/**
+ * Point a task route at an ordered list of models (first = primary).
+ *
+ * @param  list<string>  $modelKeys
+ * @param  array<string, mixed>  $extra
+ */
+function routeTask(string $taskKey, array $modelKeys, array $extra = []): AiTaskRoute
+{
+    $ids = array_map(fn (string $k): string => aiModel($k)->id, $modelKeys);
+    $route = AiTaskRoute::query()->where('task_key', $taskKey)->firstOrFail();
+    $route->forceFill([
+        'primary_model_id' => $ids[0],
+        'fallback_model_ids' => array_slice($ids, 1),
+        ...$extra,
+    ])->save();
+
+    return $route;
+}
+
+function aiBudget(?string $workspaceId, int $limitMicroUsd, string $action = 'pause_all', string $period = 'month', int $alertPct = 80): AiBudget
+{
+    $budget = new AiBudget;
+    $budget->forceFill([
+        'scope' => $workspaceId === null ? 'global' : 'workspace',
+        'scope_key' => $workspaceId === null ? 'global' : AiBudget::scopeKeyFor($workspaceId),
+        'workspace_id' => $workspaceId,
+        'period' => $period,
+        'limit_micro_usd' => $limitMicroUsd,
+        'alert_threshold_pct' => $alertPct,
+        'action_on_exceed' => $action,
+        'is_enabled' => true,
+    ])->save();
+
+    return $budget;
 }
