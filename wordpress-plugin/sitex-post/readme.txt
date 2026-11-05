@@ -4,7 +4,7 @@ Tags: seo, ai, publishing, content, woocommerce
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -60,6 +60,11 @@ Nothing. Posts stay exactly as they are; SiteX Post Cloud just loses access.
 No. It can only update posts it created itself (marked with a private meta field).
 
 == Changelog ==
+
+= 1.1.0 =
+* Conflict-safe updates: an update is refused (HTTP 409) when the post was edited in WordPress since SiteX Post last wrote it, unless Cloud sends an explicit, human-approved overwrite for that exact state.
+* Featured image may be any image of the Media Library.
+* Prints the JSON-LD schema Cloud attaches to a managed post (Cloud sends it only when schema is enabled for the site, and never sends types Yoast SEO / Rank Math already output).
 
 = 1.0.0 =
 * First release: pairing wizard, signed REST API, content and taxonomy sync, image upload, idempotent publishing, Yoast SEO / Rank Math / built-in SEO adapters, logs and diagnostics.

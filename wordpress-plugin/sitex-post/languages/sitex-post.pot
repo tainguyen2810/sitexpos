@@ -335,11 +335,11 @@ msgstr ""
 msgid "SiteX Post Cloud no longer accepts this site key (it may have been revoked). Disconnect and pair again."
 msgstr ""
 
-#: includes/Content/MediaService.php:33
+#: includes/Content/MediaService.php:33 includes/Rest/RestController.php:279
 msgid "The publishing account cannot upload files."
 msgstr ""
 
-#: includes/Content/MediaService.php:38 includes/Content/PostService.php:41
+#: includes/Content/MediaService.php:38 includes/Content/PostService.php:51 includes/Rest/RestController.php:264
 msgid "A valid idempotency_key is required."
 msgstr ""
 
@@ -365,69 +365,79 @@ msgstr ""
 msgid "Image #%d uploaded."
 msgstr ""
 
-#: includes/Content/PostService.php:46 includes/Content/PostService.php:107
+#: includes/Content/PostService.php:56 includes/Content/PostService.php:134
 msgid "Unsupported post type."
 msgstr ""
 
-#: includes/Content/PostService.php:51
+#: includes/Content/PostService.php:61
 msgid "A title (max 500 characters) is required."
 msgstr ""
 
-#: includes/Content/PostService.php:56
+#: includes/Content/PostService.php:66
 msgid "Unsupported post status."
 msgstr ""
 
-#: includes/Content/PostService.php:63
+#: includes/Content/PostService.php:73
 msgid "The same document is being processed. Retry shortly."
 msgstr ""
 
-#: includes/Content/PostService.php:90
+#: includes/Content/PostService.php:100 includes/Rest/RestController.php:247 includes/Rest/RestController.php:268
 msgid "Post not found."
 msgstr ""
 
-#: includes/Content/PostService.php:93
+#: includes/Content/PostService.php:103 includes/Rest/RestController.php:250
 msgid "This post was not created by SiteX Post and cannot be modified by it."
 msgstr ""
 
-#: includes/Content/PostService.php:96
+#: includes/Content/PostService.php:106
 msgid "The idempotency key belongs to another post."
 msgstr ""
 
-#: includes/Content/PostService.php:102
+#: includes/Content/PostService.php:112
 msgid "The post for this document was moved to the trash on WordPress."
 msgstr ""
 
-#: includes/Content/PostService.php:118
+#. translators: %d: post ID */
+#: includes/Content/PostService.php:119
+#, php-format
+msgid "Update of post #%d refused: it was changed in WordPress."
+msgstr ""
+
+#: includes/Content/PostService.php:122
+msgid "The post was changed in WordPress since SiteX Post last wrote it. Resolve the conflict in SiteX Post Cloud."
+msgstr ""
+
+#: includes/Content/PostService.php:145
 msgid "The publishing account is not allowed to publish. Use draft or pending status."
 msgstr ""
 
-#: includes/Content/PostService.php:135
+#: includes/Content/PostService.php:162
 msgid "Scheduled posts need a future date_gmt."
 msgstr ""
 
 #. translators: %d: post ID */
-#: includes/Content/PostService.php:178
+#: includes/Content/PostService.php:227
 #, php-format
 msgid "Post #%d saved."
 msgstr ""
 
-#: includes/Content/PostService.php:229
-msgid "The featured image must be an image uploaded by SiteX Post."
+#: includes/Content/PostService.php:384
+msgid "The featured image must be an image of the Media Library."
 msgstr ""
 
-#: includes/Content/PostService.php:273
+#: includes/Content/PostService.php:428
 msgid "The publishing account does not have permission for this action."
 msgstr ""
 
-#: includes/Rest/RestController.php:228
+#: includes/Rest/RestController.php:306
 msgid "Invalid key material."
 msgstr ""
 
-#: includes/Rest/RestController.php:244
+#: includes/Rest/RestController.php:322
 msgid "Connection key rotated by SiteX Post Cloud."
 msgstr ""
 
-#: includes/Rest/RestController.php:255
+#: includes/Rest/RestController.php:333
 msgid "Disconnected by SiteX Post Cloud. The local key was deleted."
 msgstr ""
 

@@ -103,7 +103,7 @@ return array(
 	'The publishing account is not allowed to publish. Use draft or pending status.'               => 'Tài khoản đăng bài không có quyền xuất bản. Hãy dùng trạng thái nháp hoặc chờ duyệt.',
 	'Scheduled posts need a future date_gmt.'                                                      => 'Bài hẹn giờ cần date_gmt ở tương lai.',
 	'Post #%d saved.'                                                                              => 'Đã lưu bài #%d.',
-	'The featured image must be an image uploaded by SiteX Post.'                                  => 'Ảnh đại diện phải là ảnh do SiteX Post tải lên.',
+	'The featured image must be an image of the Media Library.' => 'Ảnh đại diện phải là ảnh trong Thư viện Media.',
 	'The publishing account does not have permission for this action.'                             => 'Tài khoản đăng bài không có quyền thực hiện thao tác này.',
 	'Invalid key material.'                                                                        => 'Dữ liệu khóa không hợp lệ.',
 	'Connection key rotated by SiteX Post Cloud.'                                                  => 'SiteX Post Cloud đã đổi khóa kết nối.',
@@ -128,4 +128,6 @@ return array(
 	'Not installed'                                                                                => 'Chưa cài',
 	'Publishing account permissions'                                                               => 'Quyền của tài khoản đăng bài',
 	'Missing'                                                                                      => 'Thiếu',
+	'Update of post #%d refused: it was changed in WordPress.' => 'Từ chối cập nhật bài #%d: bài đã bị sửa trong WordPress.',
+	'The post was changed in WordPress since SiteX Post last wrote it. Resolve the conflict in SiteX Post Cloud.' => 'Bài đã bị sửa trong WordPress kể từ lần SiteX Post ghi gần nhất. Hãy xử lý xung đột trong SiteX Post Cloud.',
 );

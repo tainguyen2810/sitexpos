@@ -396,6 +396,15 @@ msgid "The post for this document was moved to the trash on WordPress."
 msgstr "Bài viết tương ứng đã bị chuyển vào thùng rác trên WordPress."
 
 #: 
+#, php-format
+msgid "Update of post #%d refused: it was changed in WordPress."
+msgstr "Từ chối cập nhật bài #%d: bài đã bị sửa trong WordPress."
+
+#: 
+msgid "The post was changed in WordPress since SiteX Post last wrote it. Resolve the conflict in SiteX Post Cloud."
+msgstr "Bài đã bị sửa trong WordPress kể từ lần SiteX Post ghi gần nhất. Hãy xử lý xung đột trong SiteX Post Cloud."
+
+#: 
 msgid "The publishing account is not allowed to publish. Use draft or pending status."
 msgstr "Tài khoản đăng bài không có quyền xuất bản. Hãy dùng trạng thái nháp hoặc chờ duyệt."
 
@@ -409,8 +418,8 @@ msgid "Post #%d saved."
 msgstr "Đã lưu bài #%d."
 
 #: 
-msgid "The featured image must be an image uploaded by SiteX Post."
-msgstr "Ảnh đại diện phải là ảnh do SiteX Post tải lên."
+msgid "The featured image must be an image of the Media Library."
+msgstr "Ảnh đại diện phải là ảnh trong Thư viện Media."
 
 #: 
 msgid "The publishing account does not have permission for this action."

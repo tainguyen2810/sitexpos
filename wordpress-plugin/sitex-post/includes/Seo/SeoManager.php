@@ -179,10 +179,6 @@ final class SeoManager {
 	}
 
 	/**
-	 * @param string $title Title.
-	 * @return string
-	 */
-	/**
 	 * Prints the JSON-LD Cloud attached to a SiteX Post managed post. Cloud
 	 * only sends schema when the customer enabled injection for the site and
 	 * never sends types an active SEO plugin already outputs.
@@ -203,6 +199,10 @@ final class SeoManager {
 		echo '<script type="application/ld+json">' . wp_json_encode( $data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . "</script>\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON with HEX_TAG cannot break out of the script element.
 	}
 
+	/**
+	 * @param string $title Title.
+	 * @return string
+	 */
 	public static function document_title( $title ) {
 		$id = self::native_post_id();
 		if ( $id ) {
