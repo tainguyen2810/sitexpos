@@ -11,6 +11,7 @@ use SiteXPost\Modules\Writer\Domain\Article;
 use SiteXPost\Modules\Writer\Domain\ArticleClaim;
 use SiteXPost\Modules\Writer\Domain\ArticleVersion;
 use SiteXPost\Modules\Writer\Enums\ArticleStatus;
+use SiteXPost\Modules\Writer\Pipeline\AutoApprover;
 use SiteXPost\Modules\Writer\Pipeline\ClaimExtractor;
 use SiteXPost\Modules\Writer\Pipeline\FactChecker;
 use SiteXPost\Modules\Writer\Pipeline\QualityAuditor;
@@ -65,7 +66,7 @@ final class RecheckWorkflow extends ArticleWorkflow
                 ? DraftWorkflow::reviseLoop($a, $ctx, $run, $this->reviser, $this->claims, $this->checker, $this->machine, $this->settings)
                 : ['skipped' => 'auto_revise_off'],
             'quality' => $this->audit($a, $version(), $ctx, $run),
-            'finalize' => $this->finalize($a),
+            'finalize' => $this->finalize($a, $run->id),
             default => throw new StepFailed('unknown_step', $step),
         };
     }
@@ -101,9 +102,10 @@ final class RecheckWorkflow extends ArticleWorkflow
     /**
      * @return array<string, mixed>
      */
-    private function finalize(Article $a): array
+    private function finalize(Article $a, ?string $runId = null): array
     {
         $this->moveTo($a, ArticleStatus::NeedsHumanReview, ['last_error_code' => null, 'last_error_message' => null]);
+        app(AutoApprover::class)->attempt($a->refresh(), $runId);
 
         return ['status' => $a->status->value];
     }

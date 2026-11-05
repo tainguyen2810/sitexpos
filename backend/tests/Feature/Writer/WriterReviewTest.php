@@ -2,6 +2,7 @@
 
 use SiteXPost\Modules\AiGateway\Providers\ProviderRequest;
 use SiteXPost\Modules\Writer\Domain\EditorialApproval;
+use SiteXPost\Modules\Writer\Support\WriterSettings;
 
 require_once __DIR__.'/helpers.php';
 
@@ -162,4 +163,46 @@ it('lists the workspace writing history with filters', function () {
 
     $drafts = $this->actingAs($t['viewer'])->getJson(writerUrl($t, 'history?kind=draft&status=succeeded'))->assertOk()->json('data');
     expect(collect($drafts)->pluck('kind')->unique()->all())->toBe(['draft']);
+});
+
+it('auto-approves only when Super Admin enabled it and every quality and policy condition holds', function () {
+    $t = writerTenant();
+    $settings = app(WriterSettings::class);
+
+    // Disabled by default: asking for auto mode is refused, manual stays the default.
+    createArticle($t, ['review_mode' => 'final_only', 'approval_mode' => 'auto'])->assertStatus(422)->assertJsonStructure(['error' => ['details' => ['approval_mode']]]);
+    expect($this->actingAs($t['owner'])->getJson(writerUrl($t, 'options'))->assertOk()->json('data.auto_approve.enabled'))->toBeFalse();
+
+    $settings->save($t['workspace']->id, ['auto_approve_enabled' => true, 'auto_approve_min_quality' => 0], null);
+
+    // Auto article that meets every condition → APPROVED by the system, not by a user.
+    $id = writtenArticle($t, ['approval_mode' => 'auto']);
+    $a = articleJson($t, $id);
+    expect($a['status'])->toBe('APPROVED')->and($a['approved_by'])->toBeNull()
+        ->and($a['settings']['auto_approve_result']['approved'])->toBeTrue();
+    $ap = inResearchTenant($t, fn () => EditorialApproval::query()->where('article_id', $id)->sole());
+    expect($ap->user_id)->toBeNull()->and($ap->checks['auto'])->toBeTrue();
+
+    // Manual articles are never auto-approved, even when the policy allows it.
+    $manual = writtenArticle($t);
+    expect(articleJson($t, $manual)['status'])->toBe('NEEDS_HUMAN_REVIEW');
+    // Switching an article to auto later is allowed only while the policy is on; it takes effect on the next re-check.
+    $this->actingAs($t['editor'])->patchJson(writerUrl($t, "articles/{$manual}"), ['approval_mode' => 'auto'])->assertOk()->assertJsonPath('data.settings.approval_mode', 'auto');
+    $settings->save($t['workspace']->id, ['auto_approve_enabled' => false], null);
+    $this->actingAs($t['editor'])->patchJson(writerUrl($t, "articles/{$manual}"), ['approval_mode' => 'auto'])->assertStatus(422);
+    $settings->save($t['workspace']->id, ['auto_approve_enabled' => true], null);
+
+    // A later edit invalidates the auto approval exactly like a human one.
+    $html = articleJson($t, $id, 'editor')['version']['content_html'];
+    $edited = str_replace('Đây là điểm khác biệt chính của chuẩn WiFi 6E.', 'Đây là điểm khác biệt chính của chuẩn WiFi 6E, ra mắt năm 2020.', $html);
+    $this->actingAs($t['editor'])->postJson(writerUrl($t, "articles/{$id}/versions"), ['content_html' => $edited, 'base_version_id' => $a['current_version_id']])->assertCreated();
+    expect(articleJson($t, $id)['status'])->toBe('NEEDS_HUMAN_REVIEW')
+        ->and(inResearchTenant($t, fn () => EditorialApproval::query()->where('article_id', $id)->sole()->invalidated_at))->not->toBeNull();
+
+    // Quality below the auto threshold → left for a human, with the reason recorded.
+    $settings->save($t['workspace']->id, ['auto_approve_min_quality' => 100], null);
+    $low = writtenArticle($t, ['approval_mode' => 'auto', 'topic' => 'Card WiFi AX210 cho laptop văn phòng']);
+    $l = articleJson($t, $low);
+    expect($l['status'])->toBe('NEEDS_HUMAN_REVIEW')
+        ->and($l['settings']['auto_approve_result']['reasons'])->toContain('quality_below_auto_threshold');
 });

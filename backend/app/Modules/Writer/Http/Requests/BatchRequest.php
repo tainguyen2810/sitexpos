@@ -22,6 +22,7 @@ final class BatchRequest extends ApiRequest
             'settings.tone' => ['nullable', 'string', 'max:120'],
             'settings.research_depth' => ['nullable', 'in:basic,standard,deep'],
             'settings.review_mode' => ['nullable', 'in:brief_only,final_only'],
+            'settings.approval_mode' => ['nullable', 'in:manual,auto'],
         ];
     }
 }

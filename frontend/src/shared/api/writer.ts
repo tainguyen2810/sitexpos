@@ -122,6 +122,20 @@ export interface Overview {
   needs_review: number
 }
 
+export type ApprovalMode = 'manual' | 'auto'
+
+/** Result of the last auto-approval attempt, kept in article.settings. */
+export interface AutoApproveResult { approved: boolean; reasons: string[]; at: string }
+
+export function autoApproveResult(settings: Record<string, unknown>): AutoApproveResult | null {
+  const r = settings.auto_approve_result as AutoApproveResult | undefined
+  return r && typeof r === 'object' && Array.isArray(r.reasons) ? r : null
+}
+
+export function approvalModeOf(settings: Record<string, unknown>): ApprovalMode {
+  return settings.approval_mode === 'auto' ? 'auto' : 'manual'
+}
+
 export interface WriterOptions {
   content_types: WriterContentType[]
   review_modes: ReviewMode[]
@@ -134,6 +148,7 @@ export interface WriterOptions {
     max_sources: Record<Depth, number>
     min_quality_score_for_approval: number
   }
+  auto_approve: { enabled: boolean; min_quality: number }
 }
 
 export interface WriterIdea {
@@ -177,6 +192,7 @@ export interface ArticleInput {
   allow_web_search?: boolean
   ai_review_notes?: boolean
   review_mode?: ReviewMode
+  approval_mode?: ApprovalMode
   budget_limit_micro_usd?: number
   language?: 'vi' | 'en'
   country?: string
@@ -500,7 +516,7 @@ export interface BatchInput {
   concurrency?: number
   per_article_budget_micro_usd?: number
   writing_preset_id?: string | null
-  settings?: { target_words?: number; tone?: string; research_depth?: Depth; review_mode?: 'brief_only' | 'final_only' }
+  settings?: { target_words?: number; tone?: string; research_depth?: Depth; review_mode?: 'brief_only' | 'final_only'; approval_mode?: ApprovalMode }
 }
 export interface BatchPreview {
   campaign: { id: string; name: string; site_id: string }
@@ -539,7 +555,7 @@ export const writerApi = {
   articles: (ws: string, query: Query = {}) => api.get<Paginated<Article>>(`${W(ws)}/articles`, { query }),
   create: (ws: string, data: ArticleInput, key?: string) => api.post<Envelope<ArticleDetail>>(`${W(ws)}/articles`, data, idem(key)).then((r) => r.data),
   article: (ws: string, id: string) => api.get<Envelope<ArticleDetail>>(A(ws, id)).then((r) => r.data),
-  update: (ws: string, id: string, data: { title?: string; review_mode?: ReviewMode; budget_limit_micro_usd?: number; writing_preset_id?: string | null }) =>
+  update: (ws: string, id: string, data: { title?: string; review_mode?: ReviewMode; approval_mode?: ApprovalMode; budget_limit_micro_usd?: number; writing_preset_id?: string | null }) =>
     api.patch<Envelope<ArticleDetail>>(A(ws, id), data).then((r) => r.data),
   cancel: (ws: string, id: string) => api.post<Envelope<ArticleDetail>>(`${A(ws, id)}/cancel`).then((r) => r.data),
   workflows: (ws: string, id: string) => api.get<Envelope<Workflow[]>>(`${A(ws, id)}/workflows`).then((r) => r.data),

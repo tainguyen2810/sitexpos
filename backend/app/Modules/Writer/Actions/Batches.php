@@ -15,6 +15,7 @@ use SiteXPost\Modules\Writer\Domain\Article;
 use SiteXPost\Modules\Writer\Domain\WritingBatch;
 use SiteXPost\Modules\Writer\Domain\WritingBatchItem;
 use SiteXPost\Modules\Writer\Enums\ArticleStatus;
+use SiteXPost\Modules\Writer\Pipeline\AutoApprover;
 use SiteXPost\Modules\Writer\Support\WriterQuota;
 use SiteXPost\Modules\Writer\Support\WriterSettings;
 use Throwable;
@@ -95,6 +96,7 @@ class Batches
         if ($concurrency < 1 || $concurrency > $this->settings->int('max_batch_concurrency', $ws)) {
             throw new ApiException(422, 'validation_failed', __('api.validation_failed'), ['concurrency' => [__('writer.errors.batch_concurrency', ['max' => $this->settings->int('max_batch_concurrency', $ws)])]]);
         }
+        AutoApprover::assertAllowed($this->settings, $ws, $data['settings']['approval_mode'] ?? null, 'settings.approval_mode');
         $budget = (int) ($data['per_article_budget_micro_usd'] ?? $this->settings->int('default_article_budget_micro_usd', $ws));
         if ($budget > $this->settings->int('max_article_budget_micro_usd', $ws)) {
             throw new ApiException(422, 'validation_failed', __('api.validation_failed'), ['per_article_budget_micro_usd' => [__('writer.errors.budget_too_high', ['max' => $this->settings->int('max_article_budget_micro_usd', $ws) / 1_000_000])]]);
@@ -165,7 +167,7 @@ class Batches
                 $article = app(CreateArticle::class)->handle([
                     'site_id' => $b->site_id, 'campaign_id' => $b->campaign_id, 'content_idea_id' => $item->content_idea_id, 'writing_preset_id' => $b->writing_preset_id,
                     'mode' => 'autonomous', 'review_mode' => 'final_only', 'budget_limit_micro_usd' => $b->per_article_budget_micro_usd,
-                ] + array_intersect_key($b->settings ?? [], array_flip(['tone', 'target_words', 'research_depth', 'content_depth', 'language', 'country', 'cta', 'brand_rules', 'audience'])),
+                ] + array_intersect_key($b->settings ?? [], array_flip(['tone', 'target_words', 'research_depth', 'content_depth', 'language', 'country', 'cta', 'brand_rules', 'audience', 'approval_mode'])),
                     $b->created_by, 'batch:'.$item->id, reserveQuota: false, batchId: $b->id);
                 $item->forceFill(['article_id' => $article->id])->save();
             } else {

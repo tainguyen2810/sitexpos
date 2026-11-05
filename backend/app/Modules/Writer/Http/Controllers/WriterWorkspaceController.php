@@ -62,6 +62,10 @@ final class WriterWorkspaceController
                 'max_sources' => ['basic' => $settings->maxSources('basic', $ws), 'standard' => $settings->maxSources('standard', $ws), 'deep' => $settings->maxSources('deep', $ws)],
                 'min_quality_score_for_approval' => $settings->int('min_quality_score_for_approval', $ws),
             ],
+            'auto_approve' => [
+                'enabled' => (bool) $settings->get('auto_approve_enabled', $ws),
+                'min_quality' => max($settings->int('auto_approve_min_quality', $ws), $settings->int('min_quality_score_for_approval', $ws)),
+            ],
         ]]);
     }
 

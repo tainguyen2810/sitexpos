@@ -241,15 +241,15 @@ Tiền tố `/api/v1/workspaces/{ws}/writer`. Danh sách dùng envelope cursor `
 
 | Method | Path | Ghi chú |
 |---|---|---|
-| GET | `/overview` · `/options` · `/ideas` · `/estimate` | Tổng quan, lựa chọn wizard (site, preset, cluster), ý tưởng Phase 4, ước tính chi phí |
+| GET | `/overview` · `/options` · `/ideas` · `/estimate` | Tổng quan, lựa chọn wizard (gồm `auto_approve {enabled, min_quality}`), ý tưởng Phase 4, ước tính chi phí |
 | GET | `/history?kind=&status=&article_id=&cursor=` | Lịch sử workflow của workspace, mỗi dòng kèm `article {id, title, status}` |
 | GET · POST · GET · PATCH · DELETE | `/presets` · `/presets/{p}` | `presets` trả `{data: [...]}` (không phân trang). Mỗi fact của brand voice có `provenance` |
 | GET | `/batches?status=queued\|running\|paused\|completed\|canceled\|failed` · `/batches/{b}` | |
 | POST | `/batches/preview` · `/batches` | Tối đa `max_batch_size` bài; cần email đã xác minh |
 | POST | `/batches/{b}/pause` · `/resume` · `/cancel` · `/retry` | |
 | GET | `/articles?q=&status=&content_type=&site_id=&campaign_id=&needs_review=&sort=&direction=` | `q` tìm theo tiêu đề |
-| POST | `/articles` | Tạo từ wizard (10 `content_type`, `review_mode: step_by_step\|brief_only\|final_only`, `research_depth`, `budget_limit_micro_usd`…) |
-| GET · PATCH | `/articles/{a}` | PATCH: `title`, `review_mode`, `budget_limit_micro_usd`, `writing_preset_id` (không sửa được status/nội dung/chi phí qua đây) |
+| POST | `/articles` | Tạo từ wizard (10 `content_type`, `review_mode: step_by_step\|brief_only\|final_only`, `approval_mode: manual\|auto` (auto cần Super Admin bật), `research_depth`, `budget_limit_micro_usd`…) |
+| GET · PATCH | `/articles/{a}` | PATCH: `title`, `review_mode`, `approval_mode`, `budget_limit_micro_usd`, `writing_preset_id` (không sửa được status/nội dung/chi phí qua đây) |
 | POST | `/articles/{a}/cancel` | |
 | GET · POST | `/articles/{a}/workflows` | POST `{kind: research\|outline\|draft\|recheck}`; 429 `writer_concurrency_limit` khi vượt giới hạn đồng thời |
 | POST | `/articles/{a}/workflows/resume` · `/workflows/cancel` | Resume sau FAILED/hết ngân sách |

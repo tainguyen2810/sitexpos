@@ -13,7 +13,7 @@ Tài liệu liên quan: `AI-WRITER-PIPELINE.md`, `FACT-CHECK-POLICY.md`, `CONTEN
 | `Enums/` | `ArticleStatus` (13 trạng thái), `RiskLevel`, `Verdict` |
 | `Actions/` | `CreateArticle`, `ArticleWorkflows` (start/resume/cancel, giới hạn đồng thời), `Editorial` (duyệt brief/dàn ý, xác minh claim, duyệt bài), `Batches` |
 | `Workflows/` | `ResearchWorkflow`, `OutlineWorkflow`, `DraftWorkflow`, `RecheckWorkflow`, `RewriteWorkflow` (chạy trên engine `Workflows` của Phase 3) |
-| `Pipeline/` | `ResearchEngine`, `BriefBuilder`, `OutlineBuilder`, `SectionWriter`, `ClaimExtractor`, `RuleClaims`, `FactChecker`, `VerdictRules`, `ConsistencyChecker`, `Reviser`, `QualityAuditor`, `QualityScorer`, `DuplicateDetector`, `VersionManager`, `ApprovalGate` |
+| `Pipeline/` | `AutoApprover` (tự duyệt tùy chọn), `ResearchEngine`, `BriefBuilder`, `OutlineBuilder`, `SectionWriter`, `ClaimExtractor`, `RuleClaims`, `FactChecker`, `VerdictRules`, `ConsistencyChecker`, `Reviser`, `QualityAuditor`, `QualityScorer`, `DuplicateDetector`, `VersionManager`, `ApprovalGate` |
 | `Retrieval/` | `SourceRetriever` (SSRF, robots, captcha/paywall), `PageExtractor`, `SourceClassifier`, `InjectionScanner` |
 | `Ai/` | `WriterAi` (prompt + JSON schema theo task), `AiCaller` (gọi AI Gateway, ghi chi phí, ngân sách) |
 | `Support/` | `ArticleStateMachine`, `HtmlSanitizer`, `TextDiff`, `Verbatim`, `Identifiers`, `WriterQuota`, `WriterSettings` |

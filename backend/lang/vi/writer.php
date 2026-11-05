@@ -31,6 +31,7 @@ return [
         'batch_concurrency' => 'Số bài chạy song song phải từ 1 đến :max.',
         'batch_nothing_to_create' => 'Không có ý tưởng nào hợp lệ để tạo bài (chưa duyệt hoặc đã có bài).',
         'batch_too_large' => 'Mỗi lô tối đa :max bài.',
+        'auto_approve_disabled' => 'Tự duyệt chưa được bật cho workspace này.',
         'brief_not_approved' => 'Content Brief chưa được duyệt.',
         'brief_not_ready' => 'Content Brief chưa sẵn sàng để duyệt.',
         'budget_below_spent' => 'Ngân sách không được thấp hơn số đã chi.',

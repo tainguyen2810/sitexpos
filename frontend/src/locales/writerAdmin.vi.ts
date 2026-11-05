@@ -23,6 +23,8 @@ export default {
     outdated_after_months: 'Coi là lỗi thời sau (tháng)',
     min_quality_score_for_approval: 'Điểm chất lượng tối thiểu để duyệt',
     require_ack_for_high_risk: 'Bắt buộc xác nhận khi còn claim HIGH',
+    auto_approve_enabled: 'Cho phép tự duyệt (khách chọn theo từng bài)',
+    auto_approve_min_quality: 'Điểm chất lượng tối thiểu để tự duyệt',
     abuse_articles_per_hour: 'Bài / giờ (cảnh báo)',
     abuse_cost_per_day_micro_usd: 'Chi phí / ngày (cảnh báo)',
     abuse_failed_ratio_pct: 'Tỷ lệ lỗi % (cảnh báo)',

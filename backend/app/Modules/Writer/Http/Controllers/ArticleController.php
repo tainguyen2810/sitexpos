@@ -27,6 +27,7 @@ use SiteXPost\Modules\Writer\Http\Requests\StoreArticleRequest;
 use SiteXPost\Modules\Writer\Http\Requests\UpdateArticleRequest;
 use SiteXPost\Modules\Writer\Http\Resources\ArticleResource;
 use SiteXPost\Modules\Writer\Http\WriterPresenter;
+use SiteXPost\Modules\Writer\Pipeline\AutoApprover;
 use SiteXPost\Modules\Writer\Support\WriterSettings;
 
 /**
@@ -119,6 +120,11 @@ final class ArticleController
         }
         if (isset($data['title']) && $article->current_version_id !== null) {
             unset($data['title']); // the title of written content changes through a new version only
+        }
+        if (array_key_exists('approval_mode', $data)) {
+            AutoApprover::assertAllowed($settings, $article->workspace_id, $data['approval_mode'], 'approval_mode');
+            $article->forceFill(['settings' => array_merge($article->settings ?? [], ['approval_mode' => $data['approval_mode']])]);
+            unset($data['approval_mode']);
         }
         $before = $article->only(array_keys($data));
         $article->forceFill($data);

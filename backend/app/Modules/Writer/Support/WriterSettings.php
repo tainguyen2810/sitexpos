@@ -35,6 +35,8 @@ final class WriterSettings
         // Approval policy
         'min_quality_score_for_approval' => 50,
         'require_ack_for_high_risk' => true,
+        'auto_approve_enabled' => false,
+        'auto_approve_min_quality' => 75,
         // Abuse detection
         'abuse_articles_per_hour' => 30,
         'abuse_cost_per_day_micro_usd' => 20_000_000,
@@ -43,7 +45,8 @@ final class WriterSettings
 
     /** Keys a per-workspace override may change. */
     public const WORKSPACE_KEYS = ['max_articles_per_month', 'max_concurrent_workflows', 'max_batch_size', 'max_batch_concurrency',
-        'default_article_budget_micro_usd', 'max_article_budget_micro_usd', 'autonomous_enabled', 'autonomous_articles_per_day'];
+        'default_article_budget_micro_usd', 'max_article_budget_micro_usd', 'autonomous_enabled', 'autonomous_articles_per_day',
+        'auto_approve_enabled', 'auto_approve_min_quality'];
 
     /** @var array<string, array<string, mixed>> */
     private array $cache = [];

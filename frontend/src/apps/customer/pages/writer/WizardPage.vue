@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CONTENT_TYPES, formatUsd, idempotencyKey, splitLines, usdToMicro, writerApi, type ArticleInput, type Depth, type ReviewMode, type SearchIntent, type WriterContentType, type WriterIdea } from '@/shared/api/writer'
+import { CONTENT_TYPES, formatUsd, idempotencyKey, splitLines, usdToMicro, writerApi, type ApprovalMode, type ArticleInput, type Depth, type ReviewMode, type SearchIntent, type WriterContentType, type WriterIdea } from '@/shared/api/writer'
 import { researchApi, type Campaign } from '@/shared/api/research'
 import { siteApi } from '@/shared/api/sites'
 import { useAsync } from '@/shared/composables/useAsync'
@@ -43,7 +43,7 @@ const FIELD_GROUP: Record<string, Group> = {
   primary_keyword: 'seo', secondary_keywords: 'seo', search_intent: 'seo',
   audience: 'style', content_type: 'style', tone: 'style', writing_preset_id: 'style', language: 'style', country: 'style',
   target_words: 'research', content_depth: 'research', research_depth: 'research', source_urls: 'research', internal_links: 'research',
-  brand_rules: 'control', brand_domains: 'control', cta: 'control', notes: 'control', budget_limit_micro_usd: 'control', review_mode: 'control',
+  brand_rules: 'control', brand_domains: 'control', cta: 'control', notes: 'control', budget_limit_micro_usd: 'control', review_mode: 'control', approval_mode: 'control',
 }
 const step = ref(0)
 const group = computed(() => GROUPS[step.value]!)
@@ -63,7 +63,7 @@ const f = reactive({
   target_words: '1500', content_depth: 'standard' as Depth, research_depth: 'standard' as Depth,
   source_urls: '', ai_source_discovery: true, allow_web_search: false, links_enabled: true, links_max: '5',
   brand_rules: '', brand_domains: '', cta: '', notes: '', ai_review_notes: true,
-  budget_usd: '', review_mode: 'step_by_step' as ReviewMode, start: true,
+  budget_usd: '', review_mode: 'step_by_step' as ReviewMode, approval_mode: 'manual' as ApprovalMode, start: true,
 })
 const key = idempotencyKey() // one key per wizard session: a double submit creates one article
 
@@ -132,6 +132,8 @@ const depthOptions = computed(() => (['basic', 'standard', 'deep'] as const).map
 })))
 const contentDepthOptions = computed(() => (['basic', 'standard', 'deep'] as const).map((v) => ({ value: v, label: t(`writer.depth.${v}`) })))
 const presetOptions = computed(() => [{ value: '', label: t('writer.wizard.noPreset') }, ...(presets.data.value ?? []).map((p) => ({ value: p.id, label: p.name + (p.is_default ? ` (${t('writer.presets.default')})` : '') }))])
+const autoApprove = computed(() => options.data.value?.auto_approve ?? { enabled: false, min_quality: 0 })
+const approvalOptions = computed(() => (autoApprove.value.enabled ? (['manual', 'auto'] as const) : (['manual'] as const)).map((v) => ({ value: v, label: t(`writer.approvalMode.${v}`) })))
 const reviewOptions = computed(() => (['step_by_step', 'brief_only', 'final_only'] as const).map((v) => ({ value: v, label: t(`writer.reviewMode.${v}`) })))
 const languageOptions = [{ value: 'vi', label: 'Tiếng Việt' }, { value: 'en', label: 'English' }]
 
@@ -172,6 +174,7 @@ function payload(): ArticleInput {
     ai_review_notes: f.ai_review_notes,
     budget_limit_micro_usd: usdToMicro(Number(f.budget_usd) || 0),
     review_mode: f.review_mode,
+    approval_mode: f.approval_mode,
     start: f.start,
   }
 }
@@ -302,6 +305,9 @@ const fieldErr = (k: string) => errors[k] ?? Object.entries(errors).find(([key, 
 v-model="f.budget_usd" type="number" :label="t('writer.wizard.budget')" :error="fieldErr('budget_limit_micro_usd')"
               :hint="options.data.value ? t('writer.wizard.budgetHint', { max: formatUsd(options.data.value.limits.max_article_budget_micro_usd) }) : undefined" />
             <AppSelect v-model="f.review_mode" :label="t('writer.wizard.steps.reviewMode')" :options="reviewOptions" :error="fieldErr('review_mode')" />
+            <AppSelect
+              v-model="f.approval_mode" data-testid="approval-mode" :label="t('writer.article.approvalMode')" :options="approvalOptions" :error="fieldErr('approval_mode')"
+              :hint="autoApprove.enabled ? t('writer.autoApprove.hint', { min: autoApprove.min_quality }) : t('writer.autoApprove.disabled')" />
             <div class="sm:col-span-2"><Toggle v-model="f.ai_review_notes" :label="t('writer.wizard.aiReviewNotes')" /></div>
           </template>
 
@@ -314,6 +320,7 @@ v-model="f.budget_usd" type="number" :label="t('writer.wizard.budget')" :error="
               <div><dt class="text-ink-muted">{{ t('writer.wizard.steps.contentType') }}</dt><dd>{{ t(`writer.contentType.${f.content_type}`) }}</dd></div>
               <div><dt class="text-ink-muted">{{ t('writer.wizard.steps.researchDepth') }}</dt><dd>{{ t(`writer.depth.${f.research_depth}`) }}</dd></div>
               <div><dt class="text-ink-muted">{{ t('writer.wizard.steps.reviewMode') }}</dt><dd>{{ t(`writer.reviewMode.${f.review_mode}`) }}</dd></div>
+              <div><dt class="text-ink-muted">{{ t('writer.article.approvalMode') }}</dt><dd>{{ t(`writer.approvalMode.${f.approval_mode}`) }}</dd></div>
               <div><dt class="text-ink-muted">{{ t('writer.wizard.steps.budget') }}</dt><dd>{{ formatUsd(usdToMicro(Number(f.budget_usd) || 0)) }}</dd></div>
               <div v-if="estimate.data.value"><dt class="text-ink-muted">{{ t('writer.wizard.estimate', { cost: formatUsd(estimate.data.value.estimated_cost_micro_usd) }) }}</dt><dd class="text-xs text-ink-muted">{{ estimate.data.value.note }}</dd></div>
             </dl>

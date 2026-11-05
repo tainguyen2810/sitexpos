@@ -47,3 +47,17 @@ Chặn duyệt khi:
 Cảnh báo (không chặn): claim `INSUFFICIENT_EVIDENCE`/`PENDING` mức thấp hơn.
 
 Điểm chất lượng **không bao giờ** là điều kiện duyệt duy nhất. Mọi chỉnh sửa sau khi duyệt làm mất hiệu lực phê duyệt.
+
+## 6. Tự duyệt (tùy chọn)
+Code: `Pipeline/AutoApprover.php`. Mặc định **tắt**.
+
+- Super Admin bật `auto_approve_enabled` (cho cả nền tảng hoặc từng workspace) và đặt `auto_approve_min_quality` (mặc định 75).
+- Khách chọn `approval_mode = auto` cho từng bài (wizard, bulk, hoặc đổi ở tab Tổng quan). Chọn `auto` khi chính sách đang tắt → 422.
+- Sau khi workflow viết hoặc kiểm chứng lại chạy xong, hệ thống chỉ tự duyệt khi **đủ tất cả** điều kiện:
+  - ApprovalGate (§5) không còn mục chặn, và **không** dùng xác nhận rủi ro HIGH;
+  - không còn claim CRITICAL hoặc HIGH chưa xác minh, không có claim `CONTRADICTED`/`OUTDATED`;
+  - điểm chất lượng ≥ max(`auto_approve_min_quality`, `min_quality_score_for_approval`);
+  - kiểm tra trùng lặp đề xuất `create_new` (hoặc chưa có kết quả trùng).
+- Không đủ điều kiện → bài ở `NEEDS_HUMAN_REVIEW`, lý do lưu trong `settings.auto_approve_result.reasons` và hiện ở tab Tổng quan.
+- Phê duyệt tự động ghi `editorial_approvals` với `user_id = null`, `checks.auto = true`, audit `writer.article_auto_approved`. Mọi chỉnh sửa sau đó làm mất hiệu lực giống phê duyệt của người.
+- Tự duyệt **không** đăng bài lên WordPress.

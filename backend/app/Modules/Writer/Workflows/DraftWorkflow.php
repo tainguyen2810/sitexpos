@@ -12,6 +12,7 @@ use SiteXPost\Modules\Writer\Domain\Article;
 use SiteXPost\Modules\Writer\Domain\ArticleOutline;
 use SiteXPost\Modules\Writer\Domain\ArticleVersion;
 use SiteXPost\Modules\Writer\Enums\ArticleStatus;
+use SiteXPost\Modules\Writer\Pipeline\AutoApprover;
 use SiteXPost\Modules\Writer\Pipeline\ClaimExtractor;
 use SiteXPost\Modules\Writer\Pipeline\FactChecker;
 use SiteXPost\Modules\Writer\Pipeline\QualityAuditor;
@@ -160,6 +161,7 @@ final class DraftWorkflow extends ArticleWorkflow
     private function finalize(Article $a, WorkflowRun $run): array
     {
         $this->moveTo($a, ArticleStatus::NeedsHumanReview, ['last_error_code' => null, 'last_error_message' => null]);
+        app(AutoApprover::class)->attempt($a->refresh(), $run->id);
         app(Batches::class)->articleFinished($a->refresh());
 
         return ['status' => $a->status->value, 'unresolved_critical' => $a->unresolved_critical, 'unresolved_high' => $a->unresolved_high];

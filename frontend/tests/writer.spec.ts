@@ -5,6 +5,7 @@ import { i18n } from '@/shared/i18n'
 import viMessages from '@/locales/vi'
 import enMessages from '@/locales/en'
 import {
+  approvalModeOf, autoApproveResult,
   formatUsd, isUnresolved, nextTab, riskTone, sectionKeyFor, splitLines, statusTone, usdToMicro, verdictNeedsEvidence, verdictTone,
   type ArticleDetail, type Checklist, type Claim, type EditorState,
 } from '@/shared/api/writer'
@@ -64,6 +65,26 @@ describe('writer helpers', () => {
 })
 
 // ---------------------------------------------------------------- XSS
+
+describe('auto-approval helpers', () => {
+  it('defaults to manual and only trusts a well-formed result', () => {
+    expect(approvalModeOf({})).toBe('manual')
+    expect(approvalModeOf({ approval_mode: 'yes' })).toBe('manual')
+    expect(approvalModeOf({ approval_mode: 'auto' })).toBe('auto')
+    expect(autoApproveResult({})).toBeNull()
+    expect(autoApproveResult({ auto_approve_result: { approved: false } })).toBeNull()
+    expect(autoApproveResult({ auto_approve_result: { approved: false, reasons: ['duplicate_risk'], at: 'x' } })?.reasons).toEqual(['duplicate_risk'])
+  })
+
+  it('has a label for every backend reason code', () => {
+    const codes = ['manual_mode', 'disabled_by_policy', 'wrong_status', 'no_content', 'workflow_running', 'critical_unresolved', 'high_unresolved', 'sections_not_checked',
+      'quality_not_audited', 'quality_below_policy', 'quality_below_auto_threshold', 'contradicted_or_outdated_claims', 'duplicate_risk', 'duplicate_reject']
+    for (const m of [viMessages, enMessages]) {
+      const reasons = (m as unknown as { writer: { autoApprove: { reason: Record<string, string> } } }).writer.autoApprove.reason
+      for (const c of codes) expect(reasons[c], c).toBeTruthy()
+    }
+  })
+})
 
 describe('article HTML sanitizer', () => {
   it('drops scripts, handlers, styles, iframes and javascript: links', () => {

@@ -485,7 +485,7 @@ return new class extends Migration
             $table->string('decision', 20);
             $table->string('note', 2000)->nullable();
             $table->json('checks')->nullable();
-            $table->ulid('user_id');
+            $table->ulid('user_id')->nullable(); // null = system auto-approval
             $table->timestamp('invalidated_at')->nullable();
             $table->string('invalidated_reason', 300)->nullable();
             $table->timestamps();

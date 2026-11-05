@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { formatUsd, idempotencyKey, usdToMicro, writerApi, type Batch, type BatchInput, type BatchPreview, type WriterIdea } from '@/shared/api/writer'
+import { formatUsd, idempotencyKey, usdToMicro, writerApi, type ApprovalMode, type Batch, type BatchInput, type BatchPreview, type WriterIdea } from '@/shared/api/writer'
 import { researchApi, type Campaign } from '@/shared/api/research'
 import { useAsync } from '@/shared/composables/useAsync'
 import { useApiForm } from '@/shared/composables/useApiForm'
@@ -47,7 +47,7 @@ const presets = useAsync(() => writerApi.presets(id.value), { immediate: false }
 const campaigns = shallowRef<Campaign[]>([])
 const ideas = shallowRef<WriterIdea[]>([])
 const ideasLoading = ref(false)
-const form = reactive({ campaign_id: '', ids: [] as string[], concurrency: '2', budget: '', target_words: '1500', review_mode: 'final_only' as 'brief_only' | 'final_only', preset: '' })
+const form = reactive({ campaign_id: '', ids: [] as string[], concurrency: '2', budget: '', target_words: '1500', review_mode: 'final_only' as 'brief_only' | 'final_only', approval_mode: 'manual' as ApprovalMode, preset: '' })
 const preview = shallowRef<BatchPreview | null>(null)
 const { errors, formError, submitting, submit } = useApiForm()
 let key = idempotencyKey()
@@ -80,7 +80,7 @@ function input(): BatchInput {
   return {
     campaign_id: form.campaign_id, content_idea_ids: form.ids,
     concurrency: Math.max(1, Number(form.concurrency) || 1), per_article_budget_micro_usd: usdToMicro(Number(form.budget) || 0),
-    writing_preset_id: form.preset || null, settings: { target_words: Number(form.target_words) || 1500, review_mode: form.review_mode },
+    writing_preset_id: form.preset || null, settings: { target_words: Number(form.target_words) || 1500, review_mode: form.review_mode, approval_mode: form.approval_mode },
   }
 }
 async function doPreview() {
@@ -98,6 +98,8 @@ async function create() {
 }
 const campaignOptions = computed(() => [{ value: '', label: '—' }, ...campaigns.value.map((c) => ({ value: c.id, label: c.name }))])
 const presetOptions = computed(() => [{ value: '', label: t('writer.wizard.noPreset') }, ...(presets.data.value ?? []).map((p) => ({ value: p.id, label: p.name }))])
+const autoApprove = computed(() => options.data.value?.auto_approve ?? { enabled: false, min_quality: 0 })
+const approvalOptions = computed(() => (autoApprove.value.enabled ? (['manual', 'auto'] as const) : (['manual'] as const)).map((v) => ({ value: v, label: t(`writer.approvalMode.${v}`) })))
 const reviewOptions = computed(() => (['final_only', 'brief_only'] as const).map((v) => ({ value: v, label: t(`writer.reviewMode.${v}`) })))
 
 // ---- batch detail ----
@@ -188,6 +190,9 @@ async function act(action: 'pause' | 'resume' | 'cancel' | 'retry') {
         <AppInput v-model="form.budget" type="number" :label="t('writer.bulk.perArticle')" :error="errors.per_article_budget_micro_usd" />
         <AppInput v-model="form.target_words" type="number" :label="t('writer.wizard.targetWords')" />
         <AppSelect v-model="form.review_mode" :label="t('writer.wizard.steps.reviewMode')" :options="reviewOptions" />
+        <AppSelect
+          v-model="form.approval_mode" :label="t('writer.article.approvalMode')" :options="approvalOptions" :error="errors['settings.approval_mode']"
+          :hint="autoApprove.enabled ? t('writer.autoApprove.hint', { min: autoApprove.min_quality }) : t('writer.autoApprove.disabled')" />
         <AppSelect v-model="form.preset" class="sm:col-span-2" :label="t('writer.wizard.preset')" :options="presetOptions" />
         <div v-if="preview" class="rounded-lg border border-line p-3 text-sm sm:col-span-2" data-testid="batch-preview">
           <p class="font-medium">{{ t('writer.bulk.creatable', { n: preview.creatable }) }}</p>

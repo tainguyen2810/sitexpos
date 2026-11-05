@@ -46,6 +46,7 @@ final class StoreArticleRequest extends ApiRequest
             'allow_web_search' => ['nullable', 'boolean'],
             'ai_review_notes' => ['nullable', 'boolean'],
             'review_mode' => ['nullable', 'in:step_by_step,brief_only,final_only'],
+            'approval_mode' => ['nullable', 'in:manual,auto'],
             'budget_limit_micro_usd' => ['nullable', 'integer', 'min:50000'],
             'language' => ['nullable', 'in:vi,en'],
             'country' => ['nullable', 'string', 'size:2'],

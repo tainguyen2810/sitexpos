@@ -12,6 +12,7 @@ export default {
     max_source_chars_for_ai: 'Max source characters sent to AI', max_revision_rounds: 'Max auto-revision rounds',
     high_risk_min_reliability: 'Min reliability for high-risk claims', outdated_after_months: 'Outdated after (months)',
     min_quality_score_for_approval: 'Min quality score to approve', require_ack_for_high_risk: 'Require acknowledgement for HIGH claims',
+    auto_approve_enabled: 'Allow auto-approval (customer opts in per article)', auto_approve_min_quality: 'Min quality score for auto-approval',
     abuse_articles_per_hour: 'Articles / hour (alert)', abuse_cost_per_day_micro_usd: 'Cost / day (alert)', abuse_failed_ratio_pct: 'Failure ratio % (alert)',
   },
   default: 'Default: {v}',

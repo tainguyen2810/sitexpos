@@ -15,7 +15,7 @@ Wizard (17 bước, 10 loại nội dung)
   → DraftWorkflow      WRITING → FACT_CHECKING → (REVISING ⟲ tối đa max_revision_rounds) → QUALITY_REVIEW → NEEDS_HUMAN_REVIEW
         prepare → write (từng section) → assemble → claims → factcheck → revise → quality → finalize
   → Editor (người sửa) → RecheckWorkflow khi section đã đổi
-  → Duyệt (ApprovalGate) → APPROVED
+  → Duyệt (ApprovalGate) → APPROVED   (hoặc tự duyệt nếu Super Admin bật và bài chọn approval_mode=auto — FACT-CHECK-POLICY §6)
 ```
 
 Trạng thái và chuyển trạng thái hợp lệ: `Support/ArticleStateMachine.php`. `FAILED` lưu `status_before_failure` để `workflows/resume` tiếp tục đúng bước. `CANCELLED` là trạng thái cuối.

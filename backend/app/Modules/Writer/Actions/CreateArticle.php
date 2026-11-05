@@ -14,6 +14,7 @@ use SiteXPost\Modules\Research\Support\Text;
 use SiteXPost\Modules\Sites\Contracts\SiteDirectory;
 use SiteXPost\Modules\Writer\Domain\Article;
 use SiteXPost\Modules\Writer\Domain\WritingPreset;
+use SiteXPost\Modules\Writer\Pipeline\AutoApprover;
 use SiteXPost\Modules\Writer\Pipeline\DuplicateDetector;
 use SiteXPost\Modules\Writer\Support\WriterQuota;
 use SiteXPost\Modules\Writer\Support\WriterSettings;
@@ -79,6 +80,8 @@ class CreateArticle
             throw new ApiException(422, 'validation_failed', __('api.validation_failed'), ['budget_limit_micro_usd' => [__('writer.errors.budget_too_high', ['max' => $maxBudget / 1_000_000])]]);
         }
 
+        AutoApprover::assertAllowed($this->settings, $ws, $data['approval_mode'] ?? null, 'approval_mode');
+
         $title = Text::clean($data['title'] ?? ($idea['title'] ?? $data['topic'] ?? ''), 300);
         $primary = Text::clean($data['primary_keyword'] ?? ($idea['primary_keyword'] ?? $title), 190);
         if ($title === '' || $primary === '') {
@@ -100,6 +103,7 @@ class CreateArticle
             'ai_source_discovery' => (bool) ($data['ai_source_discovery'] ?? true),
             'allow_web_search' => (bool) ($data['allow_web_search'] ?? false),
             'ai_review_notes' => (bool) ($data['ai_review_notes'] ?? true),
+            'approval_mode' => ($data['approval_mode'] ?? 'manual') === 'auto' ? 'auto' : 'manual',
             'angle' => $idea['angle'] ?? null,
             'rationale' => $idea['rationale'] ?? null,
             'idea_outline' => $idea['outline'] ?? [],

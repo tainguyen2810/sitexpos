@@ -8,10 +8,10 @@ Ngày chạy: 05/11/2026, nhánh `feature/phase5-ai-writer`, môi trường sand
 |---|---|
 | Backend Pint | ✅ passed |
 | Backend Larastan (phpstan) | ⚠️ **không chạy được**: `vendor/bin/phpstan` không có trong sandbox (Larastan chưa cài vào vendor ở đây). Cần chạy lại trên máy dev/CI |
-| Backend Pest | ✅ 340 test: 339 passed, 1 skipped, 2244 assertions |
+| Backend Pest | ✅ 341 test: 340 passed, 1 skipped, 2272 assertions (sau khi thêm tự duyệt) |
 | Frontend lint (eslint) | ✅ |
 | Frontend typecheck (vue-tsc) | ✅ |
-| Frontend unit test (vitest) | ✅ 8 file, 59 test passed |
+| Frontend unit test (vitest) | ✅ 8 file, 61 test passed |
 | Frontend build (customer + admin) | ✅ |
 | `check:no-demo` | ✅ không có code demo trong `dist/` |
 | WordPress plugin build | ✅ (không đổi ở Phase 5) |
@@ -20,11 +20,11 @@ Test bị skip: `AiGateway/BudgetTest` (race ngân sách) cần MySQL + pcntl, c
 
 ## 2. Test Phase 5
 
-### Backend (36 test, 374 assertions — `tests/Feature/Writer`, `tests/Unit/Writer`)
+### Backend (37 test, 402 assertions — `tests/Feature/Writer`, `tests/Unit/Writer`)
 | File | Phạm vi |
 |---|---|
 | `WriterPipelineTest` (1) | Viết trọn một bài có bằng chứng ở chế độ `final_only` với `FakeProvider` + `Http::fake` |
-| `WriterReviewTest` (6) | Dừng chờ duyệt brief/dàn ý (`step_by_step`) và sửa dàn ý giữ dữ liệu; chỉ `content.publish` được duyệt, sửa làm mất duyệt; CRITICAL chặn duyệt, xác minh thủ công cần người duyệt + bằng chứng; AI rewrite chỉ là đề xuất; sanitize HTML + autosave khóa lạc quan; lịch sử có bộ lọc |
+| `WriterReviewTest` (7) | Tự duyệt: bị từ chối khi chính sách tắt, bài thủ công không bao giờ tự duyệt, đủ điều kiện thì hệ thống duyệt (user null), sửa bài làm mất duyệt, điểm dưới ngưỡng thì chờ người duyệt kèm lý do; Dừng chờ duyệt brief/dàn ý (`step_by_step`) và sửa dàn ý giữ dữ liệu; chỉ `content.publish` được duyệt, sửa làm mất duyệt; CRITICAL chặn duyệt, xác minh thủ công cần người duyệt + bằng chứng; AI rewrite chỉ là đề xuất; sanitize HTML + autosave khóa lạc quan; lịch sử có bộ lọc |
 | `WriterSafetyTest` (10) | Đoạn trích không nguyên văn bị loại; không verify nhầm model code khác; sửa tự động trong giới hạn vòng; prompt injection; citation/link giả bị loại; robots.txt + captcha; AI kiểm chứng lỗi → claim giữ PENDING; dừng ở ngân sách và resume; quota tháng; id con bị giới hạn theo bài và tenant |
 | `WriterBatchAdminTest` (3) | Lô viết bài dừng ở bước duyệt; hủy lô hoàn quota; Super Admin API |
 | `WriterDemoSeederTest` (2) | Dữ liệu DEMO có nhãn, không verdict/nguồn giả; chặn ở production |
@@ -32,7 +32,7 @@ Test bị skip: `AiGateway/BudgetTest` (race ngân sách) cần MySQL + pcntl, c
 
 Test cách ly tenant chung (`CrossTenantIsolationTest`) tự quét mọi route `writer.*` mới.
 
-### Frontend (16 test trong `tests/writer.spec.ts`)
+### Frontend (18 test trong `tests/writer.spec.ts`)
 Helper (tone, verdict, tiền tệ, `nextTab`), sanitizer chống XSS (script, `on*`, `javascript:` URL, class lạ), đủ cặp khóa vi/en và mọi khóa `writer.*` dùng trong code đều tồn tại, FactCheckTab (claim CRITICAL chặn duyệt, nút theo quyền), EditorTab (sanitize khi dán, khóa khi workflow đang chạy), DiffView (render text, không HTML).
 
 ## 3. Chạy thử giao diện với backend thật

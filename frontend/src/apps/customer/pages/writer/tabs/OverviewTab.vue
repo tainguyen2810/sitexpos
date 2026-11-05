@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { formatUsd, writerApi, type DuplicateDecision } from '@/shared/api/writer'
+import { approvalModeOf, autoApproveResult, formatUsd, writerApi, type ApprovalMode, type DuplicateDecision } from '@/shared/api/writer'
 import { useAsync } from '@/shared/composables/useAsync'
 import AppCard from '@/shared/ui/AppCard.vue'
 import AppButton from '@/shared/ui/AppButton.vue'
@@ -56,6 +56,17 @@ const reviewOptions = computed(() => (['step_by_step', 'brief_only', 'final_only
 watch(reviewMode, (m) => {
   if (m !== a.value.review_mode) void run(() => writerApi.update(ws, id, { review_mode: m }), t('common.saved'))
 })
+
+const opts = useAsync(() => writerApi.options(ws))
+const autoEnabled = computed(() => !!opts.data.value?.auto_approve.enabled)
+const approvalMode = ref<ApprovalMode>(approvalModeOf(a.value.settings))
+const approvalOptions = computed(() => (autoEnabled.value || approvalMode.value === 'auto' ? (['manual', 'auto'] as const) : (['manual'] as const))
+  .map((v) => ({ value: v, label: t(`writer.approvalMode.${v}`) })))
+watch(approvalMode, (m) => {
+  if (m !== approvalModeOf(a.value.settings)) void run(() => writerApi.update(ws, id, { approval_mode: m }), t('common.saved'))
+})
+const autoResult = computed(() => (approvalModeOf(a.value.settings) === 'auto' ? autoApproveResult(a.value.settings) : null))
+const autoReasons = computed(() => (autoResult.value?.reasons ?? []).map((r) => t(`writer.autoApprove.reason.${r}`)).join(', '))
 
 const dup = computed(() => a.value.duplicate_check)
 const decisions: DuplicateDecision[] = ['create_new', 'update_existing', 'merge', 'reject']
@@ -139,6 +150,12 @@ async function cancelArticle() {
 
       <AppCard>
         <AppSelect v-model="reviewMode" :label="t('writer.article.reviewMode')" :options="reviewOptions" :disabled="!canEdit || ['APPROVED', 'CANCELLED'].includes(a.status)" />
+        <AppSelect
+          v-model="approvalMode" class="mt-3" data-testid="overview-approval-mode" :label="t('writer.article.approvalMode')" :options="approvalOptions"
+          :disabled="!canEdit || ['APPROVED', 'CANCELLED'].includes(a.status)"
+          :hint="autoEnabled ? t('writer.autoApprove.hint', { min: opts.data.value?.auto_approve.min_quality ?? 0 }) : undefined" />
+        <p v-if="autoResult?.approved && a.status === 'APPROVED'" class="mt-2 rounded bg-success-50 p-2 text-xs text-success-600" data-testid="auto-approved">{{ t('writer.autoApprove.approved') }}</p>
+        <p v-else-if="autoResult && !autoResult.approved" class="mt-2 rounded bg-warning-50 p-2 text-xs text-warning-600" data-testid="auto-skipped">{{ t('writer.autoApprove.skipped', { reasons: autoReasons }) }}</p>
         <dl class="mt-3 grid grid-cols-2 gap-2 text-sm">
           <div><dt class="text-ink-muted">{{ t('writer.article.keyword') }}</dt><dd>{{ a.primary_keyword }}</dd></div>
           <div><dt class="text-ink-muted">{{ t('writer.article.type') }}</dt><dd>{{ t(`writer.contentType.${a.content_type}`) }}</dd></div>

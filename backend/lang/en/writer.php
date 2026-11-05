@@ -18,6 +18,7 @@ return [
         'batch_concurrency' => 'Concurrency must be between 1 and :max.',
         'batch_nothing_to_create' => 'No valid ideas to write (not approved or already written).',
         'batch_too_large' => 'A batch holds at most :max articles.',
+        'auto_approve_disabled' => 'Auto-approval is not enabled for this workspace.',
         'brief_not_approved' => 'The content brief is not approved.',
         'brief_not_ready' => 'The content brief is not ready for review.',
         'budget_below_spent' => 'The budget cannot be lower than what was already spent.',

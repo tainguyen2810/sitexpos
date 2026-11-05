@@ -31,6 +31,8 @@ final class UpdateWriterSettingsRequest extends ApiRequest
             'outdated_after_months' => $int(1, 120),
             'min_quality_score_for_approval' => $int(0, 100),
             'require_ack_for_high_risk' => ['sometimes', 'boolean'],
+            'auto_approve_enabled' => ['sometimes', 'boolean'],
+            'auto_approve_min_quality' => $int(0, 100),
             'abuse_articles_per_hour' => $int(1, 10000),
             'abuse_cost_per_day_micro_usd' => $int(0, 10_000_000_000),
             'abuse_failed_ratio_pct' => $int(1, 100),
