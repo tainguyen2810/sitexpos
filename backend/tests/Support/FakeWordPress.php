@@ -42,6 +42,14 @@ final class FakeWordPress
 
     public bool $woocommerce = true;
 
+    /** Phase 6: answer POST/PUT /posts after a delay longer than the client timeout (WordPress acted, Cloud saw a timeout). */
+    public ?string $timeoutAfterWriteRoute = null;
+
+    /** @var array<int, array<string, mixed>> Media Library attachments returned by GET /media. */
+    public array $library = [];
+
+    public string $seoAdapter = 'yoast';
+
     private int $nextId = 100;
 
     public function __construct(public string $baseUrl = 'https://blog.example.com') {}
@@ -85,6 +93,11 @@ final class FakeWordPress
         $this->nonces[$nonce] = true;
 
         [$status, $data] = $this->route($request, $route, $query, $keyId);
+        if ($this->timeoutAfterWriteRoute !== null && str_starts_with($route, $this->timeoutAfterWriteRoute) && in_array($request->method(), ['POST', 'PUT'], true)) {
+            $this->timeoutAfterWriteRoute = null; // only the first write times out
+
+            throw new ConnectionException('timeout after write');
+        }
         $body = (string) json_encode($data);
         $now = time();
         $signSecret = $this->keys[$keyId] ?? $secret;
@@ -114,7 +127,11 @@ final class FakeWordPress
             ]],
             $route === '/sitex-post/v1/terms' => [200, $this->terms((string) $query['taxonomy'])],
             $route === '/sitex-post/v1/content' => [200, $this->content((string) $query['type'])],
+            $route === '/sitex-post/v1/media' && $request->method() === 'GET' => [200, ['items' => array_values($this->library), 'total' => count($this->library), 'total_pages' => 1, 'page' => 1]],
             $route === '/sitex-post/v1/media' => $this->upload($request, $query),
+            $route === '/sitex-post/v1/posts/lookup' => $this->lookup((string) ($query['idempotency_key'] ?? '')),
+            (bool) preg_match('#^/sitex-post/v1/posts/(\d+)/state$#', $route, $sm) && $request->method() === 'GET' => isset($this->posts[(int) $sm[1]])
+                ? [200, $this->state((int) $sm[1])] : [404, ['code' => 'sitex_post_not_found', 'message' => 'Post not found.']],
             $route === '/sitex-post/v1/posts' && $request->method() === 'POST' => $this->upsert($json, null),
             (bool) preg_match('#^/sitex-post/v1/posts/(\d+)$#', $route, $m) && $request->method() === 'PUT' => $this->upsert($json, (int) $m[1]),
             $route === '/sitex-post/v1/credentials/rotate' => $this->rotate($json, $keyId),
@@ -186,17 +203,118 @@ final class FakeWordPress
             }
         }
         if ($id !== null && ! isset($this->posts[$id])) {
-            return [403, ['code' => 'sitex_not_managed', 'message' => 'Not managed']];
+            return [404, ['code' => 'sitex_post_not_found', 'message' => 'Post not found.']];
         }
         $postId = $id ?? $existing ?? $this->nextId++;
         $created = ! isset($this->posts[$postId]);
+        if (! $created) {
+            if (($this->posts[$postId]['status'] ?? '') === 'trash') {
+                return [410, ['code' => 'sitex_post_trashed', 'message' => 'Trashed']];
+            }
+            $conflicts = $this->conflicts($postId, is_array($json['expected'] ?? null) ? $json['expected'] : [], (bool) ($json['force'] ?? false));
+            if ($conflicts !== []) {
+                return [409, ['code' => 'sitex_conflict', 'message' => 'Changed in WordPress', 'data' => ['status' => 409, 'conflicts' => $conflicts]]];
+            }
+        }
+        $slug = (string) ($json['slug'] ?? '') !== '' ? (string) $json['slug'] : ($this->posts[$postId]['slug'] ?? 'post-'.$postId);
         $this->posts[$postId] = [
             'id' => $postId, 'key' => $json['idempotency_key'], 'title' => $json['title'], 'content' => $json['content_html'],
             'status' => $json['status'], 'featured' => $json['featured_media_id'] ?? null, 'seo' => $json['seo'] ?? [],
             'tags' => $json['tags'] ?? [], 'writes' => ($this->posts[$postId]['writes'] ?? 0) + 1,
+            'slug' => $slug, 'schema' => array_key_exists('schema', $json) ? $json['schema'] : ($this->posts[$postId]['schema'] ?? null),
+            'date_gmt' => $json['date_gmt'] ?? null, 'modified' => gmdate('c', time() + ($this->posts[$postId]['writes'] ?? 0)),
+            'revision' => ($this->posts[$postId]['revision'] ?? 1000) + 1,
         ];
+        $this->posts[$postId]['written_hash'] = hash('sha256', (string) $json['content_html']);
 
-        return [$created ? 201 : 200, ['id' => $postId, 'created' => $created, 'status' => $json['status'], 'url' => $this->baseUrl.'/?p='.$postId, 'seo_adapter' => 'yoast']];
+        return [$created ? 201 : 200, ['id' => $postId, 'created' => $created, 'status' => $json['status'], 'url' => $this->baseUrl.'/?p='.$postId,
+            'seo_adapter' => $this->seoAdapter, 'state' => $this->state($postId)]];
+    }
+
+    /**
+     * Mirrors PostService::conflicts() of the plugin.
+     *
+     * @param  array<string, mixed>  $expected
+     * @return list<string>
+     */
+    private function conflicts(int $id, array $expected, bool $force): array
+    {
+        $p = $this->posts[$id];
+        $current = hash('sha256', (string) $p['content']);
+        $out = [];
+        if (! $force) {
+            if (isset($p['written_hash']) && $p['written_hash'] !== $current) {
+                $out[] = 'manual_edit';
+            }
+            if (($expected['slug'] ?? '') !== '' && $expected['slug'] !== $p['slug']) {
+                $out[] = 'slug_changed';
+            }
+            if (($expected['seo_hash'] ?? '') !== '' && $expected['seo_hash'] !== $this->seoHash($id)) {
+                $out[] = 'seo_modified';
+            }
+        }
+        if (($expected['content_hash'] ?? '') !== '' && $expected['content_hash'] !== $current) {
+            $out[] = 'manual_edit';
+        } elseif ($force && ($expected['content_hash'] ?? '') === '') {
+            $out[] = 'expected_state_required';
+        }
+
+        return array_values(array_unique($out));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function state(int $id): array
+    {
+        $p = $this->posts[$id];
+        $seo = is_array($p['seo'] ?? null) ? $p['seo'] : [];
+
+        return [
+            'id' => $id, 'post_type' => 'post', 'status' => $p['status'], 'title' => $p['title'], 'slug' => $p['slug'] ?? 'post-'.$id,
+            'url' => $this->baseUrl.'/'.($p['slug'] ?? 'post-'.$id).'/', 'modified_gmt' => $p['modified'] ?? null,
+            'content_hash' => hash('sha256', (string) $p['content']), 'written_hash' => $p['written_hash'] ?? '', 'managed' => true,
+            'idempotency_key' => $p['key'], 'revision_id' => $p['revision'] ?? null, 'featured_media_id' => (int) ($p['featured'] ?? 0),
+            'seo' => ['title' => (string) ($seo['title'] ?? ''), 'description' => (string) ($seo['description'] ?? ''), 'focus_keyword' => (string) ($seo['focus_keyword'] ?? ''),
+                'canonical' => (string) ($seo['canonical'] ?? ''), 'noindex' => (bool) ($seo['noindex'] ?? false)],
+            'seo_hash' => $this->seoHash($id), 'seo_adapter' => $this->seoAdapter,
+        ];
+    }
+
+    public function seoHash(int $id): string
+    {
+        $seo = is_array($this->posts[$id]['seo'] ?? null) ? $this->posts[$id]['seo'] : [];
+
+        return hash('sha256', (string) json_encode([(string) ($seo['title'] ?? ''), (string) ($seo['description'] ?? ''), (string) ($seo['focus_keyword'] ?? ''),
+            (string) ($seo['canonical'] ?? ''), (bool) ($seo['noindex'] ?? false)]));
+    }
+
+    /**
+     * Simulates a human editing the post in wp-admin.
+     *
+     * @param  array<string, mixed>  $changes  content | slug | seo | status
+     */
+    public function editInWordPress(int $id, array $changes): void
+    {
+        foreach ($changes as $k => $v) {
+            $this->posts[$id][$k] = $v;
+        }
+        $this->posts[$id]['modified'] = gmdate('c', time() + 3600);
+        $this->posts[$id]['revision'] = ($this->posts[$id]['revision'] ?? 1000) + 1;
+    }
+
+    /**
+     * @return array{0: int, 1: array<string, mixed>}
+     */
+    private function lookup(string $key): array
+    {
+        foreach ($this->posts as $p) {
+            if ($p['key'] === $key) {
+                return [200, $this->state((int) $p['id'])];
+            }
+        }
+
+        return [404, ['code' => 'sitex_post_not_found', 'message' => 'Post not found.']];
     }
 
     /**

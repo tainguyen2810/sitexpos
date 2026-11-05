@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\RateLimiter;
 use SiteXPost\Kernel\Modules\ModuleServiceProvider;
 use SiteXPost\Modules\Sites\Console\PruneSiteData;
 use SiteXPost\Modules\Sites\Console\ScheduleHealthChecks;
+use SiteXPost\Modules\Sites\Connector\WordPressGatewayService;
 use SiteXPost\Modules\Sites\Contracts\SiteDirectory;
+use SiteXPost\Modules\Sites\Contracts\WordPressGateway;
 use SiteXPost\Modules\Sites\Domain\Site;
 use SiteXPost\Modules\Sites\Policies\SitePolicy;
 use SiteXPost\Modules\Sites\Queries\SiteDirectoryQuery;
@@ -24,6 +26,7 @@ final class SitesServiceProvider extends ModuleServiceProvider
     public function register(): void
     {
         $this->app->bind(SiteDirectory::class, SiteDirectoryQuery::class);
+        $this->app->bind(WordPressGateway::class, WordPressGatewayService::class);
     }
 
     protected function bootModule(): void

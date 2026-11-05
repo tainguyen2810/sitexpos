@@ -99,4 +99,27 @@ return [
         'allow_hosts' => array_filter(explode(',', (string) env('SITEX_SSRF_ALLOW_HOSTS', ''))),
         'allow_http' => (bool) env('SITEX_SSRF_ALLOW_HTTP', false),
     ],
+
+    // Phase 6 — Media Engine (MEDIA-ENGINE.md)
+    'media' => [
+        'disk' => env('SITEX_MEDIA_DISK', 'local'),
+        'max_upload_bytes' => (int) env('SITEX_MEDIA_MAX_UPLOAD_BYTES', 10 * 1024 * 1024),
+        'max_dimension' => (int) env('SITEX_MEDIA_MAX_DIMENSION', 8000),
+        'max_pixels' => (int) env('SITEX_MEDIA_MAX_PIXELS', 40_000_000),
+        'max_storage_bytes' => (int) env('SITEX_MEDIA_MAX_STORAGE_BYTES', 2 * 1024 * 1024 * 1024),
+        'max_uploads_per_day' => (int) env('SITEX_MEDIA_MAX_UPLOADS_PER_DAY', 200),
+        'max_ai_images_per_day' => (int) env('SITEX_MEDIA_MAX_AI_IMAGES_PER_DAY', 30),
+        'max_ai_cost_per_job_micro_usd' => (int) env('SITEX_MEDIA_MAX_AI_COST_PER_JOB', 500_000),
+        'max_inline_images' => (int) env('SITEX_MEDIA_MAX_INLINE_IMAGES', 8),
+        'font_dir' => env('SITEX_MEDIA_FONT_DIR', resource_path('fonts')),
+    ],
+
+    // Phase 6 — Publishing (WORDPRESS-PUBLISHER.md)
+    'publishing' => [
+        'max_publishes_per_day' => (int) env('SITEX_PUBLISH_MAX_PER_DAY', 50),
+        'max_bulk_items' => (int) env('SITEX_PUBLISH_MAX_BULK_ITEMS', 50),
+        'max_schedule_days_ahead' => (int) env('SITEX_PUBLISH_MAX_SCHEDULE_DAYS', 180),
+        'backoff_minutes' => [1, 5, 15, 60, 180],
+        'lock_seconds' => 300,
+    ],
 ];

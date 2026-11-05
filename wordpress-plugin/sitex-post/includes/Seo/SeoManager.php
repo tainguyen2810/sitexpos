@@ -58,6 +58,69 @@ final class SeoManager {
 	 * @param array $input Raw.
 	 * @return array
 	 */
+	/**
+	 * Meta to pass as `meta_input` when a post is created, so SEO plugins see
+	 * the values in their save_post listeners (Yoast indexables, Rank Math).
+	 *
+	 * @param array $input Raw SEO input.
+	 * @return array meta key => value
+	 */
+	public static function meta_input( array $input ) {
+		$seo = self::sanitize( $input );
+		$out = array();
+		foreach ( $seo as $field => $value ) {
+			$v = is_bool( $value ) ? ( $value ? '1' : '' ) : $value;
+			if ( '' !== $v ) {
+				$out[ self::PREFIX . $field ] = $v;
+			}
+		}
+		$adapter = self::adapter();
+		if ( method_exists( $adapter, 'meta_map' ) ) {
+			foreach ( $adapter->meta_map( $seo ) as $key => $value ) {
+				if ( '' !== $value && null !== $value ) {
+					$out[ $key ] = $value;
+				}
+			}
+		}
+		if ( $seo ) {
+			$out[ self::PREFIX . 'adapter' ] = $adapter->name();
+		}
+		return $out;
+	}
+
+	/**
+	 * Values the active SEO plugin will actually use, read back from its own
+	 * storage (not from what we sent), so Cloud can verify the write.
+	 *
+	 * @param int $post_id Post.
+	 * @return array{title:string,description:string,focus_keyword:string,canonical:string,noindex:bool}
+	 */
+	public static function read( $post_id ) {
+		$adapter = self::adapter();
+		if ( method_exists( $adapter, 'read' ) ) {
+			$values = $adapter->read( $post_id );
+		} else {
+			$values = array();
+		}
+		$native = array(
+			'title'         => (string) get_post_meta( $post_id, self::PREFIX . 'title', true ),
+			'description'   => (string) get_post_meta( $post_id, self::PREFIX . 'description', true ),
+			'focus_keyword' => (string) get_post_meta( $post_id, self::PREFIX . 'focus_keyword', true ),
+			'canonical'     => (string) get_post_meta( $post_id, self::PREFIX . 'canonical', true ),
+			'noindex'       => '1' === (string) get_post_meta( $post_id, self::PREFIX . 'noindex', true ),
+		);
+		return array_merge( $native, is_array( $values ) ? $values : array() );
+	}
+
+	/**
+	 * @param int $post_id Post.
+	 * @return string
+	 */
+	public static function state_hash( $post_id ) {
+		$v = self::read( $post_id );
+		return hash( 'sha256', (string) wp_json_encode( array( (string) $v['title'], (string) $v['description'], (string) $v['focus_keyword'], (string) $v['canonical'], (bool) $v['noindex'] ) ) );
+	}
+
 	public static function sanitize( array $input ) {
 		$out = array();
 		if ( isset( $input['title'] ) && is_scalar( $input['title'] ) ) {
@@ -101,6 +164,7 @@ final class SeoManager {
 		add_action( 'wp_head', array( __CLASS__, 'meta_tags' ), 1 );
 		add_filter( 'wp_robots', array( __CLASS__, 'robots' ) );
 		add_filter( 'get_canonical_url', array( __CLASS__, 'canonical' ), 10, 2 );
+		add_action( 'wp_head', array( __CLASS__, 'schema' ), 20 );
 	}
 
 	/**
@@ -118,6 +182,27 @@ final class SeoManager {
 	 * @param string $title Title.
 	 * @return string
 	 */
+	/**
+	 * Prints the JSON-LD Cloud attached to a SiteX Post managed post. Cloud
+	 * only sends schema when the customer enabled injection for the site and
+	 * never sends types an active SEO plugin already outputs.
+	 */
+	public static function schema() {
+		if ( is_admin() || ! is_singular() ) {
+			return;
+		}
+		$id = (int) get_queried_object_id();
+		if ( ! $id || '1' !== (string) get_post_meta( $id, '_sitex_post_managed', true ) ) {
+			return;
+		}
+		$raw  = (string) get_post_meta( $id, '_sitex_post_schema', true );
+		$data = '' !== $raw ? json_decode( $raw, true ) : null;
+		if ( ! is_array( $data ) || ! $data ) {
+			return;
+		}
+		echo '<script type="application/ld+json">' . wp_json_encode( $data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . "</script>\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON with HEX_TAG cannot break out of the script element.
+	}
+
 	public static function document_title( $title ) {
 		$id = self::native_post_id();
 		if ( $id ) {

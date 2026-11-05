@@ -53,6 +53,7 @@ final class RunHealthCheck
                     'features' => $data['features'] ?? [],
                     'author' => $data['author'] ?? null,
                     'limits' => $data['limits'] ?? [],
+                    'site' => is_array($data['site'] ?? null) ? array_intersect_key($data['site'], array_flip(['home_url', 'locale', 'timezone'])) : ($site->capabilities['site'] ?? null),
                     'issues' => $issues,
                 ]),
                 'last_seen_at' => now(),

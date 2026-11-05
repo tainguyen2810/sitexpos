@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\Research\Support;
 
 use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\Research\Contracts\PlannerDirectory;
+use SiteXPost\Modules\Research\Domain\ContentCalendarItem;
 use SiteXPost\Modules\Research\Domain\ContentIdea;
 use SiteXPost\Modules\Research\Domain\SeoCampaign;
 use SiteXPost\Modules\Research\Domain\WebsiteKnowledge;
@@ -102,5 +103,19 @@ final class PlannerDirectoryService implements PlannerDirectory
             'outline' => array_values(array_filter(is_array($outline) ? $outline : [], 'is_string')),
             'is_pillar' => (bool) $i->is_pillar,
         ];
+    }
+
+    public function calendar(?string $siteId, string $from, string $to): array
+    {
+        $q = ContentCalendarItem::query()->with(['idea:id,title,status'])->whereBetween('scheduled_for', [$from, $to])
+            ->where('status', '!=', 'canceled')->orderBy('scheduled_for')->orderBy('position')->limit(500);
+        if ($siteId !== null) {
+            $q->whereIn('campaign_id', SeoCampaign::query()->where('site_id', $siteId)->select('id'));
+        }
+
+        return $q->get()->map(fn (ContentCalendarItem $c): array => [
+            'id' => $c->id, 'campaign_id' => $c->campaign_id, 'content_idea_id' => $c->content_idea_id,
+            'title' => (string) ($c->idea?->title ?? ''), 'scheduled_for' => $c->scheduled_for?->toDateString(), 'status' => (string) $c->status,
+        ])->all();
     }
 }

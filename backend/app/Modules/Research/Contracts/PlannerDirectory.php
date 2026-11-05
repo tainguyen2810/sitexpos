@@ -52,4 +52,12 @@ interface PlannerDirectory
      * @return list<array{id: string, site_id: string}>
      */
     public function autonomousCampaigns(): array;
+
+    /**
+     * Planned content (Phase 4 calendar) between two dates (Y-m-d, inclusive),
+     * for the Publishing Calendar.
+     *
+     * @return list<array{id: string, campaign_id: string, content_idea_id: string, title: string, scheduled_for: string|null, status: string}>
+     */
+    public function calendar(?string $siteId, string $from, string $to): array;
 }

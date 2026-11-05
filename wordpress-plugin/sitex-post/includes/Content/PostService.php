@@ -9,6 +9,14 @@
  *   option-based lock.
  * - PUT only touches posts created by SiteX Post (meta _sitex_post_managed).
  * - Capabilities of the publishing user are checked for every write.
+ * - Conflict detection (Phase 6): after every write the hash of the saved
+ *   post_content is stored (_sitex_post_written_hash). An update is refused
+ *   with 409 `sitex_conflict` when the post was edited in WordPress since
+ *   (hash differs), or when it differs from the `expected` state Cloud based
+ *   the update on (content hash, slug, SEO hash). `force` (a human approved
+ *   the overwrite in Cloud) skips the manual-edit check but still requires
+ *   `expected.content_hash` to match, so a second edit made after the
+ *   approval is never overwritten.
  *
  * @package SiteXPost\WP
  */
@@ -27,6 +35,8 @@ final class PostService {
 	const META_MANAGED = '_sitex_post_managed';
 	const META_KEY     = '_sitex_post_idempotency_key';
 	const META_SOURCE  = '_sitex_post_source';
+	const META_WRITTEN = '_sitex_post_written_hash';
+	const META_SCHEMA  = '_sitex_post_schema';
 	const STATUSES     = array( 'draft', 'pending', 'publish', 'future' );
 	const TYPES        = array( 'post', 'page' );
 
@@ -102,6 +112,23 @@ final class PostService {
 			return new WP_Error( 'sitex_post_trashed', __( 'The post for this document was moved to the trash on WordPress.', 'sitex-post' ), array( 'status' => 410 ) );
 		}
 
+		if ( null !== $existing ) {
+			$expected  = isset( $data['expected'] ) && is_array( $data['expected'] ) ? $data['expected'] : array();
+			$conflicts = self::conflicts( $existing, $expected, ! empty( $data['force'] ) );
+			if ( $conflicts ) {
+				Logger::warning( 'conflict', sprintf( /* translators: %d: post ID */ __( 'Update of post #%d refused: it was changed in WordPress.', 'sitex-post' ), $existing->ID ), array( 'types' => implode( ',', $conflicts ) ) );
+				return new WP_Error(
+					'sitex_conflict',
+					__( 'The post was changed in WordPress since SiteX Post last wrote it. Resolve the conflict in SiteX Post Cloud.', 'sitex-post' ),
+					array(
+						'status'    => 409,
+						'conflicts' => $conflicts,
+						'state'     => self::state( $existing ),
+					)
+				);
+			}
+		}
+
 		$type_object = get_post_type_object( $existing ? $existing->post_type : $type );
 		if ( ! $type_object ) {
 			return new WP_Error( 'sitex_invalid_post_type', __( 'Unsupported post type.', 'sitex-post' ), array( 'status' => 422 ) );
@@ -142,6 +169,15 @@ final class PostService {
 			$postarr['post_author'] = $existing->post_author;
 		}
 
+		// SEO meta is written BEFORE the post is saved (meta_input for new posts),
+		// so save_post listeners of Yoast / Rank Math index the final values.
+		$seo_input = isset( $data['seo'] ) && is_array( $data['seo'] ) ? $data['seo'] : array();
+		if ( $existing ) {
+			SeoManager::apply( $existing->ID, $seo_input );
+		} else {
+			$postarr['meta_input'] = SeoManager::meta_input( $seo_input );
+		}
+
 		// Content was already sanitized with our allowlist; prevent a second kses pass from mangling block markup.
 		$kses = has_filter( 'content_save_pre', 'wp_filter_post_kses' );
 		if ( $kses ) {
@@ -171,7 +207,20 @@ final class PostService {
 			return $featured;
 		}
 
-		$seo = SeoManager::apply( $post_id, isset( $data['seo'] ) && is_array( $data['seo'] ) ? $data['seo'] : array() );
+		$seo = $existing ? SeoManager::adapter()->name() : SeoManager::apply( $post_id, $seo_input );
+
+		if ( array_key_exists( 'schema', $data ) ) {
+			$schema = is_array( $data['schema'] ) ? self::clean_schema( $data['schema'], 0 ) : array();
+			if ( $schema ) {
+				update_post_meta( $post_id, self::META_SCHEMA, wp_slash( (string) wp_json_encode( $schema ) ) );
+			} else {
+				delete_post_meta( $post_id, self::META_SCHEMA );
+			}
+		}
+
+		$saved = get_post( $post_id );
+		update_post_meta( $post_id, self::META_WRITTEN, self::content_hash( $saved ) );
+		$state = self::state( $saved );
 
 		Logger::info(
 			$existing ? 'post_updated' : 'post_created',
@@ -186,7 +235,113 @@ final class PostService {
 			'status'      => get_post_status( $post_id ),
 			'url'         => get_permalink( $post_id ),
 			'seo_adapter' => $seo,
+			'state'       => $state,
 		);
+	}
+
+	/**
+	 * Why an update must not overwrite the post (empty = safe).
+	 *
+	 * @param \WP_Post $post     Current post.
+	 * @param array    $expected State Cloud based the update on.
+	 * @param bool     $force    A human approved overwriting manual edits.
+	 * @return string[]
+	 */
+	public static function conflicts( $post, array $expected, $force ) {
+		$out     = array();
+		$current = self::content_hash( $post );
+		$written = (string) get_post_meta( $post->ID, self::META_WRITTEN, true );
+
+		if ( ! $force ) {
+			if ( '' !== $written && ! hash_equals( $written, $current ) ) {
+				$out[] = 'manual_edit';
+			} elseif ( '' === $written ) {
+				// Posts written before Phase 6: compare the modification time with our last write.
+				$ours = (int) get_post_meta( $post->ID, '_sitex_post_updated_at', true );
+				if ( $ours > 0 && strtotime( $post->post_modified_gmt . ' UTC' ) > $ours + 5 ) {
+					$out[] = 'manual_edit';
+				}
+			}
+			if ( isset( $expected['slug'] ) && is_string( $expected['slug'] ) && '' !== $expected['slug'] && $expected['slug'] !== $post->post_name ) {
+				$out[] = 'slug_changed';
+			}
+			if ( isset( $expected['seo_hash'] ) && is_string( $expected['seo_hash'] ) && '' !== $expected['seo_hash'] && ! hash_equals( $expected['seo_hash'], SeoManager::state_hash( $post->ID ) ) ) {
+				$out[] = 'seo_modified';
+			}
+		}
+		if ( isset( $expected['content_hash'] ) && is_string( $expected['content_hash'] ) && '' !== $expected['content_hash'] && ! hash_equals( $expected['content_hash'], $current ) ) {
+			$out[] = 'manual_edit';
+		} elseif ( $force && ( ! isset( $expected['content_hash'] ) || ! is_string( $expected['content_hash'] ) || '' === $expected['content_hash'] ) ) {
+			$out[] = 'expected_state_required';
+		}
+		return array_values( array_unique( $out ) );
+	}
+
+	/**
+	 * Current state of a post for Cloud (conflict detection, reconciliation).
+	 *
+	 * @param \WP_Post $post Post.
+	 * @return array
+	 */
+	public static function state( $post ) {
+		$revisions = wp_get_post_revisions( $post->ID, array( 'numberposts' => 1, 'fields' => 'ids' ) );
+		$seo       = SeoManager::read( $post->ID );
+		return array(
+			'id'                => (int) $post->ID,
+			'post_type'         => $post->post_type,
+			'status'            => $post->post_status,
+			'title'             => get_the_title( $post ),
+			'slug'              => $post->post_name,
+			'url'               => get_permalink( $post ),
+			'modified_gmt'      => mysql2date( 'c', $post->post_modified_gmt, false ),
+			'content_hash'      => self::content_hash( $post ),
+			'written_hash'      => (string) get_post_meta( $post->ID, self::META_WRITTEN, true ),
+			'managed'           => '1' === (string) get_post_meta( $post->ID, self::META_MANAGED, true ),
+			'idempotency_key'   => (string) get_post_meta( $post->ID, self::META_KEY, true ),
+			'revision_id'       => $revisions ? (int) reset( $revisions ) : null,
+			'featured_media_id' => (int) get_post_thumbnail_id( $post->ID ),
+			'seo'               => $seo,
+			'seo_hash'          => SeoManager::state_hash( $post->ID ),
+			'seo_adapter'       => SeoManager::adapter()->name(),
+		);
+	}
+
+	/**
+	 * @param \WP_Post|null $post Post.
+	 * @return string
+	 */
+	public static function content_hash( $post ) {
+		return hash( 'sha256', $post ? (string) $post->post_content : '' );
+	}
+
+	/**
+	 * JSON-LD from Cloud: scalars sanitized, depth and size bounded. It is
+	 * printed with wp_json_encode + JSON_HEX_TAG, so it cannot close the
+	 * script element.
+	 *
+	 * @param array $node  Node.
+	 * @param int   $depth Depth.
+	 * @return array
+	 */
+	private static function clean_schema( array $node, $depth ) {
+		if ( $depth > 6 ) {
+			return array();
+		}
+		$out = array();
+		foreach ( array_slice( $node, 0, 60, true ) as $k => $v ) {
+			$key = is_int( $k ) ? $k : preg_replace( '/[^A-Za-z0-9@_:-]/', '', (string) $k );
+			if ( '' === $key ) {
+				continue;
+			}
+			if ( is_array( $v ) ) {
+				$out[ $key ] = self::clean_schema( $v, $depth + 1 );
+			} elseif ( is_bool( $v ) || is_int( $v ) || is_float( $v ) ) {
+				$out[ $key ] = $v;
+			} elseif ( is_string( $v ) ) {
+				$out[ $key ] = preg_match( '#^https?://#i', $v ) ? esc_url_raw( $v ) : mb_substr( sanitize_text_field( $v ), 0, 2000 );
+			}
+		}
+		return $out;
 	}
 
 	/**
@@ -213,7 +368,8 @@ final class PostService {
 	}
 
 	/**
-	 * Only images uploaded by SiteX Post can be set as featured image.
+	 * Any image of the Media Library (uploaded by SiteX Post or chosen by the
+	 * customer from the library) can be the featured image.
 	 *
 	 * @param int $post_id  Post.
 	 * @param int $media_id Attachment.
@@ -224,9 +380,8 @@ final class PostService {
 			return true;
 		}
 		$attachment = get_post( $media_id );
-		if ( ! $attachment || 'attachment' !== $attachment->post_type || ! wp_attachment_is_image( $media_id )
-			|| '1' !== (string) get_post_meta( $media_id, self::META_MANAGED, true ) ) {
-			return new WP_Error( 'sitex_invalid_featured_media', __( 'The featured image must be an image uploaded by SiteX Post.', 'sitex-post' ), array( 'status' => 422 ) );
+		if ( ! $attachment || 'attachment' !== $attachment->post_type || ! wp_attachment_is_image( $media_id ) ) {
+			return new WP_Error( 'sitex_invalid_featured_media', __( 'The featured image must be an image of the Media Library.', 'sitex-post' ), array( 'status' => 422 ) );
 		}
 		set_post_thumbnail( $post_id, $media_id );
 		if ( ! $attachment->post_parent ) {

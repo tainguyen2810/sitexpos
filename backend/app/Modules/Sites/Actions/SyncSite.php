@@ -158,6 +158,7 @@ final class SyncSite
                 'currency' => mb_substr(self::text($p['currency'] ?? ''), 0, 8),
                 'stock_status' => mb_substr(self::text($p['stock_status'] ?? ''), 0, 32),
                 'type' => mb_substr(self::text($p['type'] ?? ''), 0, 32),
+                'image_ids' => array_slice(array_values(array_filter(array_map('intval', is_array($p['image_ids'] ?? null) ? $p['image_ids'] : []), fn (int $i) => $i > 0)), 0, 5),
             ];
         }
 

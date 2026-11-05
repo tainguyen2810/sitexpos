@@ -52,6 +52,24 @@ final class PublishPost
      */
     public function handle(Site $site, array $doc): SitePublication
     {
+        return $this->send($site, $doc)['publication'];
+    }
+
+    /**
+     * Same as handle() and also returns the plugin's answer (content hash,
+     * modified time, slug, SEO read-back) for Phase 6 sync state. Phase 6
+     * extra keys: `expected` (state the update is based on → the plugin
+     * answers 409 `conflict` when WordPress changed), `force` (overwrite
+     * approved by a human), `schema` (JSON-LD or null), `featured_wp_media_id`
+     * (existing attachment), `date_gmt`.
+     *
+     * @param  array<string, mixed>  $doc
+     * @return array{publication: SitePublication, response: array<string, mixed>}
+     *
+     * @throws ConnectorException
+     */
+    public function send(Site $site, array $doc): array
+    {
         $publication = SitePublication::query()->where('site_id', $site->id)->where('idempotency_key', $doc['idempotency_key'])->first() ?? new SitePublication;
         if (! $publication->exists) {
             $publication->forceFill([
@@ -68,7 +86,7 @@ final class PublishPost
 
         try {
             $html = $doc['content_html'];
-            $featuredId = null;
+            $featuredId = isset($doc['featured_wp_media_id']) && (int) $doc['featured_wp_media_id'] > 0 ? (int) $doc['featured_wp_media_id'] : null;
             foreach ($doc['images'] ?? [] as $image) {
                 $media = $this->uploadMedia->handle($site, $doc['idempotency_key'].':'.$image['key'], $image['bytes'], $image['filename'], [
                     'alt' => $image['alt'] ?? '', 'title' => $image['title'] ?? '', 'caption' => $image['caption'] ?? '',
@@ -94,6 +112,11 @@ final class PublishPost
                 'seo' => $doc['seo'] ?? (object) [],
                 'sitex' => ['source_type' => $doc['source_type'] ?? null, 'source_id' => $doc['source_id'] ?? null],
             ];
+            foreach (['expected', 'force', 'schema', 'date_gmt'] as $extra) {
+                if (array_key_exists($extra, $doc)) {
+                    $payload[$extra] = $doc[$extra];
+                }
+            }
 
             $data = $publication->wp_post_id !== null
                 ? $this->client->call($site, 'PUT', '/sitex-post/v1/posts/'.$publication->wp_post_id, [], $payload)
@@ -114,7 +137,7 @@ final class PublishPost
                 'published_at' => $publication->published_at ?? now(),
             ])->save();
 
-            return $publication;
+            return ['publication' => $publication, 'response' => $data];
         } catch (ConnectorException $e) {
             $publication->forceFill(['status' => 'failed', 'last_error_code' => $e->errorCode])->save();
             throw $e;

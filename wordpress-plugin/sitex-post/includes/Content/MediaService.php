@@ -139,4 +139,52 @@ final class MediaService {
 			'height'  => isset( $meta['height'] ) ? (int) $meta['height'] : null,
 		);
 	}
+
+	/**
+	 * Image attachments of the Media Library, newest first (metadata only).
+	 *
+	 * @param int $page     Page.
+	 * @param int $per_page Page size (max 100).
+	 * @return array
+	 */
+	public function index( $page, $per_page ) {
+		$query = new \WP_Query(
+			array(
+				'post_type'              => 'attachment',
+				'post_status'            => 'inherit',
+				'post_mime_type'         => array_values( self::MIME ),
+				'posts_per_page'         => max( 1, min( 100, (int) $per_page ) ),
+				'paged'                  => max( 1, (int) $page ),
+				'orderby'                => 'ID',
+				'order'                  => 'DESC',
+				'suppress_filters'       => true,
+				'update_post_term_cache' => false,
+			)
+		);
+		$items = array();
+		foreach ( $query->posts as $attachment ) {
+			$meta    = wp_get_attachment_metadata( $attachment->ID );
+			$file    = get_attached_file( $attachment->ID );
+			$items[] = array(
+				'id'           => (int) $attachment->ID,
+				'url'          => wp_get_attachment_url( $attachment->ID ),
+				'mime'         => get_post_mime_type( $attachment->ID ),
+				'width'        => isset( $meta['width'] ) ? (int) $meta['width'] : null,
+				'height'       => isset( $meta['height'] ) ? (int) $meta['height'] : null,
+				'filesize'     => isset( $meta['filesize'] ) ? (int) $meta['filesize'] : ( $file && file_exists( $file ) ? (int) filesize( $file ) : null ),
+				'title'        => wp_strip_all_tags( get_the_title( $attachment ) ),
+				'alt'          => wp_strip_all_tags( (string) get_post_meta( $attachment->ID, '_wp_attachment_image_alt', true ) ),
+				'caption'      => wp_strip_all_tags( (string) $attachment->post_excerpt ),
+				'parent'       => (int) $attachment->post_parent,
+				'managed'      => '1' === (string) get_post_meta( $attachment->ID, PostService::META_MANAGED, true ),
+				'modified_gmt' => mysql2date( 'c', $attachment->post_modified_gmt, false ),
+			);
+		}
+		return array(
+			'items'       => $items,
+			'total'       => (int) $query->found_posts,
+			'total_pages' => (int) $query->max_num_pages,
+			'page'        => max( 1, (int) $page ),
+		);
+	}
 }

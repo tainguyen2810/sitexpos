@@ -154,6 +154,7 @@ final class IndexService {
 					'sale_price'    => (string) $product->get_sale_price(),
 					'stock_status'  => (string) $product->get_stock_status(),
 					'currency'      => $currency,
+					'image_ids'     => self::image_ids( $post_id, method_exists( $product, 'get_gallery_image_ids' ) ? $product->get_gallery_image_ids() : array() ),
 				);
 			}
 		}
@@ -165,6 +166,20 @@ final class IndexService {
 			'sale_price'    => (string) get_post_meta( $post_id, '_sale_price', true ),
 			'stock_status'  => (string) get_post_meta( $post_id, '_stock_status', true ),
 			'currency'      => $currency,
+			'image_ids'     => self::image_ids( $post_id, explode( ',', (string) get_post_meta( $post_id, '_product_image_gallery', true ) ) ),
 		);
+	}
+
+	/**
+	 * Featured image + gallery (max 5), ids only: Cloud imports them as
+	 * real product photos through GET /media.
+	 *
+	 * @param int   $post_id Product id.
+	 * @param array $gallery Gallery attachment ids.
+	 * @return int[]
+	 */
+	private static function image_ids( $post_id, $gallery ) {
+		$ids = array_merge( array( (int) get_post_thumbnail_id( $post_id ) ), array_map( 'intval', (array) $gallery ) );
+		return array_slice( array_values( array_unique( array_filter( $ids ) ) ), 0, 5 );
 	}
 }

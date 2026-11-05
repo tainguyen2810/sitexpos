@@ -27,3 +27,7 @@ Schedule::command('sitex:research:prune')->daily();
 // Phase 5 — AI Writer & Fact-Check
 Schedule::command('sitex:writer:sync')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('sitex:writer:autonomous')->dailyAt('02:30')->withoutOverlapping();
+
+// Phase 6 — Media, SEO & WordPress Publisher
+Schedule::command('sitex:publishing:dispatch')->everyMinute()->withoutOverlapping();
+Schedule::command('sitex:publishing:auto')->hourly()->withoutOverlapping();

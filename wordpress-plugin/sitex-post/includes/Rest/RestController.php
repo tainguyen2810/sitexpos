@@ -105,11 +105,43 @@ final class RestController {
 		);
 		register_rest_route(
 			self::NAMESPACE_V1,
+			'/posts/(?P<id>\d+)/state',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'post_state' ),
+				'permission_callback' => $signed,
+			)
+		);
+		register_rest_route(
+			self::NAMESPACE_V1,
+			'/posts/lookup',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'lookup_post' ),
+				'permission_callback' => $signed,
+				'args'                => array(
+					'idempotency_key' => array( 'required' => true, 'type' => 'string' ),
+				),
+			)
+		);
+		register_rest_route(
+			self::NAMESPACE_V1,
 			'/media',
 			array(
-				'methods'             => WP_REST_Server::CREATABLE,
-				'callback'            => array( $this, 'upload_media' ),
-				'permission_callback' => $signed,
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'upload_media' ),
+					'permission_callback' => $signed,
+				),
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'list_media' ),
+					'permission_callback' => $signed,
+					'args'                => array(
+						'page'     => array( 'type' => 'integer', 'default' => 1, 'minimum' => 1 ),
+						'per_page' => array( 'type' => 'integer', 'default' => 100, 'minimum' => 1, 'maximum' => 100 ),
+					),
+				),
 			)
 		);
 		register_rest_route(
@@ -201,6 +233,52 @@ final class RestController {
 	public function update_post( WP_REST_Request $request ) {
 		$params = $request->get_json_params();
 		return $this->wrap( ( new PostService() )->upsert( is_array( $params ) ? $params : array(), (int) $request['id'] ) );
+	}
+
+	/**
+	 * State of a SiteX Post managed post (Phase 6 conflict detection).
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function post_state( WP_REST_Request $request ) {
+		$post = get_post( (int) $request['id'] );
+		if ( ! $post || ! in_array( $post->post_type, PostService::TYPES, true ) ) {
+			return new WP_Error( 'sitex_post_not_found', __( 'Post not found.', 'sitex-post' ), array( 'status' => 404 ) );
+		}
+		if ( '1' !== (string) get_post_meta( $post->ID, PostService::META_MANAGED, true ) ) {
+			return new WP_Error( 'sitex_not_managed', __( 'This post was not created by SiteX Post and cannot be modified by it.', 'sitex-post' ), array( 'status' => 403 ) );
+		}
+		return new WP_REST_Response( PostService::state( $post ) );
+	}
+
+	/**
+	 * Reconciliation after a lost response: did WordPress create the post?
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function lookup_post( WP_REST_Request $request ) {
+		$key = (string) $request['idempotency_key'];
+		if ( ! PostService::valid_key( $key ) ) {
+			return new WP_Error( 'sitex_invalid_idempotency_key', __( 'A valid idempotency_key is required.', 'sitex-post' ), array( 'status' => 422 ) );
+		}
+		$post = PostService::find_by_key( $key );
+		if ( ! $post ) {
+			return new WP_Error( 'sitex_post_not_found', __( 'Post not found.', 'sitex-post' ), array( 'status' => 404 ) );
+		}
+		return new WP_REST_Response( PostService::state( $post ) );
+	}
+
+	/**
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function list_media( WP_REST_Request $request ) {
+		if ( ! current_user_can( 'upload_files' ) ) {
+			return new WP_Error( 'sitex_forbidden', __( 'The publishing account cannot upload files.', 'sitex-post' ), array( 'status' => 403 ) );
+		}
+		return new WP_REST_Response( ( new MediaService() )->index( (int) $request['page'], (int) $request['per_page'] ) );
 	}
 
 	/**
