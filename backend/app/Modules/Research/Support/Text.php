@@ -15,13 +15,18 @@ namespace SiteXPost\Modules\Research\Support;
  */
 final class Text
 {
-    /** Vietnamese function words (folded). */
+    /**
+     * Vietnamese function words, accented. Matching is done on the accented
+     * word so that "có" (has) is dropped but "cơ" (mechanical), "dây"
+     * (wire), "ổ" (drive), "ví" (wallet) or "bảo" stay. For text typed
+     * without any diacritics the folded forms are used instead.
+     */
     private const STOP = [
-        'la', 'va', 'cua', 'cho', 'voi', 'cac', 'nhung', 'mot', 'trong', 'tren', 'duoi', 'khi', 'thi', 'ma', 'nay', 'do',
-        'de', 'duoc', 'bi', 'co', 'khong', 'cung', 'nhu', 'hay', 'hoac', 'tu', 'den', 've', 'ra', 'vao', 'len', 'xuong',
-        'toi', 'chung', 'ta', 'minh', 'se', 'da', 'dang', 'rat', 'qua', 'nua', 'theo', 'sau', 'truoc', 'neu', 'vi', 'boi',
-        'o', 'nhieu', 'it', 'moi', 'tat', 'ca', 'cai', 'chiec', 'con', 'nguoi', 'viec', 'nhat', 'hon', 'thuoc', 'tung', 'luc',
-        'phai', 'can', 'muon', 'nen', 'roi', 'ay', 'kia', 'day', 'ai', 'gi', 'nao', 'sao', 'bao', 'dau',
+        'là', 'và', 'của', 'cho', 'với', 'các', 'những', 'một', 'trong', 'trên', 'dưới', 'khi', 'thì', 'mà', 'này', 'do',
+        'để', 'được', 'bị', 'có', 'không', 'cũng', 'như', 'hay', 'hoặc', 'từ', 'đến', 'về', 'ra', 'vào', 'lên', 'xuống',
+        'tôi', 'chúng', 'ta', 'mình', 'sẽ', 'đã', 'đang', 'rất', 'quá', 'nữa', 'theo', 'sau', 'trước', 'nếu', 'vì', 'bởi',
+        'ở', 'nhiều', 'ít', 'mọi', 'tất', 'cả', 'cái', 'chiếc', 'còn', 'người', 'việc', 'nhất', 'hơn', 'thuộc', 'từng', 'lúc',
+        'phải', 'cần', 'muốn', 'nên', 'rồi', 'ấy', 'kia', 'đây', 'ai', 'gì', 'nào', 'sao', 'bao', 'đâu',
     ];
 
     /**
@@ -34,36 +39,56 @@ final class Text
         'why', 'when', 'where', 'how',
     ];
 
-    /** Intent / format modifiers (folded) — not part of the topic. */
+    /** Intent / format modifiers (accented) — not part of the topic. */
     private const MODIFIERS = [
-        'cach', 'huong', 'dan', 'meo', 'tot', 'gia', 're', 'mua', 'so', 'sanh', 'vs', 'review', 'danh', 'top', 'loi', 'sua',
-        'khac', 'phuc', 'moi', 'nhat', 'chinh', 'hang', 'uy', 'tin', 'bang', 'chi', 'tiet', 'don', 'gian', 'nhanh',
-        'hieu', 'qua', 'thong', 'tin', 'kinh', 'nghiem', 'lua', 'chon', 'nen', 'mua', 'loai', 'tim', 'hieu', 'tong', 'hop', 'kiem',
-        'tra', 'khuyen', 'mai', 'giam', 'online', 'ship', 'dat', 'thay', 'nang', 'cap',
-        'best', 'how', 'guide', 'tutorial', 'price', 'buy', 'cheap', 'review', 'reviews', 'compare', 'comparison', 'versus',
-        'fix', 'error', 'top', 'new', 'latest', 'tips', 'vs', 'deal', 'deals', 'sale',
+        'cách', 'hướng', 'dẫn', 'mẹo', 'tốt', 'giá', 'rẻ', 'mua', 'so', 'sánh', 'vs', 'review', 'đánh', 'top', 'lỗi', 'sửa',
+        'khắc', 'phục', 'mới', 'nhất', 'chính', 'hãng', 'uy', 'tín', 'bảng', 'chi', 'tiết', 'đơn', 'giản', 'nhanh',
+        'hiệu', 'quả', 'thông', 'tin', 'kinh', 'nghiệm', 'lựa', 'chọn', 'nên', 'loại', 'tìm', 'hiểu', 'tổng', 'hợp', 'kiểm',
+        'tra', 'khuyến', 'mãi', 'giảm', 'online', 'ship', 'đặt', 'thay', 'nâng', 'cấp',
+        'best', 'how', 'guide', 'tutorial', 'price', 'buy', 'cheap', 'reviews', 'compare', 'comparison', 'versus',
+        'fix', 'error', 'new', 'latest', 'tips', 'deal', 'deals', 'sale',
     ];
 
-    /** @var array<string, true>|null */
-    private static ?array $stop = null;
+    /** @var array{0: array<string, true>, 1: array<string, true>, 2: array<string, true>, 3: array<string, true>, 4: array<string, true>}|null */
+    private static ?array $lists = null;
 
-    /** @var array<string, true>|null */
-    private static ?array $stopEn = null;
+    /**
+     * @return array{0: array<string, true>, 1: array<string, true>, 2: array<string, true>, 3: array<string, true>, 4: array<string, true>}
+     *                                                                                                                                       [stop, stop folded, stop en, modifiers, modifiers folded]
+     */
+    private static function lists(): array
+    {
+        if (self::$lists === null) {
+            $fold = static fn (array $words): array => array_fill_keys(array_map(static fn ($w) => self::fold($w), $words), true);
+            self::$lists = [array_fill_keys(self::STOP, true), $fold(self::STOP), array_fill_keys(self::STOP_EN, true), array_fill_keys(self::MODIFIERS, true), $fold(self::MODIFIERS)];
+        }
+
+        return self::$lists;
+    }
 
     /**
      * @param  string  $word  normalized (diacritics kept)
-     * @param  string  $folded  fold($word)
+     * @param  bool  $accented  whether the surrounding text uses diacritics
      */
-    private static function isStop(string $word, string $folded): bool
+    private static function isStop(string $word, string $folded, bool $accented): bool
     {
-        self::$stop ??= array_fill_keys(self::STOP, true);
-        self::$stopEn ??= array_fill_keys(self::STOP_EN, true);
+        [$stop, $stopFolded, $en] = self::lists();
 
-        return isset(self::$stop[$folded]) || isset(self::$stopEn[$word]);
+        return isset($en[$word]) || ($accented ? isset($stop[$word]) : isset($stopFolded[$folded]));
     }
 
-    /** @var array<string, true>|null */
-    private static ?array $modifiers = null;
+    private static function isModifier(string $word, string $folded, bool $accented): bool
+    {
+        $l = self::lists();
+
+        return $accented ? isset($l[3][$word]) : isset($l[4][$folded]);
+    }
+
+    /** Text written with Vietnamese diacritics (anything beyond plain ASCII letters). */
+    private static function accented(string $normalized): bool
+    {
+        return preg_match('/[^\x00-\x7F]/', $normalized) === 1;
+    }
 
     public static function normalize(string $text): string
     {
@@ -95,16 +120,7 @@ final class Text
      */
     public static function tokens(string $text): array
     {
-        $out = [];
-        foreach (explode(' ', self::normalize($text)) as $word) {
-            $w = self::fold($word);
-            if ($w === '' || self::isStop($word, $w) || (mb_strlen($w) < 2 && ! ctype_digit($w))) {
-                continue;
-            }
-            $out[] = $w;
-        }
-
-        return $out;
+        return array_column(self::words($text), 1);
     }
 
     /**
@@ -115,11 +131,38 @@ final class Text
      */
     public static function topicTokens(string $text): array
     {
-        $mods = self::$modifiers ??= array_fill_keys(self::MODIFIERS, true);
-        $tokens = self::tokens($text);
-        $topic = array_values(array_filter($tokens, static fn (string $t): bool => ! isset($mods[$t])));
+        $normalized = self::normalize($text);
+        $accented = self::accented($normalized);
+        $words = self::words($text);
+        $topic = [];
+        foreach ($words as [$word, $folded]) {
+            if (! self::isModifier($word, $folded, $accented)) {
+                $topic[] = $folded;
+            }
+        }
 
-        return $topic === [] ? $tokens : array_values(array_unique($topic));
+        return $topic === [] ? array_column($words, 1) : array_values(array_unique($topic));
+    }
+
+    /**
+     * Content words as [accented, folded] pairs (function words removed).
+     *
+     * @return list<array{0: string, 1: string}>
+     */
+    private static function words(string $text): array
+    {
+        $normalized = self::normalize($text);
+        $accented = self::accented($normalized);
+        $out = [];
+        foreach (explode(' ', $normalized) as $word) {
+            $w = self::fold($word);
+            if ($w === '' || self::isStop($word, $w, $accented) || (mb_strlen($w) < 2 && ! ctype_digit($w) && ! self::accented($word))) {
+                continue;
+            }
+            $out[] = [$word, $w];
+        }
+
+        return $out;
     }
 
     /**
@@ -237,9 +280,10 @@ final class Text
      */
     public static function ngrams(string $text, int $min = 2, int $max = 4, array $extraCompounds = []): array
     {
-        $mods = self::$modifiers ??= array_fill_keys(self::MODIFIERS, true);
         $compounds = (self::$compounds ??= array_fill_keys(self::COMPOUNDS, true)) + $extraCompounds;
-        $words = array_values(array_filter(explode(' ', self::normalize($text)), static fn ($w) => $w !== ''));
+        $normalized = self::normalize($text);
+        $accented = self::accented($normalized);
+        $words = array_values(array_filter(explode(' ', $normalized), static fn ($w) => $w !== ''));
         $folded = array_map(static fn (string $w): string => self::fold($w), $words);
         $out = [];
         $n = count($words);
@@ -248,7 +292,8 @@ final class Text
                 $j = $i + $size - 1;
                 $first = $folded[$i];
                 $last = $folded[$j];
-                if (self::isStop($words[$i], $first) || self::isStop($words[$j], $last) || isset($mods[$first]) || isset($mods[$last]) || ctype_digit($first)) {
+                if (self::isStop($words[$i], $first, $accented) || self::isStop($words[$j], $last, $accented)
+                    || self::isModifier($words[$i], $first, $accented) || self::isModifier($words[$j], $last, $accented) || ctype_digit($first)) {
                     continue;
                 }
                 if (($i > 0 && isset($compounds[$folded[$i - 1].' '.$first])) || ($j + 1 < $n && isset($compounds[$last.' '.$folded[$j + 1]]))) {

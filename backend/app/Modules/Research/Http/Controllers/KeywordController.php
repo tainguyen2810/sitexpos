@@ -24,7 +24,7 @@ use SiteXPost\Modules\Workspace\Domain\Workspace;
  */
 final class KeywordController
 {
-    public const SOURCES = ['campaign', 'wordpress', 'woocommerce', 'website_crawl', 'competitor', 'search_console', 'ai_expansion', 'dataforseo', 'user'];
+    public const SOURCES = ['campaign', 'wordpress', 'woocommerce', 'website_crawl', 'competitor', 'search_console', 'ai_expansion', 'dataforseo', 'user', 'demo'];
 
     public function index(Request $request, Workspace $workspace, SeoCampaign $campaign): JsonResponse
     {

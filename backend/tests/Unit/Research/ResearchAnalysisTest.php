@@ -9,7 +9,12 @@ use SiteXPost\Modules\Research\Support\Text;
 it('folds Vietnamese text for matching but keeps meaningful words', function () {
     expect(Text::fold('Tai nghe Chống Ồn Wi-Fi'))->toBe('tai nghe chong on wifi')
         ->and(Text::tokens('Cách chọn bàn phím cơ cho sinh viên'))->toContain('ban', 'phim', 'sinh', 'vien')
-        ->and(Text::topicTokens('Cách chọn bàn phím cơ giá rẻ'))->not->toContain('cach', 'gia', 're');
+        ->and(Text::topicTokens('Cách chọn bàn phím cơ giá rẻ'))->not->toContain('cach', 'gia', 're')
+        // accent-aware: "cơ", "dây", "ổ", "ví", "cáp" are words here, "có", "đây", "ở" are not
+        ->and(Text::tokens('bàn phím cơ không dây'))->toBe(['ban', 'phim', 'co', 'day'])
+        ->and(Text::tokens('ổ cứng ssd có tốt không'))->toBe(['o', 'cung', 'ssd', 'tot'])
+        ->and(Text::topicTokens('cáp sạc nhanh giá rẻ'))->toContain('cap', 'sac')
+        ->and(Text::tokens('ban phim co khong day'))->toBe(['ban', 'phim']); // unaccented input: ambiguous words are treated as function words
 });
 
 it('never cuts Vietnamese compound words when mining phrases', function () {
