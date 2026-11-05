@@ -1,13 +1,20 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
+use SiteXPost\Kernel\Security\SsrfGuard;
 use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\Identity\Domain\User;
+use SiteXPost\Modules\Sites\Connector\Signer;
+use SiteXPost\Modules\Sites\Domain\Site;
+use SiteXPost\Modules\Sites\Domain\SiteCredential;
+use SiteXPost\Modules\Sites\Enums\SiteStatus;
 use SiteXPost\Modules\Workspace\Actions\CreateWorkspace;
 use SiteXPost\Modules\Workspace\Domain\Workspace;
 use SiteXPost\Modules\Workspace\Domain\WorkspaceMember;
 use SiteXPost\Modules\Workspace\Enums\MemberStatus;
 use SiteXPost\Modules\Workspace\Enums\WorkspaceRole;
+use Tests\Support\FakeWordPress;
 use Tests\TestCase;
 
 pest()->extend(TestCase::class)->use(RefreshDatabase::class)->in('Feature', 'Unit');
@@ -60,4 +67,74 @@ function memberOf(Workspace $workspace, User $user): WorkspaceMember
 {
     return app(TenantContext::class)->bypass(fn () => WorkspaceMember::query()
         ->where('workspace_id', $workspace->id)->where('user_id', $user->id)->firstOrFail());
+}
+
+/**
+ * Phase 2 helpers --------------------------------------------------------
+ */
+
+/**
+ * Resolve every hostname to a fixed public IP (no real DNS in tests).
+ */
+function fakePublicDns(string $ip = '93.184.216.34'): void
+{
+    app()->instance(SsrfGuard::class, new SsrfGuard([], false, static fn (string $host): array => [$ip]));
+}
+
+/**
+ * A site already paired with the given fake plugin (its key is registered
+ * on both sides).
+ */
+function connectedSite(Workspace $workspace, FakeWordPress $wp, string $name = 'Blog'): Site
+{
+    return app(TenantContext::class)->runAs($workspace, null, function () use ($wp, $name): Site {
+        $site = new Site;
+        $site->fill(['name' => $name]);
+        $site->forceFill([
+            'url' => $wp->baseUrl,
+            'url_hash' => Site::hashUrl($wp->baseUrl),
+            'status' => SiteStatus::Connected,
+            'connected_at' => now(),
+            'capabilities' => ['rest_url' => $wp->baseUrl.'/wp-json/', 'features' => ['woocommerce' => $wp->woocommerce]],
+        ])->save();
+
+        $secret = SiteCredential::generateSecret();
+        $credential = new SiteCredential;
+        $credential->forceFill(['site_id' => $site->id, 'key_id' => (string) Str::ulid(), 'status' => 'active']);
+        $credential->secret = $secret;
+        $credential->save();
+        $wp->keys[$credential->key_id] = $secret;
+
+        return $site;
+    });
+}
+
+function siteCredential(Site $site): SiteCredential
+{
+    return app(TenantContext::class)->bypass(fn () => SiteCredential::query()
+        ->where('site_id', $site->id)->where('status', 'active')->firstOrFail());
+}
+
+/**
+ * Headers for a plugin → Cloud request signed like the WordPress plugin does.
+ *
+ * @param  array<string, mixed>  $body
+ * @return array<string, string>
+ */
+function pluginHeaders(string $keyId, string $secret, string $path, array $body, ?int $timestamp = null, ?string $nonce = null): array
+{
+    $timestamp ??= time();
+    $nonce ??= Signer::nonce();
+    $raw = (string) json_encode($body);
+
+    return [
+        'X-SiteX-Key-Id' => $keyId,
+        'X-SiteX-Timestamp' => (string) $timestamp,
+        'X-SiteX-Nonce' => $nonce,
+        'X-SiteX-Signature' => Signer::sign(
+            Signer::canonical('w2c', 'POST', $path, [], $timestamp, $nonce, $raw),
+            $secret,
+        ),
+        'Content-Type' => 'application/json',
+    ];
 }

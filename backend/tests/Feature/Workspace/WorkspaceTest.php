@@ -122,5 +122,6 @@ it('returns a real-data dashboard', function () {
 
     $this->actingAs($viewer)->getJson("/api/v1/workspaces/{$ws->id}/dashboard")->assertOk()
         ->assertJsonPath('data.members_count', 4)
-        ->assertJsonPath('data.modules.sites.available', false);
+        ->assertJsonPath('data.sites_count', 0)
+        ->assertJsonPath('data.modules.billing.available', false);
 });

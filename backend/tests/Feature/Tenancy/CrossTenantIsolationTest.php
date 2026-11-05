@@ -6,8 +6,10 @@ use SiteXPost\Kernel\Support\JobRun;
 use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\Audit\Audit;
 use SiteXPost\Modules\Identity\Domain\User;
+use SiteXPost\Modules\Sites\Domain\Site;
 use SiteXPost\Modules\Workspace\Domain\WorkspaceInvitation;
 use SiteXPost\Modules\Workspace\Enums\WorkspaceRole;
+use Tests\Support\FakeWordPress;
 
 /**
  * Tenant A must never read or modify tenant B. This test enumerates EVERY
@@ -52,6 +54,9 @@ function twoTenants(): array
         return $job;
     });
 
+    $wpB = (new FakeWordPress)->install();
+    $siteB = connectedSite($b['workspace'], $wpB, 'Site B');
+
     return [
         'a' => $a,
         'b' => $b,
@@ -59,7 +64,10 @@ function twoTenants(): array
             'member' => memberOf($b['workspace'], $b['editor'])->id,
             'invitation' => $invB->id,
             'jobRun' => $jobB->id,
+            'site' => $siteB->id,
         ],
+        'siteB' => $siteB,
+        'wpB' => $wpB,
     ];
 }
 
@@ -97,7 +105,7 @@ it('returns 404 when tenant A uses its own workspace with tenant B child ids', f
     ['a' => $a, 'b' => $b, 'ids' => $ids] = twoTenants();
 
     foreach (tenantRoutes() as [$method, $uri]) {
-        if (! preg_match('/\{(member|invitation|jobRun)\}/', $uri)) {
+        if (! preg_match('/\{(member|invitation|jobRun|site)\}/', $uri)) {
             continue;
         }
         $url = fillUri($uri, $a['workspace']->id, $ids);
@@ -107,6 +115,25 @@ it('returns 404 when tenant A uses its own workspace with tenant B child ids', f
     }
 
     expect(memberOf($b['workspace'], $b['editor'])->role->value)->toBe('EDITOR');
+});
+
+it('never lets tenant A operate tenant B WordPress sites', function () {
+    ['a' => $a, 'b' => $b, 'ids' => $ids, 'wpB' => $wpB] = twoTenants();
+
+    foreach (tenantRoutes() as [$method, $uri]) {
+        if (! str_contains($uri, '{site}')) {
+            continue;
+        }
+        foreach ([$a['workspace']->id, $b['workspace']->id] as $wsId) {
+            $res = $this->actingAs($a['owner'])->json($method, fillUri($uri, $wsId, $ids), ['name' => 'hacked']);
+            expect($res->status())->toBe(404, "{$method} {$uri} returned {$res->status()}");
+        }
+    }
+
+    $sites = collect($this->actingAs($a['owner'])->getJson("/api/v1/workspaces/{$a['workspace']->id}/sites")->json('data'));
+    expect($sites)->toBeEmpty()
+        ->and($wpB->posts)->toBeEmpty()
+        ->and(app(TenantContext::class)->runAs($b['workspace'], null, fn () => Site::query()->sole()->status->value))->toBe('connected');
 });
 
 it('cannot transfer ownership to a member of another tenant', function () {

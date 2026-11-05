@@ -4,6 +4,7 @@ use SiteXPost\Kernel\KernelServiceProvider;
 use SiteXPost\Modules\Audit\AuditServiceProvider;
 use SiteXPost\Modules\Identity\IdentityServiceProvider;
 use SiteXPost\Modules\Platform\PlatformServiceProvider;
+use SiteXPost\Modules\Sites\SitesServiceProvider;
 use SiteXPost\Modules\Workspace\WorkspaceServiceProvider;
 
 return [
@@ -12,4 +13,5 @@ return [
     IdentityServiceProvider::class,
     WorkspaceServiceProvider::class,
     PlatformServiceProvider::class,
+    SitesServiceProvider::class,
 ];
