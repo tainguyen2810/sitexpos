@@ -18,5 +18,7 @@ echo "==> Frontend: unit tests"
 (cd "$ROOT/frontend" && npm run --silent test)
 echo "==> Frontend: build"
 (cd "$ROOT/frontend" && npm run --silent build)
+echo "==> Frontend: no demo code in production build"
+(cd "$ROOT/frontend" && npm run --silent check:no-demo)
 
 echo "All checks passed."

@@ -100,6 +100,9 @@ Nguyên tắc: **chỉ làm phase được yêu cầu**, không tự chuyển ph
 
 **Ngoài phạm vi Phase 1**: sites/WordPress, billing/quota, AI, research, nội dung, GSC, deploy production.
 
+### Giao diện demo (05/11/2026)
+Nguyên mẫu UI cho mọi màn hình của các phase sau (18 trang khách hàng, 12 trang Super Admin), chạy bằng dữ liệu mẫu trong trình duyệt: `npm run demo` / `npm run demo:admin`. Chỉ dùng để duyệt giao diện và luồng; mỗi phase vẫn phải xây màn hình thật nối API. Xem [DEMO-UI.md](DEMO-UI.md).
+
 ---
 
 ## Phase 2 — Kết nối WordPress

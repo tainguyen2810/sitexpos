@@ -9,7 +9,10 @@
   "scripts": {
     "dev": "vite --mode development",
     "dev:admin": "cross-env SITEX_APP=admin vite --mode development",
+    "demo": "vite --mode demo",
+    "demo:admin": "cross-env SITEX_APP=admin vite --mode demo",
     "build": "npm run build:customer && npm run build:admin",
+    "check:no-demo": "node scripts/assert-no-demo.mjs",
     "build:customer": "cross-env SITEX_APP=customer vite build",
     "build:admin": "cross-env SITEX_APP=admin vite build",
     "typecheck": "vue-tsc --noEmit -p tsconfig.app.json",
