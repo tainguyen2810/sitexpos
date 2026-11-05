@@ -1,6 +1,7 @@
 // Vietnamese is the default and reference locale. Keys are grouped by module.
 import writer from './writer.vi'
 import writerAdmin from './writerAdmin.vi'
+import p6 from './phase6.vi'
 export default {
   common: {
     appName: 'SiteX Post',
@@ -118,6 +119,11 @@ export default {
     keywords: 'Từ khóa',
     research: 'SEO Planner',
     writer: 'AI Writer',
+    media: 'Media',
+    seo: 'SEO',
+    publishing: 'Đăng WordPress',
+    mediaAdmin: 'Media & ảnh AI',
+    publishingAdmin: 'Publishing',
     writerAdmin: 'AI Writer',
     research_admin: 'Nghiên cứu SEO',
     billing: 'Gói & thanh toán',
@@ -939,4 +945,5 @@ export default {
   },
   writer,
   writerAdmin,
+  p6,
 } as const

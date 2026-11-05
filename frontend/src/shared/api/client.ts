@@ -92,7 +92,9 @@ export async function request<T>(method: Method, path: string, body?: unknown, o
   }
   const xsrf = readCookie('XSRF-TOKEN')
   if (xsrf) headers['X-XSRF-TOKEN'] = xsrf
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData
+  // Multipart bodies (file uploads) let the browser set the boundary header.
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
 
   let response: Response
   try {
@@ -100,7 +102,7 @@ export async function request<T>(method: Method, path: string, body?: unknown, o
       method,
       headers,
       credentials: 'include',
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
     })
   } catch {
     throw new ApiError(0, 'network_error', '')

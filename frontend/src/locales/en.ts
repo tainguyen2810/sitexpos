@@ -9,7 +9,7 @@ export default {
     loginTitle: 'Sign in', email: 'Email', password: 'Password', login: 'Sign in', logout: 'Sign out', register: 'Sign up',
     registerTitle: 'Create your account', name: 'Full name', passwordConfirmation: 'Confirm password', forgot: 'Forgot password?',
   },
-  nav: { dashboard: 'Dashboard', members: 'Members', settings: 'Workspace settings', audit: 'Activity log', account: 'My account', sites: 'Websites', ai: 'AI tasks', aiUsage: 'AI costs', aiSettings: 'AI settings', jobs: 'Queues & jobs', writer: 'AI Writer', writerAdmin: 'AI Writer' },
+  nav: { dashboard: 'Dashboard', members: 'Members', settings: 'Workspace settings', audit: 'Activity log', account: 'My account', sites: 'Websites', ai: 'AI tasks', aiUsage: 'AI costs', aiSettings: 'AI settings', jobs: 'Queues & jobs', writer: 'AI Writer', writerAdmin: 'AI Writer', media: 'Media', seo: 'SEO', publishing: 'WordPress publishing', mediaAdmin: 'Media & AI images', publishingAdmin: 'Publishing' },
   dashboard: { sites: 'Connected websites', manageSites: 'Manage websites' },
   sites: {
     title: 'Websites',
