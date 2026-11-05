@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SiteXPost\Modules\Publishing\Support;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use SiteXPost\Modules\Publishing\Domain\PublishingJob;
 
 /**
@@ -95,9 +96,9 @@ final class ScheduleRules
     /**
      * Jobs occupying a publishing slot between two instants (UTC).
      *
-     * @return \Illuminate\Database\Eloquent\Builder<PublishingJob>
+     * @return Builder<PublishingJob>
      */
-    private function slots(?string $siteId, CarbonImmutable $from, CarbonImmutable $to, ?string $excludeJobId): \Illuminate\Database\Eloquent\Builder
+    private function slots(?string $siteId, CarbonImmutable $from, CarbonImmutable $to, ?string $excludeJobId): Builder
     {
         $q = PublishingJob::query()->where('wp_target_status', 'publish')
             ->where(fn ($w) => $w->where(fn ($s) => $s->whereIn('status', [PublishingStatus::SCHEDULED, PublishingStatus::PUBLISHING])->whereBetween('scheduled_at', [$from, $to]))

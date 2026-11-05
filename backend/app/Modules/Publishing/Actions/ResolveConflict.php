@@ -11,7 +11,6 @@ use SiteXPost\Modules\Publishing\Domain\PublishingConflict;
 use SiteXPost\Modules\Publishing\Domain\PublishingJob;
 use SiteXPost\Modules\Publishing\Domain\WordPressPostMapping;
 use SiteXPost\Modules\Publishing\Support\PublishingStatus as S;
-use SiteXPost\Modules\Sites\Contracts\WordPressGateway;
 
 /**
  * Human resolution of a WordPress conflict. Nothing is overwritten
@@ -31,7 +30,7 @@ final class ResolveConflict
 {
     public const RESOLUTIONS = ['keep_wordpress', 'overwrite', 'merge_manually', 'new_draft', 'cancel_update'];
 
-    public function __construct(private readonly WordPressGateway $wp, private readonly ManageJobs $jobs) {}
+    public function __construct(private readonly ManageJobs $jobs) {}
 
     public function handle(PublishingConflict $conflict, string $resolution, ?string $note, string $userId): PublishingConflict
     {

@@ -252,7 +252,7 @@ final class ResearchAnalyzer
                 continue;
             }
             $type = $f->kind === 'question' ? 'unanswered_question' : 'competitor_topic';
-            $name = $competitors->get($f->competitor_website_id)?->name ?? '';
+            $name = $competitors->get($f->competitor_website_id)->name ?? '';
             $n += $this->gap($campaign, $runId, $type, $f->title,
                 $type === 'unanswered_question' ? "Đối thủ {$name} có trả lời câu hỏi này, website của bạn chưa có." : "Đối thủ {$name} có nội dung về chủ đề này, website của bạn chưa có.",
                 ['competitor' => $name, 'url' => $f->url, 'fetched_at' => $f->fetched_at?->toIso8601ZuluString()], null, $f->competitor_website_id, [], 55);

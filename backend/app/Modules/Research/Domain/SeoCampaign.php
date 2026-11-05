@@ -9,12 +9,30 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
 
 /**
  * An SEO research campaign for one site (industry, market, language, goals).
  *
  * @property string $id
+ * @property string $workspace_id
+ * @property string $site_id
+ * @property string $name
+ * @property string $industry
+ * @property string $market
+ * @property string $language
+ * @property list<string>|null $products
+ * @property list<string>|null $services
+ * @property list<string>|null $audiences
+ * @property list<string>|null $goals
+ * @property list<string>|null $brand_terms
+ * @property string $status
+ * @property bool $is_demo
+ * @property ?string $created_by
+ * @property ?Carbon $last_run_at
+ * @property ?Carbon $created_at
+ * @property ?Carbon $updated_at
  */
 class SeoCampaign extends Model
 {

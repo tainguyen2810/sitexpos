@@ -78,7 +78,7 @@ class FactChecker
             foreach ($batch as $n => $row) {
                 $payload[] = ['n' => $n + 1, 'claim' => $row['claim']->claim_text, 'category' => $row['claim']->category, 'risk' => $row['claim']->risk_level,
                     'evidence' => array_map(fn (EvidenceItem $e) => ['ref' => $e->ref, 'excerpt' => mb_substr($e->excerpt, 0, 600),
-                        'source' => $e->source?->title ?? $e->source?->url, 'date' => ($e->source?->modified_at ?? $e->source?->published_at)?->toDateString(),
+                        'source' => $e->source->title ?? $e->source?->url, 'date' => ($e->source->modified_at ?? $e->source?->published_at)?->toDateString(),
                         'version_context' => $e->version_context], $row['candidates'])];
             }
             try {
@@ -100,7 +100,7 @@ class FactChecker
                 $sup = $ans !== null ? $pick((array) ($ans['supporting_refs'] ?? [])) : [];
                 $con = $ans !== null ? $pick((array) ($ans['contradicting_refs'] ?? [])) : [];
                 $shape = fn (array $list) => array_map(fn (EvidenceItem $e) => ['ref' => $e->ref, 'excerpt' => $e->excerpt,
-                    'reliability' => $e->source?->reliability_score, 'date' => ($e->source?->modified_at ?? $e->source?->published_at)?->toDateString()], $list);
+                    'reliability' => $e->source?->reliability_score, 'date' => ($e->source->modified_at ?? $e->source?->published_at)?->toDateString()], $list);
                 $decision = VerdictRules::decide($c->claim_text, $c->category, RiskLevel::from($c->risk_level), $ans['verdict'] ?? null, $shape($sup), $shape($con), $minRel, $months);
                 $this->record($fc, $c, $decision['verdict'], $sup, $con, $ans !== null ? Text::clean($ans['date_context'] ?? '', 300) : null,
                     $ans !== null ? Text::clean($ans['explanation'] ?? '', 2000) : 'Mô hình không trả lời cho claim này.', $decision['notes'], 'model', $model);
@@ -158,9 +158,9 @@ class FactChecker
     private function record(FactCheckRun $fc, ArticleClaim $c, Verdict $verdict, array $sup, array $con, ?string $date, ?string $explanation, array $notes, string $type, ?string $model): void
     {
         DB::transaction(function () use ($fc, $c, $verdict, $sup, $con, $date, $explanation, $notes, $type, $model): void {
-            $shape = static fn (EvidenceItem $e): array => ['evidence_id' => $e->id, 'ref' => $e->ref, 'url' => $e->source?->final_url ?? $e->source?->url,
+            $shape = static fn (EvidenceItem $e): array => ['evidence_id' => $e->id, 'ref' => $e->ref, 'url' => $e->source->final_url ?? $e->source?->url,
                 'title' => $e->source?->title, 'excerpt' => mb_substr($e->excerpt, 0, 1000), 'source_type' => $e->source?->source_type,
-                'reliability' => $e->source?->reliability_score, 'date' => ($e->source?->modified_at ?? $e->source?->published_at)?->toDateString(), 'version_context' => $e->version_context];
+                'reliability' => $e->source?->reliability_score, 'date' => ($e->source->modified_at ?? $e->source?->published_at)?->toDateString(), 'version_context' => $e->version_context];
             $r = new FactCheckResult;
             $r->forceFill([
                 'fact_check_run_id' => $fc->id, 'article_claim_id' => $c->id, 'verdict' => $verdict->value,

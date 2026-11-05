@@ -7,6 +7,7 @@ namespace SiteXPost\Modules\Media\Domain;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
 
 /**
@@ -14,6 +15,39 @@ use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
  *
  * @property string $id
  * @property string $workspace_id
+ * @property ?string $site_id
+ * @property string $source_type
+ * @property ?string $source_url
+ * @property ?string $source_ref
+ * @property ?string $original_filename
+ * @property ?string $mime
+ * @property ?int $width
+ * @property ?int $height
+ * @property ?int $bytes
+ * @property ?string $sha256
+ * @property ?string $dhash
+ * @property ?string $duplicate_of_id
+ * @property ?string $storage_path
+ * @property string $license
+ * @property ?string $attribution
+ * @property bool $is_ai_generated
+ * @property ?string $ai_provider
+ * @property ?string $ai_model
+ * @property ?string $ai_prompt
+ * @property ?string $generation_job_id
+ * @property ?string $title
+ * @property ?string $alt_text
+ * @property ?string $caption
+ * @property array<string, mixed>|null $metadata
+ * @property string $status
+ * @property ?string $error_code
+ * @property ?int $wp_media_id
+ * @property int $usage_count
+ * @property bool $is_demo
+ * @property ?string $created_by
+ * @property ?Carbon $created_at
+ * @property ?Carbon $updated_at
+ * @property ?Carbon $deleted_at
  */
 class MediaAsset extends Model
 {

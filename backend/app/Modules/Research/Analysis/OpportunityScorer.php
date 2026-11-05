@@ -126,7 +126,7 @@ final class OpportunityScorer
                 $max += $c['max'];
             }
         }
-        $base = $max > 0 ? $sum / $max * 100 : 0;
+        $base = $sum / $max * 100; // $max is always > 0 (fixed criteria)
 
         $real = array_values(array_diff(array_unique($in['sources']), ['ai_expansion']));
         $confidence = match (true) {

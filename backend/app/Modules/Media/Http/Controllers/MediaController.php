@@ -6,8 +6,10 @@ namespace SiteXPost\Modules\Media\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
 use SiteXPost\Kernel\Http\ApiException;
+use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\Media\Actions\CreateInfographic;
 use SiteXPost\Modules\Media\Actions\ManageAssets;
 use SiteXPost\Modules\Media\Domain\MediaAsset;
@@ -21,10 +23,11 @@ use SiteXPost\Modules\Media\Http\Requests\UpdateMediaRequest;
 use SiteXPost\Modules\Media\Http\Requests\UploadMediaRequest;
 use SiteXPost\Modules\Media\Jobs\MediaJob;
 use SiteXPost\Modules\Media\Jobs\SyncRemoteMedia;
-use SiteXPost\Modules\Media\Queries\MediaLibraryQuery;
 use SiteXPost\Modules\Media\Support\MediaLimits;
+use SiteXPost\Modules\Media\Support\MediaStorage;
 use SiteXPost\Modules\Sites\Contracts\SiteDirectory;
 use SiteXPost\Modules\Workspace\Domain\Workspace;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Media Library: list / upload / edit / derive / delete, WordPress &
@@ -60,7 +63,7 @@ final class MediaController
     {
         Gate::authorize('create', MediaAsset::class);
         $file = $request->file('file');
-        if (! $file instanceof \Illuminate\Http\UploadedFile) {
+        if (! $file instanceof UploadedFile) {
             throw ApiException::notFound();
         }
         $data = $request->validated();
@@ -117,7 +120,7 @@ final class MediaController
                         'stock' => false, // no licensed stock provider integrated yet
                         default => true,
                     },
-                    'status' => $row?->status ?? 'idle', 'items_count' => (int) ($row?->items_count ?? MediaAsset::query()->where('site_id', $sid)->where('source_type', $type === 'upload' ? 'upload' : $type)->count()),
+                    'status' => $row->status ?? 'idle', 'items_count' => (int) ($row->items_count ?? MediaAsset::query()->where('site_id', $sid)->where('source_type', $type === 'upload' ? 'upload' : $type)->count()),
                     'last_synced_at' => $row?->last_synced_at?->toIso8601ZuluString(), 'last_error_code' => $row?->last_error_code,
                 ];
             }
@@ -169,18 +172,18 @@ final class MediaController
      * sandboxed preview iframe). The signature covers workspace + asset +
      * variant; the asset is looked up inside that workspace only.
      */
-    public function file(Request $request, string $workspace, string $asset, string $variant): \Symfony\Component\HttpFoundation\Response
+    public function file(Request $request, string $workspace, string $asset, string $variant): Response
     {
         $ws = Workspace::query()->find($workspace);
         if ($ws === null || ! in_array($variant, ['original', 'optimized', 'webp', 'avif', 'thumbnail'], true)) {
             throw ApiException::notFound();
         }
 
-        return app(\SiteXPost\Kernel\Tenancy\TenantContext::class)->runAs($ws, null, function () use ($asset, $variant) {
+        return app(TenantContext::class)->runAs($ws, null, function () use ($asset, $variant) {
             $a = MediaAsset::query()->find($asset);
             $v = $a !== null ? (MediaVersion::query()->where('media_asset_id', $a->id)->where('kind', $variant)->first()
                 ?? MediaVersion::query()->where('media_asset_id', $a->id)->where('kind', 'optimized')->first()) : null;
-            $bytes = $v !== null ? app(\SiteXPost\Modules\Media\Support\MediaStorage::class)->get($v->storage_path) : null;
+            $bytes = $v !== null ? app(MediaStorage::class)->get($v->storage_path) : null;
             if ($v === null || $bytes === null) {
                 throw ApiException::notFound();
             }

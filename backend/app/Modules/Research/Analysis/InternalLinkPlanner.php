@@ -23,7 +23,7 @@ final class InternalLinkPlanner
         foreach (TopicCluster::query()->where('campaign_id', $campaign->id)->where('status', 'active')->get() as $cluster) {
             $ideas = ContentIdea::query()->where('cluster_id', $cluster->id)->whereNotIn('status', ['rejected'])->with('primaryKeyword:id,keyword')->get();
             $pillarIdea = $ideas->firstWhere('is_pillar', true);
-            $pillarKeyword = Keyword::query()->find($cluster->pillar_keyword_id)?->keyword ?? $cluster->name;
+            $pillarKeyword = Keyword::query()->find($cluster->pillar_keyword_id)->keyword ?? $cluster->name;
 
             [$toType, $toId] = $pillarIdea !== null ? ['idea', $pillarIdea->id] : ($cluster->pillar_content_item_id !== null ? ['content', $cluster->pillar_content_item_id] : [null, null]);
             if ($toId === null) {

@@ -70,6 +70,7 @@ function twoTenants(): array
     $siteB = connectedSite($b['workspace'], $wpB, 'Site B');
     $researchB = researchFixture($b['workspace'], $siteB);
     $writerB = writerFixture($b['workspace'], $siteB);
+    $phase6B = phase6Fixture($b['workspace'], $siteB, $writerB);
 
     return [
         'a' => $a,
@@ -80,7 +81,7 @@ function twoTenants(): array
             'jobRun' => $jobB->id,
             'site' => $siteB->id,
             'workflowRun' => $runB->id,
-        ] + $researchB + $writerB,
+        ] + $researchB + $writerB + $phase6B,
         'siteB' => $siteB,
         'wpB' => $wpB,
     ];
@@ -124,7 +125,7 @@ it('returns 404 when tenant A uses its own workspace with tenant B child ids', f
     ['a' => $a, 'b' => $b, 'ids' => $ids] = twoTenants();
 
     foreach (tenantRoutes() as [$method, $uri]) {
-        if (! preg_match('/\{(member|invitation|jobRun|site|workflowRun|campaign|notification|article|preset|batch)\}/', $uri)) {
+        if (! preg_match('/\{(member|invitation|jobRun|site|workflowRun|campaign|notification|article|preset|batch|articleRef|asset|imageJob|auditRun|suggestion|publishingBatch|mapping|publishingJob|conflict)\}/', $uri)) {
             continue;
         }
         $url = fillUri($uri, $a['workspace']->id, $ids);

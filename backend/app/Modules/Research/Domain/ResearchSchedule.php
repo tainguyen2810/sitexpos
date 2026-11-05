@@ -13,6 +13,18 @@ use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
  * Automatic research cadence of a campaign.
  *
  * @property string $id
+ * @property string $workspace_id
+ * @property string $campaign_id
+ * @property string $frequency
+ * @property ?int $day_of_week
+ * @property ?int $day_of_month
+ * @property int $hour_utc
+ * @property bool $is_enabled
+ * @property ?Carbon $next_run_at
+ * @property ?Carbon $last_run_at
+ * @property ?string $last_research_run_id
+ * @property ?Carbon $created_at
+ * @property ?Carbon $updated_at
  */
 class ResearchSchedule extends Model
 {

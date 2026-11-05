@@ -116,7 +116,7 @@ final class IdeaController
             'version' => 1,
             'title' => $idea->title,
             'primary_keyword' => $primary?->keyword,
-            'secondary_keywords' => $idea->keywords->filter(fn ($k) => $k->pivot->role === 'secondary')->pluck('keyword')->values()->all(),
+            'secondary_keywords' => $idea->keywords->filter(fn ($k) => data_get($k, 'pivot.role') === 'secondary')->pluck('keyword')->values()->all(),
             'search_intent' => $idea->search_intent,
             'content_type' => $idea->content_type,
             'audience' => $idea->audience,

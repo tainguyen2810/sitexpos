@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SiteXPost\Modules\Media\Support;
 
+use Illuminate\Support\Str;
 use SiteXPost\Modules\Media\Domain\MediaAsset;
 use SiteXPost\Modules\Media\Domain\MediaVersion;
 
@@ -79,7 +80,7 @@ final class MediaPipeline
             if ($v !== null && $bytes !== null) {
                 $ext = (string) pathinfo($v->storage_path, PATHINFO_EXTENSION);
                 $base = pathinfo((string) ($asset->original_filename ?: 'sitex-image'), PATHINFO_FILENAME);
-                $base = trim((string) preg_replace('/[^a-z0-9-]+/', '-', strtolower(\Illuminate\Support\Str::ascii($base))), '-') ?: 'sitex-image';
+                $base = trim((string) preg_replace('/[^a-z0-9-]+/', '-', strtolower(Str::ascii($base))), '-') ?: 'sitex-image';
 
                 return ['bytes' => $bytes, 'mime' => $v->mime, 'filename' => mb_substr($base, 0, 80).'.'.$ext];
             }

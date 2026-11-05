@@ -11,7 +11,8 @@ use SiteXPost\Modules\Research\Support\Text;
  * sync) and the Phase 4 planner clusters. Rules:
  * - only published items with a known URL (never invent URLs);
  * - the anchor is a phrase that already exists in the paragraph (no text
- *   is rewritten), 2–6 words, every word also in the target title;
+ *   is rewritten), 2–6 words, every word also in the target title, never
+ *   just the article's own focus keyword (no cannibalizing anchors);
  * - at most one link per paragraph, one per target, five per article;
  * - never in the first paragraph, FAQ, sources, short paragraphs or
  *   paragraphs that already contain a link.
@@ -32,6 +33,7 @@ final class InternalLinkEngine
     {
         $topic = Text::tokens($article['title'].' '.$article['primary_keyword'].' '.implode(' ', (array) $article['secondary_keywords']).' '
             .implode(' ', array_column(array_filter($html->headings, fn ($h) => $h['level'] === 2), 'text')));
+        $own = Text::tokens((string) $article['primary_keyword']);
         $intent = (string) ($article['search_intent'] ?? 'informational');
         $commercial = in_array($intent, ['commercial', 'commercial_investigation', 'transactional'], true);
 
@@ -71,10 +73,7 @@ final class InternalLinkEngine
         foreach ($candidates as $c) {
             $best = null;
             foreach ($paragraphs as $p) {
-                if (isset($usedParagraphs[$p['index']])) {
-                    continue;
-                }
-                $anchor = self::anchor($p['text'], $c['tokens']);
+                $anchor = self::anchor($p['text'], $c['tokens'], $own);
                 if ($anchor === null) {
                     continue;
                 }
@@ -135,8 +134,9 @@ final class InternalLinkEngine
      * target title (original casing kept so it can be linked in place).
      *
      * @param  list<string>  $targetTokens
+     * @param  list<string>  $avoid  tokens of the article's focus keyword
      */
-    public static function anchor(string $paragraph, array $targetTokens): ?string
+    public static function anchor(string $paragraph, array $targetTokens, array $avoid = []): ?string
     {
         $words = preg_split('/\s+/u', $paragraph, -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $target = array_flip($targetTokens);
@@ -149,9 +149,16 @@ final class InternalLinkEngine
                 if ($phrase === '' || preg_match('/[,.;:!?()]/u', $phrase) === 1) {
                     continue;
                 }
+                $parts = preg_split('/\s+/u', $phrase) ?: [];
+                if (Text::tokens((string) reset($parts)) === [] || Text::tokens((string) end($parts)) === []) {
+                    continue; // no anchor starting / ending with a function word
+                }
                 $tokens = Text::tokens($phrase);
                 if (count($tokens) < 2 || count(array_diff($tokens, array_keys($target))) > 0) {
                     continue;
+                }
+                if ($avoid !== [] && count(array_diff($tokens, $avoid)) === 0) {
+                    continue; // never link the article's own focus keyword to another page
                 }
                 if (count($tokens) > $bestLen) {
                     $best = $phrase;

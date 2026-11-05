@@ -24,10 +24,10 @@ final class PlacementController
 {
     public function __construct(private readonly ArticleCatalog $articles, private readonly Placements $placements, private readonly MediaLibrary $library) {}
 
-    public function index(Request $request, Workspace $workspace, string $article): JsonResponse
+    public function index(Request $request, Workspace $workspace, string $articleRef): JsonResponse
     {
         Gate::authorize('viewAny', MediaAsset::class);
-        $a = $this->article($article);
+        $a = $this->article($articleRef);
         $content = $this->articles->currentContent($a['id']);
 
         return new JsonResponse(['data' => [
@@ -37,19 +37,19 @@ final class PlacementController
         ]]);
     }
 
-    public function suggest(Request $request, Workspace $workspace, string $article): JsonResponse
+    public function suggest(Request $request, Workspace $workspace, string $articleRef): JsonResponse
     {
         Gate::authorize('create', MediaAsset::class);
-        $a = $this->article($article);
+        $a = $this->article($articleRef);
         $n = $this->placements->suggest($a['id'], (string) $request->user()?->getAuthIdentifier());
 
         return new JsonResponse(['data' => ['suggested' => $n, 'placements' => $this->library->placements($a['id'], false)]]);
     }
 
-    public function save(SavePlacementsRequest $request, Workspace $workspace, string $article): JsonResponse
+    public function save(SavePlacementsRequest $request, Workspace $workspace, string $articleRef): JsonResponse
     {
         Gate::authorize('create', MediaAsset::class);
-        $a = $this->article($article);
+        $a = $this->article($articleRef);
         $this->placements->save($a['id'], $request->validated('items'), (string) $request->user()?->getAuthIdentifier());
 
         return new JsonResponse(['data' => ['placements' => $this->library->placements($a['id'], false)]]);

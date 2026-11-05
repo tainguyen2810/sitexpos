@@ -70,7 +70,7 @@ final class MetadataGenerator
         $cut = mb_substr($t, 0, 60);
         $sp = mb_strrpos($cut, ' ');
 
-        return rtrim($sp !== false && $sp > 30 ? mb_substr($cut, 0, $sp) : $cut, " ,.:;–-");
+        return rtrim($sp !== false && $sp > 30 ? mb_substr($cut, 0, $sp) : $cut, ' ,.:;–-');
     }
 
     public static function description(string $text): string
@@ -83,7 +83,7 @@ final class MetadataGenerator
         $cut = mb_substr($t, 0, 152);
         $sp = mb_strrpos($cut, ' ');
 
-        return rtrim($sp !== false && $sp > 80 ? mb_substr($cut, 0, $sp) : $cut, " ,.:;–-").'…';
+        return rtrim($sp !== false && $sp > 80 ? mb_substr($cut, 0, $sp) : $cut, ' ,.:;–-').'…';
     }
 
     public static function slug(string $text): string

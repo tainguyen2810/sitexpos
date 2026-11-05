@@ -28,9 +28,9 @@ Route::prefix('api/v1/workspaces/{workspace}/media')
         Route::get('generations/{imageJob}', [ImageGenerationController::class, 'show'])->name('generations.show');
         Route::post('generations/{imageJob}/regenerate', [ImageGenerationController::class, 'regenerate'])->middleware(['sitex.verified', 'throttle:media-ai'])->name('generations.regenerate');
 
-        Route::get('articles/{article}/placements', [PlacementController::class, 'index'])->name('placements.index');
-        Route::post('articles/{article}/placements/suggest', [PlacementController::class, 'suggest'])->name('placements.suggest');
-        Route::put('articles/{article}/placements', [PlacementController::class, 'save'])->name('placements.save');
+        Route::get('articles/{articleRef}/placements', [PlacementController::class, 'index'])->name('placements.index');
+        Route::post('articles/{articleRef}/placements/suggest', [PlacementController::class, 'suggest'])->name('placements.suggest');
+        Route::put('articles/{articleRef}/placements', [PlacementController::class, 'save'])->name('placements.save');
     });
 
 // Signed, expiring file URLs (no session; signature = authorization).

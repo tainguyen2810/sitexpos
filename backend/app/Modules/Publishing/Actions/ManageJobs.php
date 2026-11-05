@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\Publishing\Actions;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use SiteXPost\Kernel\Http\ApiException;
 use SiteXPost\Modules\Audit\Audit;
@@ -60,7 +61,7 @@ final class ManageJobs
         };
         $scheduledAt = null;
         if ($mode === 'scheduled' || $mode === 'auto') {
-            $scheduledAt = isset($data['scheduled_at']) && $data['scheduled_at'] !== null ? CarbonImmutable::parse((string) $data['scheduled_at'])->utc() : null;
+            $scheduledAt = isset($data['scheduled_at']) ? CarbonImmutable::parse((string) $data['scheduled_at'])->utc() : null;
             if ($scheduledAt === null) {
                 throw new ApiException(422, 'schedule_required', __('publishing.codes.schedule_required'));
             }
@@ -112,13 +113,15 @@ final class ManageJobs
         return DB::transaction(function () use ($job, $userId, $scheduledAt, $notBefore): PublishingJob {
             /** @var PublishingJob $job */
             $job = PublishingJob::query()->lockForUpdate()->findOrFail($job->id);
+            if ($scheduledAt !== null && in_array($job->mode, ['scheduled', 'auto'], true) && in_array($job->status, [S::DRAFT, S::READY_FOR_REVIEW], true)) {
+                $job->scheduled_at = Carbon::parse($scheduledAt)->utc();
+            }
             if ($job->status === S::DRAFT) {
-                $this->recheck($job);
+                if ($this->recheck($job)->status === S::DRAFT) {
+                    throw new ApiException(422, 'gates_failed', __('publishing.codes.'.$job->blocked_reason), ['gates' => $job->gate_results]);
+                }
             }
             S::assert($job->status, S::APPROVED);
-            if ($scheduledAt !== null && in_array($job->mode, ['scheduled', 'auto'], true)) {
-                $job->scheduled_at = CarbonImmutable::parse($scheduledAt)->utc();
-            }
             $result = $this->gates->evaluate($job, 'approve');
             $job->forceFill(['gate_results' => $this->summarize($result), 'blocked_reason' => $result['blocking']]);
             if (! $result['ok']) {
@@ -149,7 +152,7 @@ final class ManageJobs
             throw ApiException::conflict('invalid_transition', __('publishing.errors.invalid_transition', ['from' => $job->status, 'to' => S::SCHEDULED]));
         }
         $old = $job->scheduled_at?->toIso8601ZuluString();
-        $job->scheduled_at = CarbonImmutable::parse($when)->utc();
+        $job->scheduled_at = Carbon::parse($when)->utc();
         $this->toSchedule($job);
         Audit::record('publishing.job_rescheduled', $job, ['from' => $old, 'to' => $job->scheduled_at?->toIso8601ZuluString()], actorId: $userId);
 

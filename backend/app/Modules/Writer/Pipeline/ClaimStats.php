@@ -27,7 +27,7 @@ final class ClaimStats
         $by = $claims->countBy('status')->all();
         $unresolved = $claims->where('status', '!=', 'VERIFIED');
         $version = ArticleVersion::query()->find($versionId);
-        $unchecked = collect($version?->section_hashes ?? [])->reject(fn ($s) => (bool) ($s['claims_checked'] ?? false))->pluck('key')->values()->all();
+        $unchecked = collect($version->section_hashes ?? [])->reject(fn ($s) => (bool) ($s['claims_checked'] ?? false))->pluck('key')->values()->all();
 
         return [
             'total' => $claims->count(),

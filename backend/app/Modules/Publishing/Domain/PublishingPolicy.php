@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\Publishing\Domain;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
 
 /**
@@ -13,6 +14,26 @@ use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
  *
  * @property string $id
  * @property string $workspace_id
+ * @property string $site_id
+ * @property string $default_mode
+ * @property bool $auto_publish_enabled
+ * @property ?string $auto_publish_enabled_by
+ * @property ?Carbon $auto_publish_enabled_at
+ * @property bool $require_seo_pass
+ * @property bool $require_media_ready
+ * @property bool $allow_update_published
+ * @property int $max_posts_per_day
+ * @property int $max_posts_per_campaign_per_day
+ * @property int $min_minutes_between_posts
+ * @property int $window_start_hour
+ * @property int $window_end_hour
+ * @property array<string, mixed>|null $window_days
+ * @property int $max_schedule_days_ahead
+ * @property int $max_attempts
+ * @property int $missed_grace_minutes
+ * @property ?string $updated_by
+ * @property ?Carbon $created_at
+ * @property ?Carbon $updated_at
  */
 class PublishingPolicy extends Model
 {

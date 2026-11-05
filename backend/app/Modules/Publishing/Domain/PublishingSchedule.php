@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\Publishing\Domain;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
 
 /**
@@ -13,6 +14,16 @@ use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
  *
  * @property string $id
  * @property string $workspace_id
+ * @property string $site_id
+ * @property string $publishing_job_id
+ * @property Carbon $scheduled_at
+ * @property string $timezone
+ * @property string $local_time
+ * @property string $status
+ * @property ?Carbon $dispatched_at
+ * @property ?string $note
+ * @property ?Carbon $created_at
+ * @property ?Carbon $updated_at
  */
 class PublishingSchedule extends Model
 {

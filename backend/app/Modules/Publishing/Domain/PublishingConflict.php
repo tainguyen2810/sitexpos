@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\Publishing\Domain;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
 
 /**
@@ -13,6 +14,21 @@ use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
  *
  * @property string $id
  * @property string $workspace_id
+ * @property string $site_id
+ * @property string $article_id
+ * @property string $mapping_id
+ * @property ?string $publishing_job_id
+ * @property array<string, mixed> $types
+ * @property string $status
+ * @property ?string $resolution
+ * @property array<string, mixed>|null $wp_state
+ * @property array<string, mixed>|null $expected_state
+ * @property ?string $note
+ * @property ?string $resolved_by
+ * @property ?Carbon $resolved_at
+ * @property bool $is_demo
+ * @property ?Carbon $created_at
+ * @property ?Carbon $updated_at
  */
 class PublishingConflict extends Model
 {

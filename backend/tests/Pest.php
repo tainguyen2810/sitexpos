@@ -13,8 +13,16 @@ use SiteXPost\Modules\AiGateway\Domain\AiModel;
 use SiteXPost\Modules\AiGateway\Domain\AiTaskRoute;
 use SiteXPost\Modules\AiGateway\Registry\AiRegistry;
 use SiteXPost\Modules\Identity\Domain\User;
+use SiteXPost\Modules\Media\Domain\ImageGenerationJob;
+use SiteXPost\Modules\Media\Domain\MediaAsset;
+use SiteXPost\Modules\Publishing\Domain\PublishingBatch;
+use SiteXPost\Modules\Publishing\Domain\PublishingConflict;
+use SiteXPost\Modules\Publishing\Domain\PublishingJob;
+use SiteXPost\Modules\Publishing\Domain\WordPressPostMapping;
 use SiteXPost\Modules\Research\Domain\CampaignSettings;
 use SiteXPost\Modules\Research\Domain\SeoCampaign;
+use SiteXPost\Modules\Seo\Domain\SeoAuditRun;
+use SiteXPost\Modules\Seo\Domain\SeoLinkSuggestion;
 use SiteXPost\Modules\Sites\Connector\Signer;
 use SiteXPost\Modules\Sites\Domain\Site;
 use SiteXPost\Modules\Sites\Domain\SiteContentItem;
@@ -369,5 +377,42 @@ function writerFixture(Workspace $workspace, Site $site, string $label = 'B'): a
             'from_version_id' => $version->id, 'proposed_html' => '<p>Secret proposal '.$label.'</p>']);
 
         return ['article' => $article->id, 'version' => $version->id, 'claim' => $claim->id, 'revision' => $revision->id, 'preset' => $preset->id, 'batch' => $batch->id];
+    });
+}
+
+/**
+ * Phase 6 rows of one tenant (media, SEO, publishing) for isolation tests.
+ *
+ * @param  array<string, string>  $writer  writerFixture() ids
+ * @return array<string, string>
+ */
+function phase6Fixture(Workspace $workspace, Site $site, array $writer, string $label = 'B'): array
+{
+    return app(TenantContext::class)->runAs($workspace, null, function () use ($site, $writer, $label): array {
+        $m = static function (string $class, array $attrs) {
+            $row = new $class;
+            $row->forceFill($attrs)->save();
+
+            return $row;
+        };
+        $asset = $m(MediaAsset::class, ['site_id' => $site->id, 'source_type' => 'upload', 'license' => 'owned', 'status' => 'ready',
+            'title' => 'Secret image '.$label]);
+        $gen = $m(ImageGenerationJob::class, ['site_id' => $site->id, 'image_type' => 'featured', 'aspect_ratio' => '16:9', 'style' => 'photo',
+            'quality' => 'standard', 'image_count' => 1, 'prompt' => 'Secret prompt '.$label, 'budget_cap_micro_usd' => 100000, 'call_key' => 'img:test:'.$label.uniqid(), 'status' => 'failed']);
+        $audit = $m(SeoAuditRun::class, ['article_id' => $writer['article'], 'site_id' => $site->id, 'content_hash' => str_repeat('a', 64),
+            'rules_version' => 'test', 'score' => 50]);
+        $link = $m(SeoLinkSuggestion::class, ['article_id' => $writer['article'], 'site_id' => $site->id, 'target_wp_post_id' => 99,
+            'target_post_type' => 'post', 'target_url' => 'https://b.example/secret', 'target_title' => 'Secret '.$label, 'anchor_text' => 'secret', 'paragraph_index' => 1,
+            'relevance' => 50, 'reason' => 'test']);
+        $batch = $m(PublishingBatch::class, ['site_id' => $site->id, 'mode' => 'wp_draft', 'status' => 'paused', 'total' => 1]);
+        $mapping = $m(WordPressPostMapping::class, ['site_id' => $site->id, 'article_id' => $writer['article'],
+            'external_content_id' => 'sxa-test-'.$label, 'idempotency_key' => 'sxa-test-'.$label, 'site_host' => 'b.example', 'wp_post_id' => 42]);
+        $job = $m(PublishingJob::class, ['site_id' => $site->id, 'article_id' => $writer['article'], 'mode' => 'publish_now',
+            'status' => 'FAILED', 'active_key' => $site->id.':'.$writer['article'], 'wp_target_status' => 'publish', 'mapping_id' => $mapping->id]);
+        $conflict = $m(PublishingConflict::class, ['site_id' => $site->id, 'article_id' => $writer['article'], 'mapping_id' => $mapping->id,
+            'publishing_job_id' => $job->id, 'types' => ['manual_edit'], 'status' => 'open']);
+
+        return ['articleRef' => $writer['article'], 'asset' => $asset->id, 'imageJob' => $gen->id, 'auditRun' => $audit->id, 'suggestion' => $link->id,
+            'publishingBatch' => $batch->id, 'mapping' => $mapping->id, 'publishingJob' => $job->id, 'conflict' => $conflict->id];
     });
 }

@@ -44,7 +44,7 @@ final class ImageProcessor
             throw new MediaRejected('unsupported_type', '', ['mime' => $mime]);
         }
         $info = @getimagesizefromstring($bytes);
-        if ($info === false || ($info['mime'] ?? '') !== $mime) {
+        if ($info === false || $info['mime'] !== $mime) {
             throw new MediaRejected('invalid_image');
         }
         if ($filename !== null && $filename !== '') {

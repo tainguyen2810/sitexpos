@@ -91,7 +91,7 @@ final class RewriteWorkflow extends ArticleWorkflow
             $instruction .= ' CHỈ sửa phần văn bản "selection"; phần còn lại của section giữ nguyên từng chữ.';
         }
         $outline = ArticleOutline::query()->where('article_id', $a->id)->where('status', 'approved')->orderByDesc('version')->first();
-        $spec = collect($outline?->sections ?? [])->firstWhere('key', $section['key']);
+        $spec = collect($outline->sections ?? [])->firstWhere('key', $section['key']);
 
         try {
             $res = $this->ai->rewrite($a, $instruction, [

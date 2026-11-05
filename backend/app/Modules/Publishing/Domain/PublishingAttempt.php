@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\Publishing\Domain;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
 
 /**
@@ -13,6 +14,19 @@ use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
  *
  * @property string $id
  * @property string $workspace_id
+ * @property string $publishing_job_id
+ * @property int $attempt_no
+ * @property string $operation
+ * @property string $outcome
+ * @property ?string $error_code
+ * @property ?int $http_status
+ * @property bool $retryable
+ * @property ?string $payload_hash
+ * @property ?int $wp_post_id
+ * @property ?int $duration_ms
+ * @property array<string, mixed>|null $details
+ * @property ?Carbon $created_at
+ * @property ?Carbon $updated_at
  */
 class PublishingAttempt extends Model
 {

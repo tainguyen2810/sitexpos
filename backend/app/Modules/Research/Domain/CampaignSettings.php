@@ -6,12 +6,32 @@ namespace SiteXPost\Modules\Research\Domain;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
 
 /**
  * Research scope and automation switches of a campaign.
  *
  * @property string $id
+ * @property string $workspace_id
+ * @property string $campaign_id
+ * @property int $ideas_per_run
+ * @property list<string>|null $scope_keywords
+ * @property list<string>|null $excluded_topics
+ * @property int $max_site_pages
+ * @property int $max_competitor_pages
+ * @property bool $use_ai_expansion
+ * @property bool $auto_discover
+ * @property bool $auto_calendar
+ * @property bool $auto_create_content
+ * @property bool $auto_publish
+ * @property int $posts_per_week
+ * @property list<int>|null $publish_weekdays
+ * @property int $max_ai_cost_per_run_micro_usd
+ * @property bool $notify_opportunities
+ * @property int $notify_min_score
+ * @property ?Carbon $created_at
+ * @property ?Carbon $updated_at
  */
 class CampaignSettings extends Model
 {

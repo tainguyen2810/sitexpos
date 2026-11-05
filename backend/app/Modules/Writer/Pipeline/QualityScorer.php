@@ -26,6 +26,7 @@ final class QualityScorer
 
     /**
      * @param  array<string, mixed>|null  $duplicates
+     * @param  list<array<string, mixed>>  $consistency
      * @return array{score: int, criteria: list<array{key: string, score: float, max: int, notes: list<string>}>, issues: list<array{severity: string, message: string}>}
      */
     public static function score(Article $a, ArticleVersion $v, ?ContentBrief $brief, ?WritingPreset $preset, ?array $duplicates, array $consistency = []): array
@@ -154,8 +155,8 @@ final class QualityScorer
         $c[] = self::c('citations', $claims->count() === 0 ? 5 : min(5, $cites * 1.25), 5, ["{$cites} trích dẫn nguồn"]);
 
         // 11. Brand voice (5)
-        $forbidden = array_values(array_filter($preset?->forbidden_phrases ?? [], fn ($p) => is_string($p) && $p !== '' && str_contains($lower, mb_strtolower($p))));
-        $preferred = array_filter($preset?->preferred_terms ?? [], 'is_string');
+        $forbidden = array_values(array_filter($preset->forbidden_phrases ?? [], fn ($p) => is_string($p) && $p !== '' && str_contains($lower, mb_strtolower($p))));
+        $preferred = array_filter($preset->preferred_terms ?? [], 'is_string');
         $usedPreferred = count(array_filter($preferred, fn ($p) => str_contains($lower, mb_strtolower($p))));
         $c[] = self::c('brand_voice', 5 - min(5, 2 * count($forbidden)) - ($preferred !== [] && $usedPreferred === 0 ? 1 : 0), 5,
             array_filter([$forbidden !== [] ? 'Có cụm từ bị cấm: '.implode(', ', $forbidden) : null]));

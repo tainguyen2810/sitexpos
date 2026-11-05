@@ -194,8 +194,8 @@ final class AdminResearchController
                 'max_micro_usd_per_run' => (int) ($totals->max_cost ?? 0),
                 'by_workspace' => $byWs->map(fn ($r): array => [
                     'workspace' => ['id' => $r->workspace_id, 'name' => $names->get($r->workspace_id)],
-                    'runs' => (int) $r->runs, 'total_micro_usd' => (int) $r->total,
-                    'avg_micro_usd_per_run' => (int) $r->runs > 0 ? intdiv((int) $r->total, (int) $r->runs) : 0,
+                    'runs' => (int) $r->getAttribute('runs'), 'total_micro_usd' => (int) $r->getAttribute('total'),
+                    'avg_micro_usd_per_run' => (int) $r->getAttribute('runs') > 0 ? intdiv((int) $r->getAttribute('total'), (int) $r->getAttribute('runs')) : 0,
                 ])->all(),
             ]]);
         });
@@ -258,7 +258,7 @@ final class AdminResearchController
             // Only whether a secret exists — never the value or a fragment of it.
             'has_secret' => $key === 'search_console' ? (string) config('services.google.client_id') !== '' && (string) config('services.google.client_secret') !== '' : ($row?->hasSecret() ?? false),
             'secret_managed_by' => $key === 'search_console' ? 'env' : 'admin',
-            'config' => $row?->config ?? (object) [],
+            'config' => $row->config ?? (object) [],
             'rate_limit_per_minute' => $row->rate_limit_per_minute ?? 30,
             'timeout_seconds' => $row->timeout_seconds ?? 15,
             'failure_count' => $row->failure_count ?? 0,

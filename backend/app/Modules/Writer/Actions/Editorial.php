@@ -301,9 +301,9 @@ class Editorial
             throw new ApiException(422, 'validation_failed', __('api.validation_failed'), ['evidence_ids' => [__('writer.errors.manual_needs_evidence')]]);
         }
 
-        $shape = static fn (EvidenceItem $e): array => ['evidence_id' => $e->id, 'ref' => $e->ref, 'url' => $e->source?->final_url ?? $e->source?->url,
+        $shape = static fn (EvidenceItem $e): array => ['evidence_id' => $e->id, 'ref' => $e->ref, 'url' => $e->source->final_url ?? $e->source?->url,
             'title' => $e->source?->title, 'excerpt' => mb_substr($e->excerpt, 0, 1000), 'source_type' => $e->source?->source_type,
-            'reliability' => $e->source?->reliability_score, 'date' => ($e->source?->modified_at ?? $e->source?->published_at)?->toDateString()];
+            'reliability' => $e->source?->reliability_score, 'date' => ($e->source->modified_at ?? $e->source?->published_at)?->toDateString()];
         $list = $items->map($shape)->values()->all();
         if ($referenceUrl !== null) {
             $list[] = ['evidence_id' => null, 'ref' => null, 'url' => $referenceUrl, 'title' => null, 'excerpt' => null, 'source_type' => 'reviewer_reference', 'reliability' => null, 'date' => null];

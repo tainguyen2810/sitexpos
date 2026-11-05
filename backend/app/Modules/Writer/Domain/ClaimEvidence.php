@@ -7,12 +7,19 @@ namespace SiteXPost\Modules\Writer\Domain;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
 
 /**
  * Claim ↔ evidence mapping (supports / contradicts / context).
  *
  * @property string $id
+ * @property string $workspace_id
+ * @property string $article_claim_id
+ * @property string $evidence_item_id
+ * @property string $relation
+ * @property ?Carbon $created_at
+ * @property ?Carbon $updated_at
  */
 class ClaimEvidence extends Model
 {

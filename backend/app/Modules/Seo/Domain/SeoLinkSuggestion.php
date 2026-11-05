@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\Seo\Domain;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
 
 /**
@@ -13,6 +14,23 @@ use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
  *
  * @property string $id
  * @property string $workspace_id
+ * @property string $article_id
+ * @property string $site_id
+ * @property int $target_wp_post_id
+ * @property string $target_post_type
+ * @property string $target_url
+ * @property string $target_title
+ * @property string $anchor_text
+ * @property ?string $section_key
+ * @property int $paragraph_index
+ * @property int $relevance
+ * @property array<string, mixed>|null $signals
+ * @property string $reason
+ * @property string $status
+ * @property ?Carbon $verified_at
+ * @property ?string $decided_by
+ * @property ?Carbon $created_at
+ * @property ?Carbon $updated_at
  */
 class SeoLinkSuggestion extends Model
 {

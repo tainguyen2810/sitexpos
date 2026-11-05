@@ -122,10 +122,10 @@ class OutlineBuilder
         if ($sum > $target * 1.6) {
             $warnings[] = 'outline_longer_than_target';
         }
-        if (count(array_filter($sections, static fn ($s) => collect($s['required_facts'])->contains('needs_evidence', true))) > 0) {
+        if (count(array_filter($sections, static fn (array $s): bool => in_array(true, array_column((array) $s['required_facts'], 'needs_evidence'), true))) > 0) {
             $warnings[] = 'facts_need_evidence';
         }
-        $stuffed = BriefBuilder::stuffedHeadings(array_values(array_filter(array_column($sections, 'heading'))), $a->primary_keyword);
+        $stuffed = BriefBuilder::stuffedHeadings(array_values(array_filter(array_map(static fn (array $s): string => (string) $s['heading'], $sections))), $a->primary_keyword);
         if ($stuffed !== []) {
             $warnings[] = 'heading_keyword_stuffing';
         }

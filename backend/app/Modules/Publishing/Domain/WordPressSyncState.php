@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\Publishing\Domain;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
 
 /**
@@ -13,6 +14,18 @@ use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
  *
  * @property string $id
  * @property string $workspace_id
+ * @property string $mapping_id
+ * @property string $state
+ * @property ?string $wp_status
+ * @property ?string $wp_slug
+ * @property ?string $wp_content_hash
+ * @property ?string $wp_seo_hash
+ * @property ?string $wp_modified_gmt
+ * @property ?int $wp_revision_id
+ * @property array<string, mixed>|null $details
+ * @property Carbon $checked_at
+ * @property ?Carbon $created_at
+ * @property ?Carbon $updated_at
  */
 class WordPressSyncState extends Model
 {

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
 use SiteXPost\Modules\Writer\Enums\ArticleStatus;
 
@@ -20,8 +21,47 @@ use SiteXPost\Modules\Writer\Enums\ArticleStatus;
  * @property string $id
  * @property string $workspace_id
  * @property string $site_id
+ * @property ?string $campaign_id
+ * @property ?string $content_idea_id
+ * @property ?string $writing_preset_id
+ * @property ?string $writing_batch_id
+ * @property string $mode
+ * @property string $title
  * @property ArticleStatus $status
- * @property array<string, mixed> $settings
+ * @property ?string $status_before_failure
+ * @property string $primary_keyword
+ * @property list<string>|null $secondary_keywords
+ * @property string $search_intent
+ * @property string $content_type
+ * @property string $language
+ * @property string $country
+ * @property array<string, mixed>|null $settings
+ * @property string $review_mode
+ * @property int $budget_limit_micro_usd
+ * @property int $spent_micro_usd
+ * @property ?string $current_version_id
+ * @property ?string $approved_version_id
+ * @property int $revision_rounds
+ * @property int $unresolved_critical
+ * @property int $unresolved_high
+ * @property ?int $quality_score
+ * @property array<string, mixed>|null $duplicate_check
+ * @property ?string $duplicate_decision
+ * @property ?string $blocked_reason
+ * @property ?string $last_error_code
+ * @property ?string $last_error_message
+ * @property ?string $autosave_html
+ * @property ?string $autosave_base_version_id
+ * @property ?Carbon $autosaved_at
+ * @property int $lock_version
+ * @property ?string $idempotency_key
+ * @property string $fingerprint
+ * @property bool $is_demo
+ * @property ?string $created_by
+ * @property ?string $approved_by
+ * @property ?Carbon $approved_at
+ * @property ?Carbon $created_at
+ * @property ?Carbon $updated_at
  */
 class Article extends Model
 {

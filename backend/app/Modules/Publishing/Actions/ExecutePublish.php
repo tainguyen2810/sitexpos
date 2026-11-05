@@ -225,7 +225,7 @@ final class ExecutePublish
             'mapping_id' => $m->id, 'rendered_html' => $html ?? $job->rendered_html,
             'payload_meta' => $meta + ['wp_post_id' => $m->wp_post_id, 'url' => $m->url, 'wp_status' => $m->wp_status],
         ])->save();
-        $attempt->forceFill(['outcome' => $outcome, 'error_code' => null])->save();
+        $attempt->forceFill(['outcome' => $outcome] + ($outcome === 'succeeded' ? ['error_code' => null] : []))->save();
         Audit::record('publishing.published', $job, ['wp_post_id' => $m->wp_post_id, 'status' => $m->wp_status, 'attempt' => $attempt->attempt_no, 'outcome' => $outcome], actorType: 'system');
 
         return 'published';

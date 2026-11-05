@@ -11,7 +11,7 @@ Route::prefix('api/v1/workspaces/{workspace}/publishing')
     ->name('publishing.')
     ->group(function (): void {
         Route::get('articles', [PublishingController::class, 'articles'])->name('articles.index');
-        Route::get('articles/{article}/preview', [PublishingController::class, 'preview'])->name('articles.preview');
+        Route::get('articles/{articleRef}/preview', [PublishingController::class, 'preview'])->name('articles.preview');
 
         Route::get('jobs', [PublishingController::class, 'index'])->name('jobs.index');
         Route::post('jobs', [PublishingController::class, 'store'])->middleware(['sitex.verified', 'throttle:publishing'])->name('jobs.store');

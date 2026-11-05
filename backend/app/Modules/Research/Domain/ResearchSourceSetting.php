@@ -6,11 +6,24 @@ namespace SiteXPost\Modules\Research\Domain;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * Super Admin configuration of one research source (secret encrypted).
  *
  * @property string $id
+ * @property string $source
+ * @property bool $is_enabled
+ * @property array<string, mixed>|null $config
+ * @property ?string $secret_encrypted
+ * @property int $rate_limit_per_minute
+ * @property int $timeout_seconds
+ * @property int $failure_count
+ * @property ?Carbon $last_failure_at
+ * @property ?string $last_error_code
+ * @property ?string $updated_by
+ * @property ?Carbon $created_at
+ * @property ?Carbon $updated_at
  */
 class ResearchSourceSetting extends Model
 {

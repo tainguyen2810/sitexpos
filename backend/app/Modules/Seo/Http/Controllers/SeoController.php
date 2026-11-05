@@ -50,26 +50,26 @@ final class SeoController
         ], $list)]);
     }
 
-    public function metadata(Workspace $workspace, string $article, ManageMetadata $action): JsonResponse
+    public function metadata(Workspace $workspace, string $articleRef, ManageMetadata $action): JsonResponse
     {
         Gate::authorize('viewAny', SeoMetadata::class);
-        $a = $this->article($article);
+        $a = $this->article($articleRef);
 
         return new JsonResponse(['data' => SeoPresenter::metadata($action->get($a['id'])) + ['site_policy' => SiteSeoConfig::for($a['site_id'])]]);
     }
 
-    public function generateMetadata(Request $request, Workspace $workspace, string $article, ManageMetadata $action): JsonResponse
+    public function generateMetadata(Request $request, Workspace $workspace, string $articleRef, ManageMetadata $action): JsonResponse
     {
         Gate::authorize('create', SeoMetadata::class);
-        $a = $this->article($article);
+        $a = $this->article($articleRef);
 
         return new JsonResponse(['data' => SeoPresenter::metadata($action->generate($a['id'], (string) $request->user()?->getAuthIdentifier()))]);
     }
 
-    public function updateMetadata(UpdateMetadataRequest $request, Workspace $workspace, string $article, ManageMetadata $action): JsonResponse
+    public function updateMetadata(UpdateMetadataRequest $request, Workspace $workspace, string $articleRef, ManageMetadata $action): JsonResponse
     {
         Gate::authorize('create', SeoMetadata::class);
-        $a = $this->article($article);
+        $a = $this->article($articleRef);
         $data = $request->validated();
         $lock = (int) $data['lock_version'];
         unset($data['lock_version']);
@@ -77,28 +77,28 @@ final class SeoController
         return new JsonResponse(['data' => SeoPresenter::metadata($action->update($a['id'], $data, $lock, (string) $request->user()?->getAuthIdentifier()))]);
     }
 
-    public function audits(Request $request, Workspace $workspace, string $article): JsonResponse
+    public function audits(Request $request, Workspace $workspace, string $articleRef): JsonResponse
     {
         Gate::authorize('viewAny', SeoMetadata::class);
-        $a = $this->article($article);
+        $a = $this->article($articleRef);
         $runs = SeoAuditRun::query()->where('article_id', $a['id'])->orderByDesc('created_at')->orderByDesc('id')->limit(20)->get();
 
         return new JsonResponse(['data' => $runs->map(fn (SeoAuditRun $r) => SeoPresenter::run($r))->all()]);
     }
 
-    public function runAudit(Request $request, Workspace $workspace, string $article, RunSeoAudit $action): JsonResponse
+    public function runAudit(Request $request, Workspace $workspace, string $articleRef, RunSeoAudit $action): JsonResponse
     {
         Gate::authorize('create', SeoMetadata::class);
-        $a = $this->article($article);
+        $a = $this->article($articleRef);
         $run = $action->run($a['id'], (string) $request->user()?->getAuthIdentifier());
 
         return new JsonResponse(['data' => SeoPresenter::run($run, true)], 201);
     }
 
-    public function checkLinks(Request $request, Workspace $workspace, string $article): JsonResponse
+    public function checkLinks(Request $request, Workspace $workspace, string $articleRef): JsonResponse
     {
         Gate::authorize('create', SeoMetadata::class);
-        $a = $this->article($article);
+        $a = $this->article($articleRef);
         $run = new JobRun;
         $run->forceFill(['type' => 'seo.link_check', 'subject_type' => 'article', 'subject_id' => $a['id'], 'created_by' => (string) $request->user()?->getAuthIdentifier()])->save();
         CheckArticleLinks::dispatch($a['id'], (string) $request->user()?->getAuthIdentifier(), $run->id);
@@ -113,28 +113,28 @@ final class SeoController
         return new JsonResponse(['data' => SeoPresenter::run($auditRun, true)]);
     }
 
-    public function schema(Workspace $workspace, string $article, SeoGate $gate): JsonResponse
+    public function schema(Workspace $workspace, string $articleRef, SeoGate $gate): JsonResponse
     {
         Gate::authorize('viewAny', SeoMetadata::class);
-        $a = $this->article($article);
+        $a = $this->article($articleRef);
         $own = $this->sites->publication($a['site_id'], 'article', $a['id']);
 
         return new JsonResponse(['data' => $gate->schema($a['id'], ['url' => $own['url'] ?? null]) + ['disclaimer' => __('seo.labels.schema_disclaimer')]]);
     }
 
-    public function links(Workspace $workspace, string $article): JsonResponse
+    public function links(Workspace $workspace, string $articleRef): JsonResponse
     {
         Gate::authorize('viewAny', SeoMetadata::class);
-        $a = $this->article($article);
+        $a = $this->article($articleRef);
         $rows = SeoLinkSuggestion::query()->where('article_id', $a['id'])->orderByDesc('relevance')->orderBy('id')->limit(100)->get();
 
         return new JsonResponse(['data' => $rows->map(fn (SeoLinkSuggestion $s) => SeoPresenter::link($s))->all()]);
     }
 
-    public function suggestLinks(Request $request, Workspace $workspace, string $article, InternalLinks $action): JsonResponse
+    public function suggestLinks(Request $request, Workspace $workspace, string $articleRef, InternalLinks $action): JsonResponse
     {
         Gate::authorize('create', SeoMetadata::class);
-        $a = $this->article($article);
+        $a = $this->article($articleRef);
         $n = $action->suggest($a['id'], (string) $request->user()?->getAuthIdentifier());
         $rows = SeoLinkSuggestion::query()->where('article_id', $a['id'])->orderByDesc('relevance')->orderBy('id')->limit(100)->get();
 

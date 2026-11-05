@@ -151,15 +151,15 @@ final class PublishingController
         return new JsonResponse(['data' => ['html' => (string) $publishingJob->rendered_html, 'note' => __('publishing.labels.sent_html')]]);
     }
 
-    public function preview(Workspace $workspace, string $article, SeoGate $seo): JsonResponse
+    public function preview(Workspace $workspace, string $articleRef, SeoGate $seo): JsonResponse
     {
         Gate::authorize('viewAny', PublishingJob::class);
-        $a = $this->article($article);
+        $a = $this->article($articleRef);
         $render = $seo->render($a['id'], false);
         $meta = $seo->metadata($a['id']);
         $profile = $this->sites->publishingProfile($a['site_id']);
         $mapping = WordPressPostMapping::query()->where('article_id', $a['id'])->where('is_current', true)->first();
-        $url = $mapping?->url ?? (($profile !== null ? rtrim((string) $profile['url'], '/') : '').'/'.($meta['slug'] ?? '').'/');
+        $url = $mapping->url ?? (($profile !== null ? rtrim((string) $profile['url'], '/') : '').'/'.($meta['slug'] ?? '').'/');
 
         return new JsonResponse(['data' => [
             'simulation' => true, 'disclaimer' => __('publishing.labels.preview_disclaimer'), 'approved' => $render['approved'],

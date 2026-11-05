@@ -67,6 +67,7 @@ final class TextDiff
     }
 
     /**
+     * @param  list<array{op: string, text: string}>  $ops
      * @return list<array{op: string, text: string}>
      */
     public static function compact(array $ops): array

@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\Seo\Domain;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
 
 /**
@@ -13,6 +14,17 @@ use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
  *
  * @property string $id
  * @property string $workspace_id
+ * @property string $site_id
+ * @property bool $injection_enabled
+ * @property array<string, mixed> $enabled_types
+ * @property ?string $organization_name
+ * @property ?string $logo_url
+ * @property bool $breadcrumbs_supported
+ * @property bool $allow_canonical_override
+ * @property bool $allow_robots_override
+ * @property ?string $updated_by
+ * @property ?Carbon $created_at
+ * @property ?Carbon $updated_at
  */
 class SchemaConfig extends Model
 {

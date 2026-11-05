@@ -66,21 +66,34 @@ class WriterAi
 
     public function __construct(private readonly AiCaller $caller) {}
 
+    /**
+     * @param  array<string, mixed>  $props
+     * @return array<string, mixed>
+     */
     public static function obj(array $props): array
     {
         return ['type' => 'object', 'properties' => $props, 'required' => array_keys($props), 'additionalProperties' => false];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public static function questionsSchema(): array
     {
         return self::obj(['questions' => ['type' => 'array', 'items' => self::obj(['question' => self::S, 'purpose' => self::S])]]);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public static function discoverySchema(): array
     {
         return self::obj(['urls' => ['type' => 'array', 'items' => self::obj(['url' => self::S, 'reason' => self::S])]]);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public static function sourceSchema(): array
     {
         return self::obj(['items' => ['type' => 'array', 'items' => self::obj([
@@ -88,6 +101,9 @@ class WriterAi
         ])]]);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public static function briefSchema(): array
     {
         return self::obj([
@@ -100,6 +116,9 @@ class WriterAi
         ]);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public static function outlineSchema(): array
     {
         return self::obj(['sections' => ['type' => 'array', 'items' => self::obj([
@@ -110,11 +129,17 @@ class WriterAi
         ])]]);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public static function draftSchema(): array
     {
         return self::obj(['html' => self::S, 'used_evidence_refs' => self::INT_LIST, 'notes' => self::STR_LIST]);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public static function claimsSchema(): array
     {
         return self::obj(['claims' => ['type' => 'array', 'items' => self::obj([
@@ -123,6 +148,9 @@ class WriterAi
         ])]]);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public static function factCheckSchema(): array
     {
         return self::obj(['results' => ['type' => 'array', 'items' => self::obj([
@@ -131,11 +159,17 @@ class WriterAi
         ])]]);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public static function rewriteSchema(): array
     {
         return self::obj(['html' => self::S, 'changes' => ['type' => 'array', 'items' => self::obj(['before' => self::S, 'after' => self::S, 'reason' => self::S])]]);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public static function notesSchema(): array
     {
         return self::obj(['notes' => ['type' => 'array', 'items' => self::obj(['severity' => ['type' => 'string', 'enum' => ['info', 'warning', 'error']], 'message' => self::S])]]);
@@ -265,6 +299,9 @@ class WriterAi
         return $this->caller->call($a, $step, self::TASK_REWRITE, $p, self::rewriteSchema(), 'rewrite', $key, $run, 4000, self::SYSTEM);
     }
 
+    /**
+     * @param  array<string, mixed>  $ctx
+     */
     public function review(Article $a, string $task, string $text, array $ctx, string $key, ?string $run): AiResult
     {
         $p = ($task === self::TASK_SEO

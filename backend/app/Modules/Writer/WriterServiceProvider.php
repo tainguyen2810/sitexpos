@@ -7,6 +7,8 @@ namespace SiteXPost\Modules\Writer;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
+use SiteXPost\Kernel\Http\ApiException;
 use SiteXPost\Kernel\Modules\ModuleServiceProvider;
 use SiteXPost\Modules\Workflows\Engine\WorkflowRegistry;
 use SiteXPost\Modules\Writer\Console\RunAutonomousWriter;
@@ -43,6 +45,16 @@ final class WriterServiceProvider extends ModuleServiceProvider
 
     protected function bootModule(): void
     {
+        // `{articleRef}`: article id for other modules' routes (Media, Seo,
+        // Publishing). Resolved inside the tenant scope through the public
+        // contract; unknown / other tenant → 404 before any validation.
+        Route::bind('articleRef', function (string $value): string {
+            if (preg_match('/^[0-9a-z]{26}$/i', $value) !== 1 || app(ArticleCatalog::class)->find($value) === null) {
+                throw ApiException::notFound();
+            }
+
+            return $value;
+        });
         $registry = $this->app->make(WorkflowRegistry::class);
         foreach ([ResearchWorkflow::class, OutlineWorkflow::class, DraftWorkflow::class, RecheckWorkflow::class, RewriteWorkflow::class] as $wf) {
             $registry->register($wf);

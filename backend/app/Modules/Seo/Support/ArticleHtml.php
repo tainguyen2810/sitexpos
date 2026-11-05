@@ -74,7 +74,7 @@ final class ArticleHtml
             }
         }
         $root = $doc->getElementById('sx-root');
-        $out->text = self::clean($root?->textContent ?? '');
+        $out->text = self::clean($root->textContent ?? '');
         $out->words = self::wordCount($out->text);
 
         return $out;

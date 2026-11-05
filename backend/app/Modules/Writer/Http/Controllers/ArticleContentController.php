@@ -39,7 +39,7 @@ final class ArticleContentController
         $dossierIds = ResearchDossier::query()->where('article_id', $article->id)->pluck('id');
         $citations = EvidenceItem::query()->with('source:id,url,final_url,title,source_type,reliability_score')->whereIn('research_dossier_id', $dossierIds)
             ->orderBy('ref')->limit(300)->get()
-            ->map(fn (EvidenceItem $e) => ['id' => $e->id, 'ref' => $e->ref, 'statement' => $e->statement, 'url' => $e->source?->final_url ?? $e->source?->url,
+            ->map(fn (EvidenceItem $e) => ['id' => $e->id, 'ref' => $e->ref, 'statement' => $e->statement, 'url' => $e->source->final_url ?? $e->source?->url,
                 'title' => $e->source?->title, 'source_type' => $e->source?->source_type, 'reliability_score' => $e->source?->reliability_score])->all();
         $autosave = $article->autosaved_at !== null && $article->autosave_base_version_id === $article->current_version_id
             ? ['content_html' => $article->autosave_html, 'base_version_id' => $article->autosave_base_version_id, 'autosaved_at' => $article->autosaved_at->toIso8601ZuluString()]

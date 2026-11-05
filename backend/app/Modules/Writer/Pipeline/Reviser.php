@@ -75,8 +75,8 @@ class Reviser
                 $r = $results->get($c->latest_result_id);
 
                 return ['claim_id' => $c->id, 'claim' => $c->claim_text, 'verdict' => $c->status, 'risk' => $c->risk_level,
-                    'explanation' => $r?->explanation, 'contradicting' => array_map(fn ($e) => ['ref' => $e['ref'], 'excerpt' => mb_substr((string) $e['excerpt'], 0, 500)], $r?->contradicting ?? []),
-                    'supporting' => array_map(fn ($e) => ['ref' => $e['ref'], 'excerpt' => mb_substr((string) $e['excerpt'], 0, 500)], $r?->supporting ?? []),
+                    'explanation' => $r?->explanation, 'contradicting' => array_map(fn ($e) => ['ref' => $e['ref'], 'excerpt' => mb_substr((string) $e['excerpt'], 0, 500)], $r->contradicting ?? []),
+                    'supporting' => array_map(fn ($e) => ['ref' => $e['ref'], 'excerpt' => mb_substr((string) $e['excerpt'], 0, 500)], $r->supporting ?? []),
                     'instruction' => match ($c->status) {
                         'CONTRADICTED' => 'Sửa câu cho khớp với bằng chứng contradicting và đặt marker [E<ref>] của bằng chứng đó.',
                         'OUTDATED' => 'Cập nhật theo bằng chứng mới hơn nếu có; nếu không, ghi rõ mốc thời gian của thông tin hoặc bỏ khẳng định.',

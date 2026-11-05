@@ -145,8 +145,8 @@ final class ArticleReviewController
         $rows = ArticleAiUsage::query()->where('article_id', $article->id)
             ->selectRaw('step, task_key, model, count(*) as calls, sum(input_tokens) as input_tokens, sum(output_tokens) as output_tokens, sum(cost_micro_usd) as cost_micro_usd, sum(fetches) as fetches, sum(case when status = ? then 1 else 0 end) as failed', ['failed'])
             ->groupBy('step', 'task_key', 'model')->orderBy('step')->get()
-            ->map(fn ($r) => ['step' => $r->step, 'task_key' => $r->task_key, 'model' => $r->model, 'calls' => (int) $r->calls, 'input_tokens' => (int) $r->input_tokens,
-                'output_tokens' => (int) $r->output_tokens, 'cost_micro_usd' => (int) $r->cost_micro_usd, 'fetches' => (int) $r->fetches, 'failed' => (int) $r->failed])->all();
+            ->map(fn ($r) => ['step' => $r->step, 'task_key' => $r->task_key, 'model' => $r->model, 'calls' => (int) $r->getAttribute('calls'), 'input_tokens' => (int) $r->input_tokens,
+                'output_tokens' => (int) $r->output_tokens, 'cost_micro_usd' => (int) $r->cost_micro_usd, 'fetches' => (int) $r->fetches, 'failed' => (int) $r->getAttribute('failed')])->all();
 
         return new JsonResponse(['data' => [
             'budget_limit_micro_usd' => $article->budget_limit_micro_usd, 'spent_micro_usd' => $article->spent_micro_usd,

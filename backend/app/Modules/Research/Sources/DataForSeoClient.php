@@ -98,7 +98,7 @@ class DataForSeoClient
     protected function post(string $path, array $body): array
     {
         $row = $this->settings->source('dataforseo');
-        $secret = (string) ($row?->secret_encrypted ?? '');
+        $secret = (string) ($row->secret_encrypted ?? '');
         if (! $this->isAvailable() || ! str_contains($secret, ':')) {
             throw new ProviderUnavailable('not_configured', 'DataForSEO is not configured');
         }

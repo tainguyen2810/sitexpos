@@ -61,7 +61,7 @@ final class ResearchRunController
         $steps = [];
         if ($researchRun->workflow_run_id !== null) {
             $wf = WorkflowRun::query()->with('steps')->find($researchRun->workflow_run_id);
-            foreach ($wf?->steps ?? [] as $s) {
+            foreach ($wf->steps ?? [] as $s) {
                 $steps[] = ['key' => $s->key, 'status' => $s->status->value, 'attempts' => $s->attempts,
                     'error' => $s->error_code !== null ? ['code' => $s->error_code, 'message' => $s->error_message] : null,
                     'started_at' => $s->started_at?->toIso8601ZuluString(), 'finished_at' => $s->finished_at?->toIso8601ZuluString()];

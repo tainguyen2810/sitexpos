@@ -39,7 +39,9 @@ final class WriterPresenter
     /**
      * Cursor page with the same envelope as Kernel\Http\Paginated.
      *
-     * @param  Builder<Model>  $query
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
      */
     public static function page(Builder $query, callable $map, Request $request, int $default = 25): JsonResponse
     {

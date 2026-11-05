@@ -146,7 +146,7 @@ final class AdminWriterController
         return $this->context->bypass(fn (): JsonResponse => new JsonResponse(['data' => [
             'workflow_errors' => WorkflowRun::query()->whereIn('type', self::TYPES)->where('status', 'failed')->where('created_at', '>=', $since)
                 ->selectRaw('type, error_code, count(*) as n')->groupBy('type', 'error_code')->orderByDesc('n')->limit(50)->get()
-                ->map(fn ($r) => ['type' => $r->type, 'error_code' => $r->error_code, 'count' => (int) $r->n]),
+                ->map(fn ($r) => ['type' => $r->type, 'error_code' => $r->error_code, 'count' => (int) $r->getAttribute('n')]),
             'ai_call_errors' => DB::table('article_ai_usage')->where('status', 'failed')->where('created_at', '>=', $since)
                 ->selectRaw('task_key, error_code, count(*) as n')->groupBy('task_key', 'error_code')->orderByDesc('n')->limit(50)->get()
                 ->map(fn ($r) => ['task_key' => $r->task_key, 'error_code' => $r->error_code, 'count' => (int) $r->n]),
@@ -179,7 +179,7 @@ final class AdminWriterController
             }
             foreach (WorkflowRun::query()->whereIn('type', self::TYPES)->where('created_at', '>=', now()->subDay())
                 ->selectRaw("workspace_id, count(*) as n, sum(case when status = 'failed' then 1 else 0 end) as f")->groupBy('workspace_id')->havingRaw('count(*) >= 5')->get() as $r) {
-                $pct = (int) round(((int) $r->f) * 100 / max(1, (int) $r->n));
+                $pct = (int) round(((int) $r->getAttribute('f')) * 100 / max(1, (int) $r->getAttribute('n')));
                 if ($pct >= $failedPct) {
                     $signals[] = ['workspace_id' => $r->workspace_id, 'signal' => 'high_failure_ratio', 'value' => $pct, 'threshold' => $failedPct];
                 }

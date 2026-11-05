@@ -74,11 +74,11 @@ class ArticleContext
         return [
             'tone' => $preset?->tone,
             'writing_style' => $preset?->writing_style,
-            'preferred_terms' => $preset?->preferred_terms ?? [],
-            'forbidden_phrases' => $preset?->forbidden_phrases ?? [],
+            'preferred_terms' => $preset->preferred_terms ?? [],
+            'forbidden_phrases' => $preset->forbidden_phrases ?? [],
             'facts' => array_map(static fn (array $f): array => ['text' => $f['text'] ?? '', 'kind' => $f['kind'] ?? 'fact', 'provenance' => $f['provenance'] ?? 'user_provided'],
-                array_slice($preset?->facts ?? [], 0, 40)),
-            'target_customers' => $preset?->target_customers ?? [],
+                array_slice($preset->facts ?? [], 0, 40)),
+            'target_customers' => $preset->target_customers ?? [],
             'geographic_context' => $preset?->geographic_context,
             'editorial_guidelines' => $preset?->editorial_guidelines !== null ? mb_substr($preset->editorial_guidelines, 0, 2000) : null,
             'cta' => $preset?->cta,
@@ -141,6 +141,7 @@ class ArticleContext
     /**
      * Evidence list for prompts (ref, statement, excerpt, source).
      *
+     * @param  list<string>|null  $refs
      * @return list<array<string, mixed>>
      */
     public function evidence(string $dossierId, ?array $refs = null, int $limit = 40, int $excerptChars = 400): array
@@ -157,9 +158,9 @@ class ArticleContext
             'excerpt' => mb_substr($e->excerpt, 0, $excerptChars),
             'date_context' => $e->date_context,
             'version_context' => $e->version_context,
-            'source' => ['url' => $e->source?->final_url ?? $e->source?->url, 'title' => $e->source?->title, 'publisher' => $e->source?->publisher,
+            'source' => ['url' => $e->source->final_url ?? $e->source?->url, 'title' => $e->source?->title, 'publisher' => $e->source?->publisher,
                 'type' => $e->source?->source_type, 'reliability' => $e->source?->reliability_score,
-                'date' => ($e->source?->modified_at ?? $e->source?->published_at)?->toDateString()],
+                'date' => ($e->source->modified_at ?? $e->source?->published_at)?->toDateString()],
         ])->all();
     }
 

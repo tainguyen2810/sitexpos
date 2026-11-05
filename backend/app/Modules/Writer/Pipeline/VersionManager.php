@@ -46,7 +46,7 @@ class VersionManager
         }
 
         return EvidenceItem::query()->where('research_dossier_id', $dossier->id)->with('source:id,url,final_url')->get()
-            ->mapWithKeys(fn (EvidenceItem $e): array => [$e->id => (string) ($e->source?->final_url ?? $e->source?->url ?? '')])
+            ->mapWithKeys(fn (EvidenceItem $e): array => [$e->id => (string) ($e->source->final_url ?? $e->source->url ?? '')])
             ->filter()->all();
     }
 
@@ -85,7 +85,7 @@ class VersionManager
             /** @var Article $locked */
             $locked = Article::query()->whereKey($article->id)->lockForUpdate()->firstOrFail();
             $previous = $locked->current_version_id !== null ? ArticleVersion::query()->find($locked->current_version_id) : null;
-            $prevSections = $previous?->section_hashes ?? [];
+            $prevSections = $previous->section_hashes ?? [];
             $sections = ArticleDocument::hashes($html, [...$prevSections, ...$keyHints]);
             $changed = array_flip(ArticleDocument::changedKeys($prevSections, $sections));
             foreach ($sections as $i => $s) {

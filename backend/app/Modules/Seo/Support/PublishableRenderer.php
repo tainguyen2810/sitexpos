@@ -76,8 +76,12 @@ final class PublishableRenderer
         }
 
         // Internal links.
-        $paragraphs = iterator_to_array($xp->query('.//p', $root) ?: []);
-        $nonEmpty = array_values(array_filter($paragraphs, fn (DOMElement $p) => trim($p->textContent) !== ''));
+        $nonEmpty = [];
+        foreach ($xp->query('.//p', $root) ?: [] as $node) {
+            if ($node instanceof DOMElement && trim($node->textContent) !== '') {
+                $nonEmpty[] = $node;
+            }
+        }
         $applied = [];
         $stale = [];
         foreach (SeoLinkSuggestion::query()->where('article_id', $articleId)->where('status', 'accepted')->orderBy('paragraph_index')->get() as $s) {

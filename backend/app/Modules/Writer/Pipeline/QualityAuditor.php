@@ -32,7 +32,7 @@ class QualityAuditor
         $brief = $this->context->approvedBrief($a) ?? $a->brief()->first();
         $preset = $a->writing_preset_id !== null ? WritingPreset::query()->find($a->writing_preset_id) : null;
         $fc = FactCheckRun::query()->where('article_version_id', $v->id)->latest()->first();
-        $consistency = $fc?->consistency_issues ?? ConsistencyChecker::check($v->content_html);
+        $consistency = $fc->consistency_issues ?? ConsistencyChecker::check($v->content_html);
         $r = QualityScorer::score($a, $v, $brief, $preset, $dup, $consistency);
 
         $notes = null;

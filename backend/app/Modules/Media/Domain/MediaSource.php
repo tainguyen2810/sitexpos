@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\Media\Domain;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
 
 /**
@@ -13,6 +14,16 @@ use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
  *
  * @property string $id
  * @property string $workspace_id
+ * @property string $site_id
+ * @property string $type
+ * @property bool $enabled
+ * @property string $status
+ * @property array<string, mixed>|null $config
+ * @property int $items_count
+ * @property ?string $last_error_code
+ * @property ?Carbon $last_synced_at
+ * @property ?Carbon $created_at
+ * @property ?Carbon $updated_at
  */
 class MediaSource extends Model
 {

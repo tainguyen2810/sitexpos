@@ -45,6 +45,7 @@ final class ConflictDetector
 
     /**
      * @param  array<string, mixed>|null  $state
+     * @param  array<string, mixed>  $details
      */
     public static function record(WordPressPostMapping $m, ?array $state, string $syncState, array $details = []): WordPressSyncState
     {

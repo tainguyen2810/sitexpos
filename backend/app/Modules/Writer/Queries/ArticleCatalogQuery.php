@@ -35,7 +35,7 @@ final class ArticleCatalogQuery implements ArticleCatalog
         $sources = [];
         if ($m[1] !== []) {
             foreach (EvidenceItem::query()->with('source:id,url,final_url,title,publisher')->whereIn('id', array_unique($m[1]))->get() as $e) {
-                $url = (string) ($e->source?->final_url ?? $e->source?->url ?? '');
+                $url = (string) ($e->source->final_url ?? $e->source->url ?? '');
                 if ($url !== '') {
                     $sources[$e->id] = ['url' => $url, 'title' => $e->source?->title, 'publisher' => $e->source?->publisher];
                 }
@@ -66,7 +66,7 @@ final class ArticleCatalogQuery implements ArticleCatalog
     public function currentContent(string $articleId): ?array
     {
         $a = Article::query()->find($articleId);
-        $id = $a?->current_version_id ?? $a?->approved_version_id;
+        $id = $a->current_version_id ?? $a?->approved_version_id;
         $v = $id !== null ? ArticleVersion::query()->where('article_id', $a->id)->find($id) : null;
 
         return $v === null ? null : [

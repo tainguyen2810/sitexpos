@@ -72,7 +72,7 @@ class CreateArticle
         if (! empty($data['writing_preset_id']) && $preset === null) {
             throw new ApiException(422, 'validation_failed', __('api.validation_failed'), ['writing_preset_id' => [__('writer.errors.preset_not_found')]]);
         }
-        $defaults = $preset?->defaults ?? [];
+        $defaults = $preset->defaults ?? [];
         $ws = $this->context()->workspaceId();
         $budget = (int) ($data['budget_limit_micro_usd'] ?? $defaults['budget_limit_micro_usd'] ?? $this->settings->int('default_article_budget_micro_usd', $ws));
         $maxBudget = $this->settings->int('max_article_budget_micro_usd', $ws);

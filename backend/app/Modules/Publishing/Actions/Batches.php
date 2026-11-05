@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\Publishing\Actions;
 
 use Carbon\CarbonImmutable;
 use SiteXPost\Kernel\Http\ApiException;
+use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\Audit\Audit;
 use SiteXPost\Modules\Publishing\Domain\PublishingBatch;
 use SiteXPost\Modules\Publishing\Domain\PublishingJob;
@@ -43,7 +44,7 @@ final class Batches
     public function preview(string $siteId, array $articleIds, string $mode, ?string $startAt, int $interval): array
     {
         $profile = $this->sites->publishingProfile($siteId) ?? throw ApiException::notFound();
-        $limits = PublishingLimits::for((string) app(\SiteXPost\Kernel\Tenancy\TenantContext::class)->workspaceId());
+        $limits = PublishingLimits::for((string) app(TenantContext::class)->workspaceId());
         if (count($articleIds) > $limits['max_bulk_items']) {
             throw new ApiException(422, 'bulk_limit_exceeded', __('publishing.codes.bulk_limit_exceeded', ['max' => $limits['max_bulk_items']]));
         }

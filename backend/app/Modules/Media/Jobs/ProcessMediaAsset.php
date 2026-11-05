@@ -34,7 +34,7 @@ final class ProcessMediaAsset extends MediaJob
             }
             app(MediaPipeline::class)->ingest($asset, $bytes, $asset->original_filename);
         } catch (MediaRejected $e) {
-            $asset?->forceFill(['status' => 'rejected', 'error_code' => $e->errorCode])->save();
+            $asset->forceFill(['status' => 'rejected', 'error_code' => $e->errorCode])->save();
             self::failRun($run, $e->errorCode, $e->getMessage());
         } finally {
             $storage->disk()->delete($this->incomingPath);

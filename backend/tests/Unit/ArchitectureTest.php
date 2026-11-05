@@ -131,3 +131,22 @@ arch('AI Writer requests extend the base ApiRequest')
 arch('AI Writer reads planner / WordPress data only through contracts and never publishes')
     ->expect('SiteXPost\\Modules\\Writer')
     ->not->toUse(['SiteXPost\\Modules\\Research\\Domain', 'SiteXPost\\Modules\\Sites\\Domain', 'SiteXPost\\Modules\\Sites\\Connector', 'SiteXPost\\Modules\\AiGateway\\Providers']);
+
+arch('Phase 6 tenant models use the fail-closed workspace scope')
+    ->expect(['SiteXPost\\Modules\\Media\\Domain', 'SiteXPost\\Modules\\Seo\\Domain', 'SiteXPost\\Modules\\Publishing\\Domain'])
+    ->classes()
+    ->toUseTrait(BelongsToWorkspace::class)
+    ->ignoring(['SiteXPost\\Modules\\Media\\Domain\\MediaLimit', 'SiteXPost\\Modules\\Publishing\\Domain\\PublishingLimit']);
+
+arch('Phase 6 requests extend the base ApiRequest')
+    ->expect(['SiteXPost\\Modules\\Media\\Http\\Requests', 'SiteXPost\\Modules\\Seo\\Http\\Requests', 'SiteXPost\\Modules\\Publishing\\Http\\Requests'])
+    ->toExtend(ApiRequest::class);
+
+arch('Phase 6 modules reach articles, sites and the planner only through contracts')
+    ->expect(['SiteXPost\\Modules\\Media', 'SiteXPost\\Modules\\Seo', 'SiteXPost\\Modules\\Publishing'])
+    ->not->toUse(['SiteXPost\\Modules\\Writer\\Domain', 'SiteXPost\\Modules\\Sites\\Domain', 'SiteXPost\\Modules\\Research\\Domain', 'SiteXPost\\Modules\\AiGateway\\Providers',
+        'SiteXPost\\Modules\\Sites\\Actions', 'SiteXPost\\Modules\\Writer\\Actions']);
+
+arch('only the Publishing module publishes to WordPress (Seo never does)')
+    ->expect('SiteXPost\\Modules\\Seo')
+    ->not->toUse(['SiteXPost\\Modules\\Sites\\Contracts\\WordPressGateway', 'SiteXPost\\Modules\\Publishing']);

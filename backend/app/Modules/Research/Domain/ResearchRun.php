@@ -8,12 +8,32 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
 
 /**
  * One research execution of a campaign (backed by a durable workflow run).
  *
  * @property string $id
+ * @property string $workspace_id
+ * @property string $campaign_id
+ * @property ?string $workflow_run_id
+ * @property string $trigger
+ * @property string $status
+ * @property ?string $stage
+ * @property int $progress
+ * @property ?string $idempotency_key
+ * @property array<string, mixed>|null $stats
+ * @property array<string, mixed>|null $warnings
+ * @property int $cost_micro_usd
+ * @property bool $quota_reserved
+ * @property ?string $error_code
+ * @property ?string $error_message
+ * @property ?string $created_by
+ * @property ?Carbon $started_at
+ * @property ?Carbon $finished_at
+ * @property ?Carbon $created_at
+ * @property ?Carbon $updated_at
  */
 class ResearchRun extends Model
 {

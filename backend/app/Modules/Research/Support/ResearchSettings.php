@@ -71,7 +71,7 @@ final class ResearchSettings
 
     public function global(string $key): mixed
     {
-        $config = $this->source('global')?->config ?? [];
+        $config = $this->source('global')->config ?? [];
 
         return $config[$key] ?? self::GLOBAL_DEFAULTS[$key] ?? null;
     }

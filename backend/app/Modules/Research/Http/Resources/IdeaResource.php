@@ -36,7 +36,7 @@ final class IdeaResource extends JsonResource
             'research_run_id' => $this->research_run_id,
             'primary_keyword' => $this->relationLoaded('primaryKeyword') && $this->primaryKeyword !== null ? ['id' => $this->primaryKeyword->id, 'keyword' => $this->primaryKeyword->keyword] : null,
             'secondary_keywords' => $this->relationLoaded('keywords')
-                ? $this->keywords->filter(fn ($k) => $k->pivot->role === 'secondary')->map(fn ($k) => ['id' => $k->id, 'keyword' => $k->keyword])->values()
+                ? $this->keywords->filter(fn ($k) => data_get($k, 'pivot.role') === 'secondary')->map(fn ($k) => ['id' => $k->id, 'keyword' => $k->keyword])->values()
                 : [],
             'rationale' => $this->rationale,
             'evidence' => $this->evidence ?? (object) [],
