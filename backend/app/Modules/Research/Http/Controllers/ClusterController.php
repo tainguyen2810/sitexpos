@@ -7,11 +7,14 @@ namespace SiteXPost\Modules\Research\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use SiteXPost\Kernel\Http\Paginated;
 use SiteXPost\Modules\Audit\Audit;
 use SiteXPost\Modules\Research\Domain\ContentGap;
+use SiteXPost\Modules\Research\Domain\ContentIdea;
 use SiteXPost\Modules\Research\Domain\InternalLinkSuggestion;
+use SiteXPost\Modules\Research\Domain\Keyword;
 use SiteXPost\Modules\Research\Domain\SeoCampaign;
 use SiteXPost\Modules\Research\Domain\TopicCluster;
 use SiteXPost\Modules\Research\Http\Requests\ClusterRequest;
@@ -91,6 +94,52 @@ final class ClusterController
             $q->where('cluster_id', $cluster);
         }
 
-        return LinkSuggestionResource::collection($q->orderByDesc('score')->orderBy('id')->limit(500)->get());
+        $rows = $q->orderByDesc('score')->orderBy('id')->limit(500)->get();
+        $labels = self::linkLabels($campaign, $rows);
+        foreach ($rows as $row) {
+            $row->setAttribute('from_label', $labels[$row->from_type.':'.$row->from_id] ?? null);
+            $row->setAttribute('to_label', $labels[$row->to_type.':'.$row->to_id] ?? null);
+        }
+
+        return LinkSuggestionResource::collection($rows);
+    }
+
+    /**
+     * Human-readable names for link endpoints (idea titles, cluster names,
+     * titles of existing posts recorded as coverage evidence).
+     *
+     * @param  Collection<int, InternalLinkSuggestion>  $rows
+     * @return array<string, string>
+     */
+    private static function linkLabels(SeoCampaign $campaign, Collection $rows): array
+    {
+        $ids = ['idea' => [], 'cluster' => [], 'content' => []];
+        foreach ($rows as $r) {
+            $ids[$r->from_type][] = $r->from_id;
+            $ids[$r->to_type][] = $r->to_id;
+        }
+        $labels = [];
+        foreach (ContentIdea::query()->where('campaign_id', $campaign->id)->whereIn('id', array_unique($ids['idea'] ?? []))->pluck('title', 'id') as $id => $title) {
+            $labels['idea:'.$id] = (string) $title;
+        }
+        foreach (TopicCluster::query()->where('campaign_id', $campaign->id)->whereIn('id', array_unique($ids['cluster'] ?? []))->pluck('name', 'id') as $id => $name) {
+            $labels['cluster:'.$id] = (string) $name;
+        }
+        $want = array_flip(array_map('strval', $ids['content'] ?? []));
+        if ($want !== []) {
+            Keyword::query()->where('campaign_id', $campaign->id)->whereNotNull('covered_by')->select(['id', 'covered_by'])
+                ->chunkById(500, function ($kws) use (&$labels, $want) {
+                    foreach ($kws as $kw) {
+                        foreach ($kw->covered_by ?? [] as $c) {
+                            $cid = (string) ($c['id'] ?? '');
+                            if (isset($want[$cid]) && ! isset($labels['content:'.$cid])) {
+                                $labels['content:'.$cid] = (string) ($c['title'] ?? '');
+                            }
+                        }
+                    }
+                });
+        }
+
+        return $labels;
     }
 }

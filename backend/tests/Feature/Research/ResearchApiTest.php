@@ -154,3 +154,15 @@ it('lets Super Admin set tenant limits that the customer API enforces', function
     ])->assertStatus(429)->assertJsonPath('error.code', 'research_quota_exceeded');
     $this->actingAs($t['owner'])->patchJson(researchUrl($t, 'settings'), ['ideas_per_run' => 30])->assertStatus(422);
 });
+
+it('suggests internal links between ideas of a cluster with readable endpoint names', function () {
+    $t = ranResearch(researchTenant());
+    $links = $this->actingAs($t['owner'])->getJson(researchUrl($t, 'internal-links'))->assertOk()->json('data');
+
+    expect($links)->not->toBeEmpty();
+    foreach ($links as $l) {
+        expect($l['from']['label'])->toBeString()->not->toBe('')
+            ->and($l['to']['label'])->toBeString()->not->toBe('')
+            ->and($l['anchor_text'])->not->toBe('');
+    }
+});

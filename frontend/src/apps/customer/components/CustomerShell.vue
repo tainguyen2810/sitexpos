@@ -32,7 +32,7 @@ const nav = computed<NavItem[]>(() => {
     { label: t('nav.dashboard'), to: `${base}/dashboard`, icon: 'home' },
     { label: t('nav.sites'), to: `${base}/sites`, icon: 'globe' },
     { label: t('nav.content'), icon: 'file', soon: true },
-    { label: t('nav.keywords'), icon: 'key', soon: true },
+    { label: t('nav.research'), to: `${base}/research`, icon: 'target' },
     { label: t('nav.ai'), to: `${base}/ai`, icon: 'sparkles' },
     { label: t('nav.members'), to: `${base}/members`, icon: 'users' },
     { label: t('nav.audit'), to: `${base}/audit`, icon: 'list' },

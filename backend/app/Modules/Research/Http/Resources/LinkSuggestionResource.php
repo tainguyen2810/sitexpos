@@ -23,8 +23,8 @@ final class LinkSuggestionResource extends JsonResource
         return [
             'id' => $this->id,
             'cluster_id' => $this->cluster_id,
-            'from' => ['type' => $this->from_type, 'id' => $this->from_id],
-            'to' => ['type' => $this->to_type, 'id' => $this->to_id],
+            'from' => ['type' => $this->from_type, 'id' => $this->from_id, 'label' => $this->getAttribute('from_label')],
+            'to' => ['type' => $this->to_type, 'id' => $this->to_id, 'label' => $this->getAttribute('to_label')],
             'anchor_text' => $this->anchor_text,
             'reason' => $this->reason,
             'score' => $this->score,
