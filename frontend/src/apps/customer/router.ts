@@ -37,6 +37,7 @@ export const router = createRouter({
             { path: 'dashboard', name: 'dashboard', component: () => import('./pages/DashboardPage.vue') },
             { path: 'sites', name: 'sites', component: () => import('./pages/SitesPage.vue') },
             { path: 'sites/:siteId', name: 'site', component: () => import('./pages/SiteDetailPage.vue') },
+            { path: 'ai', name: 'ai', component: () => import('./pages/AiTasksPage.vue') },
             { path: 'members', name: 'members', component: () => import('./pages/MembersPage.vue') },
             { path: 'settings', name: 'settings', component: () => import('./pages/WorkspaceSettingsPage.vue') },
             { path: 'audit', name: 'audit', component: () => import('./pages/AuditLogPage.vue') },

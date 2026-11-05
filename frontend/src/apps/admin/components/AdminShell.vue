@@ -18,6 +18,9 @@ const nav = computed<NavItem[]>(() => {
     { label: t('nav.workspaces'), to: '/workspaces', icon: 'building', permission: 'platform.tenants.view' },
     { label: t('nav.users'), to: '/users', icon: 'users', permission: 'platform.users.view' },
     { label: t('nav.staff'), to: '/staff', icon: 'shield', permission: 'platform.staff.manage' },
+    { label: t('nav.aiUsage'), to: '/ai/usage', icon: 'chart', permission: 'platform.ai.view_costs' },
+    { label: t('nav.aiSettings'), to: '/ai/settings', icon: 'sparkles', permission: 'platform.ai.view_costs' },
+    { label: t('nav.jobs'), to: '/jobs', icon: 'layers', permission: 'platform.jobs.manage' },
     { label: t('nav.audit'), to: '/audit', icon: 'list' },
     { label: t('nav.billing'), icon: 'card', soon: true },
   ]

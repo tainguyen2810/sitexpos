@@ -72,6 +72,8 @@ export interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined | null>
   /** Do not trigger the global 401 handler (e.g. for the initial /me probe). */
   silent401?: boolean
+  /** Extra request headers (e.g. Idempotency-Key). Auth headers cannot be overridden. */
+  headers?: Record<string, string>
 }
 
 export async function request<T>(method: Method, path: string, body?: unknown, options: RequestOptions = {}, retried = false): Promise<T> {
@@ -83,6 +85,7 @@ export async function request<T>(method: Method, path: string, body?: unknown, o
   }
 
   const headers: Record<string, string> = {
+    ...(options.headers ?? {}),
     Accept: 'application/json',
     'Accept-Language': config.locale(),
     'X-Requested-With': 'XMLHttpRequest',

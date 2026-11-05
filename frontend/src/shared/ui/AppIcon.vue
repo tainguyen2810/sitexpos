@@ -23,6 +23,10 @@ const paths = {
   mail: 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2m18 2-10 7L2 6',
   eye: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12m11 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6',
   monitor: 'M3 4h18a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1m5 17h8m-4-4v4',
+  sparkles: 'M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z',
+  activity: 'M22 12h-4l-3 9L9 3l-3 9H2',
+  layers: 'm12 2 10 5-10 5L2 7zM2 17l10 5 10-5M2 12l10 5 10-5',
+  chart: 'M3 3v18h18M7 15v2m4-6v6m4-10v10m4-4v4',
 } as const
 
 export type IconName = keyof typeof paths
