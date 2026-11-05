@@ -41,7 +41,15 @@ it('pauses for brief and outline approval in step_by_step mode', function () {
 
     // A viewer cannot approve the outline; the editor can.
     $this->actingAs($t['viewer'])->postJson(writerUrl($t, "articles/{$id}/outline/approve"))->assertForbidden();
-    $this->actingAs($t['editor'])->postJson(writerUrl($t, "articles/{$id}/outline/approve"))->assertStatus(202);
+    // Editing the outline round-trips what the UI sends back (facts, word range, subheadings).
+    $sections = articleJson($t, $id, 'outline')['current']['sections'];
+    $withFacts = collect($sections)->first(fn ($s) => $s['required_facts'] !== []);
+    expect($withFacts)->not->toBeNull();
+    $sections = array_map(fn ($s) => $s['key'] === $withFacts['key'] ? ['heading' => 'Tiêu đề đã sửa', 'word_range' => [200, 400], 'subheadings' => ['Ý phụ']] + $s : $s, $sections);
+    $this->actingAs($t['editor'])->postJson(writerUrl($t, "articles/{$id}/outline/approve"), ['sections' => $sections])->assertStatus(202);
+    $edited = collect(articleJson($t, $id, 'outline')['current']['sections'])->firstWhere('heading', 'Tiêu đề đã sửa');
+    expect($edited['required_facts'])->toBe($withFacts['required_facts'])->and($edited['evidence_refs'])->toBe($withFacts['evidence_refs'])
+        ->and($edited['word_range'])->toBe([200, 400])->and($edited['subheadings'])->toBe(['Ý phụ']);
 
     expect(articleJson($t, $id)['status'])->toBe('NEEDS_HUMAN_REVIEW');
 });
@@ -142,4 +150,16 @@ it('sanitizes editor HTML and keeps autosave behind an optimistic lock', functio
     foreach ([$auto, $v] as $out) {
         expect($out)->not->toContain('<script')->not->toContain('onclick')->not->toContain('onerror')->not->toContain('javascript:')->not->toContain('<iframe')->toContain('Xin chào');
     }
+});
+
+it('lists the workspace writing history with filters', function () {
+    $t = writerTenant();
+    $id = writtenArticle($t);
+
+    $rows = $this->actingAs($t['viewer'])->getJson(writerUrl($t, 'history'))->assertOk()->json('data');
+    expect($rows)->not->toBeEmpty()->and(collect($rows)->pluck('article.id')->unique()->all())->toBe([$id])
+        ->and(collect($rows)->pluck('kind')->all())->toContain('research');
+
+    $drafts = $this->actingAs($t['viewer'])->getJson(writerUrl($t, 'history?kind=draft&status=succeeded'))->assertOk()->json('data');
+    expect(collect($drafts)->pluck('kind')->unique()->all())->toBe(['draft']);
 });

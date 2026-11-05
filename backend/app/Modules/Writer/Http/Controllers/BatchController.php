@@ -29,7 +29,13 @@ final class BatchController
     {
         Gate::authorize('viewAny', Article::class);
 
-        return WriterPresenter::page(WritingBatch::query()->orderByDesc('created_at')->orderByDesc('id'), fn (WritingBatch $b) => WriterPresenter::batch($b), $request, 20);
+        $q = WritingBatch::query();
+        $status = $request->query('status');
+        if (is_string($status) && in_array($status, ['queued', 'running', 'paused', 'completed', 'canceled', 'failed'], true)) {
+            $q->where('status', $status);
+        }
+
+        return WriterPresenter::page($q->orderByDesc('created_at')->orderByDesc('id'), fn (WritingBatch $b) => WriterPresenter::batch($b), $request, 20);
     }
 
     public function preview(BatchRequest $request, Workspace $workspace, WriterSettings $settings): JsonResponse

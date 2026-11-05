@@ -96,13 +96,14 @@ class OutlineBuilder
                 $warnings[] = 'specs_block_without_evidence_removed';
             }
             $links = array_values(array_filter(self::strings($s['internal_links'] ?? [], 5, 1000), static fn (string $u): bool => isset($allowed[HtmlSanitizer::normalizeUrl($u)])));
-            $min = max(40, min(1500, (int) ($s['word_min'] ?? 120)));
-            $max = max($min, min(2500, (int) ($s['word_max'] ?? $min * 2)));
+            $range = is_array($s['word_range'] ?? null) ? array_values($s['word_range']) : [];
+            $min = max(40, min(1500, (int) ($s['word_min'] ?? $range[0] ?? 120)));
+            $max = max($min, min(2500, (int) ($s['word_max'] ?? $range[1] ?? $min * 2)));
             $sections[] = [
                 'key' => ($s['key'] ?? null) === 'intro' ? 'intro' : 's'.(count($sections) + 1),
                 'heading' => $heading, 'level' => 2, 'purpose' => Text::clean($s['purpose'] ?? '', 400),
                 'key_questions' => self::strings($s['key_questions'] ?? [], 6), 'required_facts' => $facts, 'evidence_refs' => $evidenceRefs,
-                'word_range' => [$min, $max], 'internal_links' => $links, 'blocks' => $blocks, 'subheadings' => [],
+                'word_range' => [$min, $max], 'internal_links' => $links, 'blocks' => $blocks, 'subheadings' => self::strings($s['subheadings'] ?? [], 10, 200),
             ];
         }
         if ($sections === [] || $sections[0]['key'] !== 'intro') {

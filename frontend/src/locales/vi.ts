@@ -1,4 +1,6 @@
 // Vietnamese is the default and reference locale. Keys are grouped by module.
+import writer from './writer.vi'
+import writerAdmin from './writerAdmin.vi'
 export default {
   common: {
     appName: 'SiteX Post',
@@ -115,6 +117,8 @@ export default {
     content: 'Nội dung',
     keywords: 'Từ khóa',
     research: 'SEO Planner',
+    writer: 'AI Writer',
+    writerAdmin: 'AI Writer',
     research_admin: 'Nghiên cứu SEO',
     billing: 'Gói & thanh toán',
     workspaces: 'Workspace',
@@ -933,4 +937,6 @@ export default {
     auditTitle: 'Nhật ký toàn hệ thống',
     workspaceId: 'Workspace ID',
   },
+  writer,
+  writerAdmin,
 } as const

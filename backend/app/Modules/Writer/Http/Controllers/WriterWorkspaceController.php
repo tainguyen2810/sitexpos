@@ -9,19 +9,23 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use SiteXPost\Kernel\Http\ApiException;
 use SiteXPost\Modules\Research\Contracts\PlannerDirectory;
+use SiteXPost\Modules\Workflows\Domain\WorkflowRun;
 use SiteXPost\Modules\Workspace\Domain\Workspace;
 use SiteXPost\Modules\Writer\Actions\ArticleWorkflows;
 use SiteXPost\Modules\Writer\Actions\Batches;
 use SiteXPost\Modules\Writer\Actions\CreateArticle;
 use SiteXPost\Modules\Writer\Domain\Article;
 use SiteXPost\Modules\Writer\Domain\ArticleAiUsage;
+use SiteXPost\Modules\Writer\Domain\ArticleWorkflowRun;
+use SiteXPost\Modules\Writer\Http\WriterPresenter;
 use SiteXPost\Modules\Writer\Support\WriterQuota;
 use SiteXPost\Modules\Writer\Support\WriterSettings;
 
 /**
  * Writer dashboard data: quota and cost this month, status counts, the
  * wizard's options (content types, limits, approved Phase 4 ideas) and a
- * pre-creation cost estimate.
+ * pre-creation cost estimate, and the workspace's writing history (every
+ * AI workflow run on any article, newest first).
  */
 final class WriterWorkspaceController
 {
@@ -84,5 +88,38 @@ final class WriterWorkspaceController
 
         return new JsonResponse(['data' => ['target_words' => $words, 'estimated_cost_micro_usd' => $batches->estimatePerArticle($words),
             'note' => __('writer.estimate_note')]]);
+    }
+
+    public function history(Request $request, Workspace $workspace): JsonResponse
+    {
+        Gate::authorize('viewAny', Article::class);
+        $q = ArticleWorkflowRun::query();
+        $kind = $request->query('kind');
+        if (is_string($kind) && in_array($kind, ['research', 'outline', 'draft', 'recheck', 'rewrite'], true)) {
+            $q->where('kind', $kind);
+        }
+        $article = $request->query('article_id');
+        if (is_string($article) && preg_match('/^[0-9a-z]{26}$/i', $article) === 1) {
+            $q->where('article_id', $article);
+        }
+        $status = $request->query('status');
+        if (is_string($status) && in_array($status, ['pending', 'running', 'retry_scheduled', 'succeeded', 'failed', 'canceled'], true)) {
+            $q->whereIn('workflow_run_id', WorkflowRun::query()->select('id')->where('status', $status));
+        }
+        $perPage = max(1, min(100, (int) $request->integer('per_page', 30)));
+        $page = $q->orderByDesc('created_at')->orderByDesc('id')->cursorPaginate($perPage);
+        $items = collect($page->items());
+        $runs = WorkflowRun::query()->with('steps')->whereIn('id', $items->pluck('workflow_run_id'))->get()->keyBy('id');
+        $articles = Article::query()->whereIn('id', $items->pluck('article_id')->unique())->get(['id', 'title', 'status'])->keyBy('id');
+
+        return new JsonResponse([
+            'data' => $items->map(function (ArticleWorkflowRun $l) use ($runs, $articles) {
+                $wf = WriterPresenter::workflow($l, $runs->get($l->workflow_run_id));
+                $a = $articles->get($l->article_id);
+
+                return $wf === null ? null : $wf + ['article' => $a !== null ? ['id' => $a->id, 'title' => $a->title, 'status' => $a->status->value] : null];
+            })->filter()->values(),
+            'meta' => ['next_cursor' => $page->nextCursor()?->encode(), 'prev_cursor' => $page->previousCursor()?->encode(), 'per_page' => $perPage],
+        ]);
     }
 }

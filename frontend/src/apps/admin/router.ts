@@ -33,6 +33,7 @@ export const router = createRouter({
         { path: 'ai/usage', name: 'ai-usage', component: () => import('./pages/AiUsagePage.vue'), meta: { permission: 'platform.ai.view_costs' } },
         { path: 'ai/settings', name: 'ai-settings', component: () => import('./pages/AiSettingsPage.vue'), meta: { permission: 'platform.ai.view_costs' } },
         { path: 'research', name: 'research', component: () => import('./pages/ResearchAdminPage.vue') },
+        { path: 'writer', name: 'writer', component: () => import('./pages/WriterAdminPage.vue') },
         { path: 'jobs', name: 'jobs', component: () => import('./pages/JobsPage.vue'), meta: { permission: 'platform.jobs.manage' } },
         { path: 'audit', name: 'audit', component: () => import('./pages/AuditLogPage.vue') },
         { path: 'account', name: 'account', component: () => import('./pages/AccountPage.vue') },

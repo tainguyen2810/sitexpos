@@ -22,6 +22,7 @@ Route::prefix('api/v1/workspaces/{workspace}/writer')
         Route::get('options', [WriterWorkspaceController::class, 'options'])->name('options');
         Route::get('ideas', [WriterWorkspaceController::class, 'ideas'])->name('ideas');
         Route::get('estimate', [WriterWorkspaceController::class, 'estimate'])->name('estimate');
+        Route::get('history', [WriterWorkspaceController::class, 'history'])->name('history');
 
         Route::get('presets', [PresetController::class, 'index'])->name('presets.index');
         Route::post('presets', [PresetController::class, 'store'])->name('presets.store');

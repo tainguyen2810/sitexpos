@@ -1,4 +1,6 @@
 // English skeleton. Missing keys fall back to Vietnamese (fallbackLocale: 'vi').
+import writer from './writer.en'
+import writerAdmin from './writerAdmin.en'
 export default {
   common: { save: 'Save changes', cancel: 'Cancel', confirm: 'Confirm', delete: 'Delete', close: 'Close', edit: 'Edit', retry: 'Retry', loading: 'Loading…', loadMore: 'Load more', search: 'Search' },
   errors: { generic: 'Something went wrong. Please try again.', network: 'Cannot reach the server.', notFound: 'Not found.', forbidden: 'You do not have access.' },
@@ -7,7 +9,7 @@ export default {
     loginTitle: 'Sign in', email: 'Email', password: 'Password', login: 'Sign in', logout: 'Sign out', register: 'Sign up',
     registerTitle: 'Create your account', name: 'Full name', passwordConfirmation: 'Confirm password', forgot: 'Forgot password?',
   },
-  nav: { dashboard: 'Dashboard', members: 'Members', settings: 'Workspace settings', audit: 'Activity log', account: 'My account', sites: 'Websites', ai: 'AI tasks', aiUsage: 'AI costs', aiSettings: 'AI settings', jobs: 'Queues & jobs' },
+  nav: { dashboard: 'Dashboard', members: 'Members', settings: 'Workspace settings', audit: 'Activity log', account: 'My account', sites: 'Websites', ai: 'AI tasks', aiUsage: 'AI costs', aiSettings: 'AI settings', jobs: 'Queues & jobs', writer: 'AI Writer', writerAdmin: 'AI Writer' },
   dashboard: { sites: 'Connected websites', manageSites: 'Manage websites' },
   sites: {
     title: 'Websites',
@@ -191,4 +193,6 @@ export default {
     dlStatuses: { open: 'Open', retried: 'Retried', discarded: 'Discarded' }, retriedOk: 'Queued again.', discardedOk: 'Marked as discarded.',
     refresh: 'Refresh', autoRefresh: 'Auto-refresh every 10 s', error: 'Error',
   },
+  writer,
+  writerAdmin,
 }

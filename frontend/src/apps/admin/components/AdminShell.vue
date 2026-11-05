@@ -13,7 +13,7 @@ const session = useSessionStore()
 
 const nav = computed<NavItem[]>(() => {
   const perms = session.user?.platform_permissions ?? []
-  const items: (NavItem & { permission?: string })[] = [
+  const items: (NavItem & { permission?: string; anyOf?: string[] })[] = [
     { label: t('nav.dashboard'), to: '/', icon: 'home', permission: 'platform.dashboard.view' },
     { label: t('nav.workspaces'), to: '/workspaces', icon: 'building', permission: 'platform.tenants.view' },
     { label: t('nav.users'), to: '/users', icon: 'users', permission: 'platform.users.view' },
@@ -22,10 +22,11 @@ const nav = computed<NavItem[]>(() => {
     { label: t('nav.aiSettings'), to: '/ai/settings', icon: 'sparkles', permission: 'platform.ai.view_costs' },
     { label: t('nav.jobs'), to: '/jobs', icon: 'layers', permission: 'platform.jobs.manage' },
     { label: t('nav.research_admin'), to: '/research', icon: 'target', permission: 'platform.ai.view_costs' },
+    { label: t('nav.writerAdmin'), to: '/writer', icon: 'pen', anyOf: ['platform.ai.manage', 'platform.ai.view_costs', 'platform.jobs.manage'] },
     { label: t('nav.audit'), to: '/audit', icon: 'list' },
     { label: t('nav.billing'), icon: 'card', soon: true },
   ]
-  return items.filter((i) => !i.permission || perms.includes(i.permission))
+  return items.filter((i) => (!i.permission || perms.includes(i.permission)) && (!i.anyOf || i.anyOf.some((p) => perms.includes(p))))
 })
 
 async function logout() {

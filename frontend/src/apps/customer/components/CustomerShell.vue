@@ -31,7 +31,7 @@ const nav = computed<NavItem[]>(() => {
   const items: NavItem[] = [
     { label: t('nav.dashboard'), to: `${base}/dashboard`, icon: 'home' },
     { label: t('nav.sites'), to: `${base}/sites`, icon: 'globe' },
-    { label: t('nav.content'), icon: 'file', soon: true },
+    { label: t('nav.writer'), to: `${base}/writer`, icon: 'pen' },
     { label: t('nav.research'), to: `${base}/research`, icon: 'target' },
     { label: t('nav.ai'), to: `${base}/ai`, icon: 'sparkles' },
     { label: t('nav.members'), to: `${base}/members`, icon: 'users' },
