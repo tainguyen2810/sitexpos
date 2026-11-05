@@ -2,10 +2,12 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
-  adminAiApi, formatPerMtok, formatUsd, usdToMicro,
+  adminAiApi, formatPeakWindows, formatPerMtok, formatTokens, formatUsd, parsePeakWindows, usdToMicro,
   type AiBudget, type AiModel, type AiPrice, type AiProvider, type AiRoute, type BudgetAction, type Capability,
+  type ConnectionTestResult, type ModelTestResult, type ReasoningEffort, type ResponseFormatMode,
 } from '@/shared/api/ai'
 import { ApiError } from '@/shared/api/client'
+import { aiErrorMessage } from '@/shared/components/ai/aiErrors'
 import { useAsync } from '@/shared/composables/useAsync'
 import { useApiForm } from '@/shared/composables/useApiForm'
 import { useToast } from '@/shared/composables/useToast'
@@ -49,7 +51,7 @@ async function guarded(fn: () => Promise<unknown>, reload: () => Promise<unknown
   }
 }
 
-const ENV: Record<string, string> = { openai: 'OPENAI_API_KEY', gemini: 'GEMINI_API_KEY', anthropic: 'ANTHROPIC_API_KEY', fake: 'SITEX_AI_FAKE_PROVIDER=true' }
+const ENV: Record<string, string> = { openai: 'OPENAI_API_KEY', gemini: 'GEMINI_API_KEY', anthropic: 'ANTHROPIC_API_KEY', deepseek: 'DEEPSEEK_API_KEY', fake: 'SITEX_AI_FAKE_PROVIDER=true' }
 const CAPS: Capability[] = ['structured_output', 'web_search', 'image_generation', 'temperature', 'vision']
 const circuitTone = (s: string) => (s === 'closed' ? 'success' : s === 'open' ? 'danger' : 'warning')
 
@@ -59,16 +61,82 @@ const resetCircuit = (p: AiProvider) => guarded(() => adminAiApi.resetCircuit(p.
 const saveProviderNumber = (p: AiProvider, field: 'timeout_seconds' | 'max_retries', value: string) =>
   guarded(() => adminAiApi.updateProvider(p.id, { [field]: Number(value) }), providers.run)
 
+// API key: write-only; the server never returns it.
+const keyProvider = ref<AiProvider | null>(null)
+const keyForm = useApiForm()
+const keyDraft = ref('')
+function openKey(p: AiProvider) {
+  keyForm.reset()
+  keyDraft.value = ''
+  keyProvider.value = p
+}
+async function saveKey(clear = false) {
+  const p = keyProvider.value
+  if (!p) return
+  const ok = await keyForm.submit(() => adminAiApi.updateProvider(p.id, clear ? { clear_api_key: true } : { api_key: keyDraft.value.trim() }))
+  keyDraft.value = ''
+  if (!ok) return
+  keyProvider.value = null
+  toast.success(t('common.saved'))
+  await providers.run()
+}
+
+// Test Connection (free model-list call)
+const connTesting = ref<string | null>(null)
+const connResult = ref<{ provider: AiProvider; result: ConnectionTestResult } | null>(null)
+async function testConnection(p: AiProvider) {
+  connTesting.value = p.id
+  try {
+    connResult.value = { provider: p, result: await adminAiApi.testConnection(p.id) }
+  } catch (e) {
+    fail(e)
+  } finally {
+    connTesting.value = null
+  }
+}
+
+// Custom OpenAI-compatible provider
+const customOpen = ref(false)
+const customForm = useApiForm()
+const customDraft = ref({ name: '', code: '', base_url: '', api_key: '', response_format: 'json_object' as ResponseFormatMode })
+function openCustom() {
+  customForm.reset()
+  customDraft.value = { name: '', code: '', base_url: 'https://', api_key: '', response_format: 'json_object' }
+  customOpen.value = true
+}
+async function createCustom() {
+  const d = customDraft.value
+  const ok = await customForm.submit(() => adminAiApi.createProvider({
+    name: d.name.trim(), code: d.code.trim().toLowerCase(), base_url: d.base_url.trim(), response_format: d.response_format,
+    ...(d.api_key.trim() ? { api_key: d.api_key.trim() } : {}),
+  }))
+  customDraft.value.api_key = ''
+  if (!ok) return
+  customOpen.value = false
+  toast.success(t('common.saved'))
+  await providers.run()
+}
+const providerDeleting = ref<AiProvider | null>(null)
+async function deleteProvider() {
+  const p = providerDeleting.value
+  if (!p) return
+  await guarded(() => adminAiApi.deleteProvider(p.id), providers.run)
+  providerDeleting.value = null
+}
+const responseFormatOptions = computed(() => (['json_schema', 'json_object', 'none'] as const).map((v) => ({ value: v, label: t(`aiAdmin.responseFormats.${v}`) })))
+
 // ---- models & prices ----
 const toggleModel = (m: AiModel) => guarded(() => adminAiApi.updateModel(m.id, { is_enabled: !m.is_enabled }), models.run)
 const priceModel = ref<AiModel | null>(null)
 const priceList = ref<AiPrice[]>([])
 const priceForm = useApiForm()
-const priceDraft = ref({ effective_from: '', input: '', cached: '', cache_write: '', output: '', search: '', image: '', source_url: '' })
+const emptyPrice = () => ({ effective_from: new Date().toISOString().slice(0, 16), input: '', cached: '', cache_write: '', output: '', search: '', image: '', source_url: '',
+  timeOfDay: false, off_input: '', off_cached: '', off_output: '', windows: '' })
+const priceDraft = ref(emptyPrice())
 async function openPrices(m: AiModel) {
   priceModel.value = m
   priceForm.reset()
-  priceDraft.value = { effective_from: new Date().toISOString().slice(0, 16), input: '', cached: '', cache_write: '', output: '', search: '', image: '', source_url: '' }
+  priceDraft.value = emptyPrice()
   try {
     priceList.value = await adminAiApi.prices(m.id)
   } catch (e) {
@@ -79,7 +147,20 @@ async function addPrice() {
   const m = priceModel.value
   if (!m) return
   const d = priceDraft.value
+  let windows = null
+  if (d.timeOfDay) {
+    try {
+      windows = parsePeakWindows(d.windows)
+    } catch (e) {
+      priceForm.errors.peak_windows = t('aiAdmin.peakWindowsInvalid', { line: e instanceof Error ? e.message : '' })
+      return
+    }
+  }
+  const offPeak = d.timeOfDay
+    ? { offpeak_input_per_mtok: usdToMicro(d.off_input || 0), offpeak_cached_input_per_mtok: usdToMicro(d.off_cached || 0), offpeak_output_per_mtok: usdToMicro(d.off_output || 0), peak_windows: windows }
+    : {}
   const ok = await priceForm.submit(() => adminAiApi.createPrice(m.id, {
+    ...offPeak,
     effective_from: d.effective_from.replace('T', ' ') + ':00',
     input_per_mtok: usdToMicro(d.input || 0),
     cached_input_per_mtok: usdToMicro(d.cached || 0),
@@ -103,6 +184,65 @@ async function deletePrice(p: AiPrice) {
   } catch (e) {
     fail(e)
   }
+}
+
+// Edit model (Model ID, capabilities, reasoning effort) and delete unused models
+const editModel = ref<AiModel | null>(null)
+const editForm = useApiForm()
+const editDraft = ref({ model_name: '', display_name: '', tier: 'standard', caps: {} as Partial<Record<Capability, boolean>>, reasoning: '' as ReasoningEffort | '' })
+function openEditModel(m: AiModel) {
+  editForm.reset()
+  editModel.value = m
+  editDraft.value = {
+    model_name: m.model_name, display_name: m.display_name, tier: m.tier,
+    caps: Object.fromEntries(CAPS.map((c) => [c, !!m.capabilities[c]])), reasoning: m.capabilities.reasoning_effort ?? '',
+  }
+}
+async function saveModel() {
+  const m = editModel.value
+  if (!m) return
+  const d = editDraft.value
+  const ok = await editForm.submit(() => adminAiApi.updateModel(m.id, {
+    ...(d.model_name.trim() !== m.model_name ? { model_name: d.model_name.trim() } : {}),
+    display_name: d.display_name, tier: d.tier, capabilities: { ...d.caps, reasoning_effort: d.reasoning || null },
+  }))
+  if (!ok) return
+  editModel.value = null
+  toast.success(t('common.saved'))
+  await Promise.all([models.run(), routes.run()])
+}
+const modelDeleting = ref<AiModel | null>(null)
+async function deleteModel() {
+  const m = modelDeleting.value
+  if (!m) return
+  await guarded(() => adminAiApi.deleteModel(m.id), models.run)
+  modelDeleting.value = null
+  editModel.value = null
+}
+const effortOptions = computed(() => [{ value: '', label: t('aiAdmin.efforts.default') }, ...(['none', 'low', 'high', 'max'] as const).map((v) => ({ value: v, label: t(`aiAdmin.efforts.${v}`) }))])
+
+// Test Model: real, paid (tiny) call
+const testModel = ref<AiModel | null>(null)
+const testDraft = ref({ prompt: '', structured: false })
+const testRunning = ref(false)
+const testResult = ref<ModelTestResult | null>(null)
+function openTest(m: AiModel) {
+  testModel.value = m
+  testDraft.value = { prompt: '', structured: false }
+  testResult.value = null
+}
+async function runTest() {
+  const m = testModel.value
+  if (!m) return
+  testRunning.value = true
+  try {
+    testResult.value = await adminAiApi.testModel(m.id, { prompt: testDraft.value.prompt.trim() || undefined, structured: testDraft.value.structured })
+  } catch (e) {
+    fail(e)
+  } finally {
+    testRunning.value = false
+  }
+  await models.run()
 }
 
 const modelOpen = ref(false)
@@ -209,15 +349,22 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
 
     <!-- Providers -->
     <AppCard v-if="tab === 'providers'" :padded="false">
+      <template #actions><AppButton size="sm" @click="openCustom">{{ $t('aiAdmin.addCustomProvider') }}</AppButton></template>
       <LoadingState v-if="providers.loading.value" class="p-5" />
       <ErrorState v-else-if="providers.error.value" :error="providers.error.value" class="p-5" @retry="providers.run" />
       <ul v-else class="divide-y divide-line" data-testid="provider-list">
         <li v-for="p in providers.data.value ?? []" :key="p.id" class="flex flex-wrap items-center gap-4 px-5 py-4">
           <div class="min-w-48 flex-1">
-            <p class="font-medium">{{ p.name }} <span class="font-mono text-xs text-ink-muted">{{ p.code }}</span></p>
+            <p class="font-medium">{{ p.name }} <span class="font-mono text-xs text-ink-muted">{{ p.code }}</span>
+              <AppBadge v-if="p.is_custom" tone="brand" class="ml-1">{{ $t('aiAdmin.custom') }}</AppBadge>
+              <AppBadge v-if="!p.is_enabled" class="ml-1">{{ $t('aiAdmin.disabled') }}</AppBadge>
+            </p>
+            <p v-if="p.base_url" class="mt-0.5 break-all font-mono text-xs text-ink-muted">{{ p.base_url }}</p>
             <p class="mt-1 flex flex-wrap items-center gap-2 text-xs">
               <AppBadge :tone="p.has_api_key ? 'success' : 'warning'">{{ p.has_api_key ? $t('aiAdmin.hasKey') : $t('aiAdmin.noKey') }}</AppBadge>
-              <span v-if="!p.has_api_key" class="text-ink-muted">{{ $t('aiAdmin.keyHint', { env: ENV[p.code] ?? 'API key' }) }}</span>
+              <span v-if="p.api_key_source === 'database'" class="text-ink-muted" data-testid="key-source">{{ $t('aiAdmin.keyStored', { last4: p.api_key_last4 ?? '' }) }}</span>
+              <span v-else-if="p.api_key_source === 'env'" class="text-ink-muted">{{ $t('aiAdmin.keyFromEnv', { env: ENV[p.code] ?? 'API key' }) }}</span>
+              <span v-else-if="p.driver !== 'fake'" class="text-ink-muted">{{ $t('aiAdmin.keyHintUi') }}</span>
             </p>
           </div>
           <div class="text-xs">
@@ -231,9 +378,12 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
           <label class="text-xs text-ink-muted">{{ $t('aiAdmin.maxRetries') }}
             <input type="number" min="0" max="3" :value="p.max_retries" class="mt-1 block w-16 rounded border border-line px-2 py-1 text-sm text-ink" @change="saveProviderNumber(p, 'max_retries', ($event.target as HTMLInputElement).value)" />
           </label>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <AppButton v-if="p.circuit.state !== 'closed'" size="sm" variant="secondary" @click="resetCircuit(p)">{{ $t('aiAdmin.resetCircuit') }}</AppButton>
+            <AppButton v-if="p.driver !== 'fake'" size="sm" variant="ghost" @click="openKey(p)">{{ $t('aiAdmin.setKey') }}</AppButton>
+            <AppButton size="sm" variant="secondary" :loading="connTesting === p.id" @click="testConnection(p)">{{ $t('aiAdmin.testConnection') }}</AppButton>
             <AppButton size="sm" :variant="p.is_enabled ? 'secondary' : 'primary'" @click="toggleProvider(p)">{{ p.is_enabled ? $t('aiAdmin.disable') : $t('aiAdmin.enable') }}</AppButton>
+            <AppButton v-if="p.is_custom && !p.models_count" size="sm" variant="ghost" @click="providerDeleting = p">{{ $t('common.delete') }}</AppButton>
           </div>
         </li>
       </ul>
@@ -245,21 +395,24 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
       <LoadingState v-if="models.loading.value" class="p-5" />
       <ErrorState v-else-if="models.error.value" :error="models.error.value" class="p-5" @retry="models.run" />
       <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[820px] text-sm" data-testid="model-list">
+        <table class="w-full min-w-[960px] text-sm" data-testid="model-list">
           <thead class="text-left text-xs text-ink-muted"><tr><th class="px-5 py-2">Model</th><th class="px-3 py-2">{{ $t('aiAdmin.tier') }}</th><th class="px-3 py-2"></th><th class="px-3 py-2">{{ $t('aiAdmin.priceInOut') }}</th><th class="px-5 py-2"></th></tr></thead>
           <tbody class="divide-y divide-line">
             <tr v-for="m in models.data.value ?? []" :key="m.id">
-              <td class="px-5 py-3"><p class="font-medium">{{ m.display_name }}</p><p class="font-mono text-xs text-ink-muted">{{ m.model_key }}</p></td>
+              <td class="px-5 py-3"><p class="font-medium">{{ m.display_name }} <AppBadge v-if="!m.is_enabled">{{ $t('aiAdmin.disabled') }}</AppBadge></p><p class="font-mono text-xs text-ink-muted">{{ m.model_key }}</p></td>
               <td class="px-3 py-3">{{ $t(`aiAdmin.tiers.${m.tier}`) }}</td>
               <td class="px-3 py-3"><div class="flex flex-wrap gap-1"><AppBadge v-for="c in CAPS.filter((c) => m.capabilities[c])" :key="c">{{ $t(`aiAdmin.capabilities.${c}`) }}</AppBadge></div></td>
               <td class="px-3 py-3">
                 <span v-if="m.current_price">{{ formatPerMtok(m.current_price.input_per_mtok) }} / {{ formatPerMtok(m.current_price.output_per_mtok) }}</span>
+                <span v-if="m.current_price?.peak_windows?.length" class="block text-xs text-ink-muted">{{ $t('aiAdmin.offPeakShort', { in: formatPerMtok(m.current_price.offpeak_input_per_mtok), out: formatPerMtok(m.current_price.offpeak_output_per_mtok) }) }}</span>
                 <span v-else class="text-warning-600">{{ $t('aiAdmin.noPrice') }}</span>
                 <AppBadge v-if="m.scheduled_prices" tone="brand" class="ml-1">+{{ m.scheduled_prices }}</AppBadge>
               </td>
               <td class="px-5 py-3">
                 <div class="flex justify-end gap-2">
+                  <AppButton size="sm" variant="ghost" @click="openEditModel(m)">{{ $t('common.edit') }}</AppButton>
                   <AppButton size="sm" variant="ghost" @click="openPrices(m)">{{ $t('aiAdmin.prices') }}</AppButton>
+                  <AppButton size="sm" variant="secondary" @click="openTest(m)">{{ $t('aiAdmin.testModel') }}</AppButton>
                   <AppButton size="sm" :variant="m.is_enabled ? 'secondary' : 'primary'" @click="toggleModel(m)">{{ m.is_enabled ? $t('aiAdmin.disable') : $t('aiAdmin.enable') }}</AppButton>
                 </div>
               </td>
@@ -322,7 +475,9 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
           <span class="font-medium">{{ $t('aiAdmin.priceVersion', { v: p.version }) }}</span>
           <AppBadge :tone="p.state === 'effective' ? 'success' : 'brand'">{{ $t(`aiAdmin.priceStates.${p.state}`) }}</AppBadge>
           <span class="text-xs text-ink-muted">{{ formatDateTime(p.effective_from) }}</span>
-          <span class="flex-1 text-right text-xs">{{ formatPerMtok(p.input_per_mtok) }} / {{ formatPerMtok(p.output_per_mtok) }}<template v-if="p.per_1k_searches"> · {{ formatPerMtok(p.per_1k_searches) }}/1K</template></span>
+          <span class="flex-1 text-right text-xs">{{ formatPerMtok(p.input_per_mtok) }} / {{ formatPerMtok(p.output_per_mtok) }}<template v-if="p.per_1k_searches"> · {{ formatPerMtok(p.per_1k_searches) }}/1K</template>
+            <template v-if="p.peak_windows?.length"><br /><span class="text-ink-muted">{{ $t('aiAdmin.offPeakShort', { in: formatPerMtok(p.offpeak_input_per_mtok), out: formatPerMtok(p.offpeak_output_per_mtok) }) }} · {{ $t('aiAdmin.peakUtc') }} {{ formatPeakWindows(p.peak_windows).replace(/\n/g, ', ') }}</span></template>
+          </span>
           <a v-if="p.source_url" :href="p.source_url" target="_blank" rel="noopener noreferrer" class="text-xs text-brand-600 underline">src</a>
           <AppButton v-if="p.state === 'scheduled'" size="sm" variant="ghost" @click="deletePrice(p)">{{ $t('common.delete') }}</AppButton>
         </li>
@@ -337,6 +492,18 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
         <AppInput v-model="priceDraft.cache_write" inputmode="decimal" :label="$t('aiAdmin.cacheWritePrice')" />
         <AppInput v-model="priceDraft.search" inputmode="decimal" :label="$t('aiAdmin.searchPrice')" />
         <AppInput v-model="priceDraft.image" inputmode="decimal" :label="$t('aiAdmin.imagePrice')" />
+        <label class="flex items-start gap-2 text-sm sm:col-span-2"><input v-model="priceDraft.timeOfDay" type="checkbox" class="mt-1" data-testid="time-of-day" />
+          <span>{{ $t('aiAdmin.timeOfDay') }}<br /><span class="text-xs text-ink-muted">{{ $t('aiAdmin.timeOfDayHint') }}</span></span></label>
+        <template v-if="priceDraft.timeOfDay">
+          <AppInput v-model="priceDraft.off_input" inputmode="decimal" :label="$t('aiAdmin.offInputPrice')" :error="priceForm.errors.offpeak_input_per_mtok" />
+          <AppInput v-model="priceDraft.off_output" inputmode="decimal" :label="$t('aiAdmin.offOutputPrice')" :error="priceForm.errors.offpeak_output_per_mtok" />
+          <AppInput v-model="priceDraft.off_cached" inputmode="decimal" :label="$t('aiAdmin.offCachedPrice')" />
+          <label class="text-sm sm:col-span-2">{{ $t('aiAdmin.peakWindows') }}
+            <textarea v-model="priceDraft.windows" rows="2" class="mt-1 block w-full rounded-lg border border-line px-3 py-2 font-mono text-sm" placeholder="1-5 01:00-04:00&#10;1-5 06:00-10:00" data-testid="peak-windows" />
+            <span class="text-xs text-ink-muted">{{ $t('aiAdmin.peakWindowsHint') }}</span>
+            <span v-if="priceForm.errors.peak_windows" class="block text-xs text-danger-600" role="alert">{{ priceForm.errors.peak_windows }}</span>
+          </label>
+        </template>
       </form>
       <template #footer>
         <AppButton variant="secondary" @click="priceModel = null">{{ $t('common.close') }}</AppButton>
@@ -405,6 +572,108 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
         <AppButton type="submit" form="budget-form" :loading="budgetForm.submitting.value">{{ $t('common.save') }}</AppButton>
       </template>
     </AppModal>
+    <!-- API key -->
+    <AppModal :open="!!keyProvider" :title="$t('aiAdmin.keyTitle', { name: keyProvider?.name ?? '' })" width="sm" @close="keyProvider = null">
+      <form id="key-form" class="space-y-3" novalidate autocomplete="off" @submit.prevent="saveKey()">
+        <p v-if="keyForm.formError.value" class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">{{ keyForm.formError.value }}</p>
+        <AppInput v-model="keyDraft" type="password" autocomplete="new-password" :label="$t('aiAdmin.apiKey')" :error="keyForm.errors.api_key" />
+        <p class="text-xs text-ink-muted">{{ $t('aiAdmin.keySecurity') }}</p>
+        <p v-if="keyProvider?.api_key_source === 'database'" class="text-xs">{{ $t('aiAdmin.keyStored', { last4: keyProvider.api_key_last4 ?? '' }) }}</p>
+      </form>
+      <template #footer>
+        <AppButton v-if="keyProvider?.api_key_source === 'database'" variant="ghost" :loading="keyForm.submitting.value" @click="saveKey(true)">{{ $t('aiAdmin.clearKey') }}</AppButton>
+        <AppButton variant="secondary" @click="keyProvider = null">{{ $t('common.cancel') }}</AppButton>
+        <AppButton type="submit" form="key-form" :disabled="keyDraft.trim().length < 8" :loading="keyForm.submitting.value">{{ $t('common.save') }}</AppButton>
+      </template>
+    </AppModal>
+
+    <!-- Connection test result -->
+    <AppModal :open="!!connResult" :title="$t('aiAdmin.connTitle', { name: connResult?.provider.name ?? '' })" width="sm" @close="connResult = null">
+      <div v-if="connResult" class="space-y-3 text-sm" data-testid="conn-result">
+        <p class="flex items-center gap-2">
+          <AppBadge :tone="connResult.result.ok ? 'success' : 'danger'">{{ connResult.result.ok ? $t('aiAdmin.connOk') : $t('aiAdmin.connFailed') }}</AppBadge>
+          <span v-if="connResult.result.latency_ms !== null" class="text-xs text-ink-muted">{{ connResult.result.latency_ms }} ms</span>
+        </p>
+        <p v-if="!connResult.result.ok" class="rounded-lg bg-danger-50 px-3 py-2 text-danger-600">{{ aiErrorMessage({ code: connResult.result.error_code ?? 'provider_error', message: connResult.result.error_message }) }}</p>
+        <template v-else>
+          <p>{{ $t('aiAdmin.connModelsFound', { n: connResult.result.models_found }) }}</p>
+          <ul v-if="connResult.result.models.length" class="divide-y divide-line rounded-lg border border-line">
+            <li v-for="m in connResult.result.models" :key="m.model_name" class="flex items-center justify-between px-3 py-1.5 font-mono text-xs">
+              {{ m.model_name }}<AppBadge :tone="m.available ? 'success' : 'warning'">{{ m.available ? $t('aiAdmin.modelAvailable') : $t('aiAdmin.modelMissing') }}</AppBadge>
+            </li>
+          </ul>
+        </template>
+      </div>
+      <template #footer><AppButton variant="secondary" @click="connResult = null">{{ $t('common.close') }}</AppButton></template>
+    </AppModal>
+
+    <!-- Custom OpenAI-compatible provider -->
+    <AppModal :open="customOpen" :title="$t('aiAdmin.addCustomProvider')" width="sm" @close="customOpen = false">
+      <form id="custom-form" class="space-y-3" novalidate autocomplete="off" @submit.prevent="createCustom">
+        <p v-if="customForm.formError.value" class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">{{ customForm.formError.value }}</p>
+        <AppInput v-model="customDraft.name" :label="$t('aiAdmin.providerName')" :error="customForm.errors.name" />
+        <AppInput v-model="customDraft.code" :label="$t('aiAdmin.providerCode')" :error="customForm.errors.code" />
+        <AppInput v-model="customDraft.base_url" :label="$t('aiAdmin.baseUrl')" :error="customForm.errors.base_url" />
+        <p class="text-xs text-ink-muted">{{ $t('aiAdmin.baseUrlHint') }}</p>
+        <AppInput v-model="customDraft.api_key" type="password" autocomplete="new-password" :label="$t('aiAdmin.apiKey')" :error="customForm.errors.api_key" />
+        <AppSelect v-model="customDraft.response_format" :label="$t('aiAdmin.responseFormat')" :options="responseFormatOptions" />
+        <p class="text-xs text-ink-muted">{{ $t('aiAdmin.customHint') }}</p>
+      </form>
+      <template #footer>
+        <AppButton variant="secondary" @click="customOpen = false">{{ $t('common.cancel') }}</AppButton>
+        <AppButton type="submit" form="custom-form" :loading="customForm.submitting.value">{{ $t('common.confirm') }}</AppButton>
+      </template>
+    </AppModal>
+
+    <!-- Edit model -->
+    <AppModal :open="!!editModel" :title="$t('aiAdmin.editModel', { name: editModel?.display_name ?? '' })" @close="editModel = null">
+      <form id="edit-model-form" class="space-y-3" novalidate @submit.prevent="saveModel">
+        <p v-if="editForm.formError.value" class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">{{ editForm.formError.value }}</p>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <AppInput v-model="editDraft.model_name" :label="$t('aiAdmin.modelName')" :error="editForm.errors.model_name" />
+          <AppInput v-model="editDraft.display_name" :label="$t('aiAdmin.displayName')" :error="editForm.errors.display_name" />
+          <AppSelect v-model="editDraft.tier" :label="$t('aiAdmin.tier')" :options="tierOptions" />
+          <AppSelect v-model="editDraft.reasoning" :label="$t('aiAdmin.reasoningEffort')" :options="effortOptions" />
+        </div>
+        <p class="text-xs text-ink-muted">{{ $t('aiAdmin.modelIdHint') }}</p>
+        <fieldset>
+          <legend class="text-sm font-medium">{{ $t('aiAdmin.capabilitiesTitle') }}</legend>
+          <div class="mt-1 flex flex-wrap gap-3">
+            <label v-for="c in CAPS" :key="c" class="flex items-center gap-1 text-xs"><input v-model="editDraft.caps[c]" type="checkbox" /> {{ $t(`aiAdmin.capabilities.${c}`) }}</label>
+          </div>
+        </fieldset>
+      </form>
+      <template #footer>
+        <AppButton variant="ghost" @click="modelDeleting = editModel">{{ $t('common.delete') }}</AppButton>
+        <AppButton variant="secondary" @click="editModel = null">{{ $t('common.cancel') }}</AppButton>
+        <AppButton type="submit" form="edit-model-form" :loading="editForm.submitting.value">{{ $t('common.save') }}</AppButton>
+      </template>
+    </AppModal>
+
+    <!-- Test model -->
+    <AppModal :open="!!testModel" :title="$t('aiAdmin.testModelTitle', { name: testModel?.model_key ?? '' })" @close="testModel = null">
+      <div class="space-y-3 text-sm">
+        <p class="rounded-lg bg-warning-50 px-3 py-2 text-warning-700">{{ $t('aiAdmin.testModelPaid') }}</p>
+        <AppInput v-model="testDraft.prompt" :label="$t('aiAdmin.testPrompt')" :placeholder="$t('aiAdmin.testPromptPlaceholder')" />
+        <label class="flex items-center gap-2"><input v-model="testDraft.structured" type="checkbox" /> {{ $t('aiAdmin.testStructured') }}</label>
+        <div v-if="testResult" class="space-y-2 rounded-lg border border-line p-3" data-testid="model-test-result">
+          <p class="flex flex-wrap items-center gap-2">
+            <AppBadge :tone="testResult.ok ? 'success' : 'danger'">{{ testResult.ok ? $t('aiAdmin.testOk') : $t('aiAdmin.testFailed') }}</AppBadge>
+            <span class="text-xs text-ink-muted">{{ testResult.latency_ms }} ms</span>
+            <span v-if="testResult.ok" class="text-xs">{{ $t('aiAdmin.testCost', { cost: formatUsd(testResult.cost_micro_usd), in: formatTokens(testResult.usage.input_tokens), out: formatTokens(testResult.usage.output_tokens) }) }}</span>
+          </p>
+          <pre v-if="testResult.ok" class="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-surface-muted p-2 text-xs">{{ testResult.json ? JSON.stringify(testResult.json, null, 2) : testResult.text }}</pre>
+          <p v-else class="text-danger-600">{{ aiErrorMessage({ code: testResult.error_code, message: testResult.error_message }) }}</p>
+        </div>
+      </div>
+      <template #footer>
+        <AppButton variant="secondary" @click="testModel = null">{{ $t('common.close') }}</AppButton>
+        <AppButton :loading="testRunning" @click="runTest">{{ $t('aiAdmin.runTest') }}</AppButton>
+      </template>
+    </AppModal>
+
+    <ConfirmDialog :open="!!providerDeleting" :title="$t('common.delete')" :message="$t('aiAdmin.deleteProvider', { name: providerDeleting?.name ?? '' })" danger @close="providerDeleting = null" @confirm="deleteProvider" />
+    <ConfirmDialog :open="!!modelDeleting" :title="$t('common.delete')" :message="$t('aiAdmin.deleteModel', { name: modelDeleting?.model_key ?? '' })" danger @close="modelDeleting = null" @confirm="deleteModel" />
     <ConfirmDialog :open="!!deleting" :title="$t('common.delete')" :message="$t('aiAdmin.deleteBudget')" danger @close="deleting = null" @confirm="deleteBudget" />
   </div>
 </template>

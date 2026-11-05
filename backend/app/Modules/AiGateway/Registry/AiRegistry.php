@@ -35,6 +35,7 @@ final class AiRegistry
             'openai' => ['name' => 'OpenAI', 'priority' => 10, 'timeout' => 90],
             'anthropic' => ['name' => 'Anthropic (Claude)', 'priority' => 20, 'timeout' => 120],
             'gemini' => ['name' => 'Google Gemini', 'priority' => 30, 'timeout' => 90],
+            'deepseek' => ['name' => 'DeepSeek', 'priority' => 40, 'timeout' => 120],
             'fake' => ['name' => 'Fake (dev/test only)', 'priority' => 900, 'timeout' => 35],
         ];
     }
@@ -47,6 +48,13 @@ final class AiRegistry
         $openai = 'https://developers.openai.com/api/docs/pricing';
         $gemini = 'https://aistudio.google.com/docs/pricing';
         $claude = 'https://platform.claude.com/docs/en/about-claude/pricing';
+        $deepseek = 'https://api-docs.deepseek.com/quick_start/pricing/';
+        // DeepSeek peak hours (UTC, Mon–Fri): off-peak = half price. Chinese public holidays are not modelled (billed as peak).
+        $deepseekPeak = [['days' => [1, 2, 3, 4, 5], 'from' => '01:00', 'to' => '04:00'], ['days' => [1, 2, 3, 4, 5], 'from' => '06:00', 'to' => '10:00']];
+        $deepseekCaps = static fn (bool $vision): array => [
+            'structured_output' => true, 'web_search' => false, 'image_generation' => false, 'temperature' => true,
+            'vision' => $vision, 'context_window' => 1000000, 'max_output_tokens' => 384000, 'reasoning_effort' => 'none',
+        ];
         $text = static fn (bool $search, bool $temperature, int $context, int $maxOut): array => [
             'structured_output' => true, 'web_search' => $search, 'image_generation' => false, 'temperature' => $temperature,
             'vision' => true, 'context_window' => $context, 'max_output_tokens' => $maxOut,
@@ -90,6 +98,17 @@ final class AiRegistry
             ['provider' => 'anthropic', 'name' => 'claude-haiku-5-5', 'display' => 'Claude Haiku 5.5', 'tier' => 'economy', 'caps' => $text(false, false, 1000000, 128000),
                 'prices' => [['in' => 0.10, 'cached' => 0.01, 'write' => 0.125, 'out' => 0.50, 'source' => $claude,
                     'long' => ['threshold' => 100000, 'in' => 0.50, 'cached' => 0.05, 'write' => 0.625, 'out' => 2.50]]]],
+
+            // DeepSeek — Chat Completions; json_object only (schema validated by the gateway); thinking off unless reasoning_effort is set.
+            // Disabled until a Super Admin adds a key and runs "Test model".
+            ['provider' => 'deepseek', 'name' => 'deepseek-flash', 'display' => 'DeepSeek Flash (V4.1)', 'tier' => 'economy', 'enabled' => false, 'caps' => $deepseekCaps(true),
+                'notes' => 'Points to DeepSeek-V4.1-Flash-1017 (05/11/2026). Concurrency limit 2500.',
+                'prices' => [['in' => 0.30, 'cached' => 0.006, 'out' => 1.20, 'source' => $deepseek, 'peak' => $deepseekPeak,
+                    'offpeak' => ['in' => 0.15, 'cached' => 0.003, 'out' => 0.60], 'notes' => 'Verified 2026-11-05; peak rates, off-peak = half']]],
+            ['provider' => 'deepseek', 'name' => 'deepseek-v4-pro', 'display' => 'DeepSeek V4 Pro', 'tier' => 'standard', 'enabled' => false, 'caps' => $deepseekCaps(false),
+                'notes' => 'DeepSeek-V4-Pro-0813 (05/11/2026). Concurrency limit 500. Max output for Pro not stated separately in the docs.',
+                'prices' => [['in' => 1.32, 'cached' => 0.044, 'out' => 3.96, 'source' => $deepseek, 'peak' => $deepseekPeak,
+                    'offpeak' => ['in' => 0.66, 'cached' => 0.022, 'out' => 1.98], 'notes' => 'Verified 2026-11-05; peak rates, off-peak = half']]],
 
             // Offline provider (never in production) — nominal price so cost tracking is visible in dev.
             ['provider' => 'fake', 'name' => 'fake-echo', 'display' => 'Fake Echo (dev)', 'tier' => 'economy', 'caps' => $text(true, false, 100000, 8000),
@@ -138,7 +157,7 @@ final class AiRegistry
                 if ($provider === null) {
                     $provider = new AiProvider;
                     $provider->forceFill([
-                        'code' => $code, 'name' => $p['name'], 'priority' => $p['priority'], 'timeout_seconds' => $p['timeout'],
+                        'code' => $code, 'driver' => $code, 'name' => $p['name'], 'priority' => $p['priority'], 'timeout_seconds' => $p['timeout'],
                         'is_enabled' => true, 'max_retries' => 1, 'circuit_failure_threshold' => 5, 'circuit_cooldown_seconds' => 60,
                     ])->save();
                     $created['providers']++;
@@ -183,6 +202,10 @@ final class AiRegistry
                         'long_output_per_mtok' => isset($p['long']) ? self::micro($p['long']['out']) : null,
                         'per_image' => self::micro($p['image'] ?? 0),
                         'per_1k_searches' => self::micro($p['search_1k'] ?? 0),
+                        'offpeak_input_per_mtok' => isset($p['offpeak']) ? self::micro($p['offpeak']['in']) : null,
+                        'offpeak_cached_input_per_mtok' => isset($p['offpeak']) ? self::micro($p['offpeak']['cached']) : null,
+                        'offpeak_output_per_mtok' => isset($p['offpeak']) ? self::micro($p['offpeak']['out']) : null,
+                        'peak_windows' => $p['peak'] ?? null,
                         'source_url' => $p['source'] ?? null,
                         'notes' => $p['notes'] ?? 'Verified 2026-11-05 (standard tier)',
                     ])->save();

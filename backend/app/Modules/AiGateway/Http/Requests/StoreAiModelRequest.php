@@ -15,7 +15,7 @@ final class StoreAiModelRequest extends ApiRequest
 
         return [
             'provider_id' => [$creating ? 'required' : 'prohibited', 'string', Rule::exists('ai_providers', 'id')],
-            'model_name' => [$creating ? 'required' : 'prohibited', 'string', 'max:100', 'regex:/^[A-Za-z0-9._\-\/:]+$/'],
+            'model_name' => [$creating ? 'required' : 'sometimes', 'string', 'max:100', 'regex:/^[A-Za-z0-9._\-\/:]+$/'],
             'display_name' => [$creating ? 'required' : 'sometimes', 'string', 'max:120'],
             'kind' => ['sometimes', Rule::in(['text', 'image'])],
             'tier' => ['sometimes', Rule::in(['economy', 'standard', 'premium'])],
@@ -29,6 +29,7 @@ final class StoreAiModelRequest extends ApiRequest
             'capabilities.vision' => ['sometimes', 'boolean'],
             'capabilities.context_window' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'capabilities.max_output_tokens' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'capabilities.reasoning_effort' => ['sometimes', 'nullable', Rule::in(['none', 'low', 'high', 'max'])],
         ];
     }
 }

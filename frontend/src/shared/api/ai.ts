@@ -108,12 +108,22 @@ export const aiApi = {
 export type BudgetAction = 'alert' | 'pause_batch' | 'pause_all'
 export type CircuitState = 'closed' | 'open' | 'half_open'
 
+export type ProviderDriver = 'openai' | 'gemini' | 'anthropic' | 'deepseek' | 'openai_compatible' | 'fake'
+export type ResponseFormatMode = 'json_schema' | 'json_object' | 'none'
+export type ReasoningEffort = 'none' | 'low' | 'high' | 'max'
+
 export interface AiProvider {
   id: string
   code: string
+  driver: ProviderDriver
   name: string
+  is_custom: boolean
+  base_url: string | null
+  response_format: ResponseFormatMode | null
   is_enabled: boolean
   has_api_key: boolean
+  api_key_last4: string | null
+  api_key_source: 'database' | 'env' | 'none'
   priority: number
   timeout_seconds: number
   max_retries: number
@@ -141,9 +151,20 @@ export interface AiPrice {
   long_output_per_mtok: MicroUsd | null
   per_image: MicroUsd
   per_1k_searches: MicroUsd
+  offpeak_input_per_mtok: MicroUsd | null
+  offpeak_cached_input_per_mtok: MicroUsd | null
+  offpeak_output_per_mtok: MicroUsd | null
+  peak_windows: PeakWindow[] | null
   source_url: string | null
   notes: string | null
   created_at: string
+}
+
+/** ISO weekdays (1 = Monday … 7 = Sunday), "HH:MM" UTC, `to` exclusive. */
+export interface PeakWindow {
+  days: number[]
+  from: string
+  to: string
 }
 
 export type Capability = 'structured_output' | 'web_search' | 'image_generation' | 'temperature' | 'vision'
@@ -156,7 +177,7 @@ export interface AiModel {
   display_name: string
   kind: 'text' | 'image'
   tier: 'economy' | 'standard' | 'premium'
-  capabilities: Partial<Record<Capability, boolean>> & { context_window?: number | null; max_output_tokens?: number | null }
+  capabilities: Partial<Record<Capability, boolean>> & { context_window?: number | null; max_output_tokens?: number | null; reasoning_effort?: ReasoningEffort | null }
   is_enabled: boolean
   notes: string | null
   current_price: AiPrice | null
@@ -246,6 +267,31 @@ export interface DeadLetter {
   created_at: string
 }
 
+export interface ConnectionTestResult {
+  ok: boolean
+  latency_ms: number | null
+  error_code: string | null
+  error_message: string | null
+  models_found: number
+  models: { model_name: string; available: boolean }[]
+  sample: string[]
+}
+
+export type ModelTestResult = {
+  latency_ms: number
+  model_key: string
+} & (
+  | { ok: true; text: string; json: unknown; usage: Record<string, number>; cost_micro_usd: MicroUsd; finish_reason: string; request_id: string }
+  | { ok: false; error_code: string; error_message: string; attempts: { model_key: string; status: string; error_code?: string }[] }
+)
+
+export type ProviderUpdate = Partial<Pick<AiProvider, 'name' | 'is_enabled' | 'priority' | 'timeout_seconds' | 'max_retries' | 'circuit_failure_threshold' | 'circuit_cooldown_seconds'>> & {
+  api_key?: string
+  clear_api_key?: boolean
+  base_url?: string
+  response_format?: ResponseFormatMode
+}
+
 export type PriceInput = Partial<Omit<AiPrice, 'id' | 'version' | 'state' | 'currency' | 'created_at'>> & {
   effective_from: string
   input_per_mtok: MicroUsd
@@ -259,15 +305,20 @@ export const adminAiApi = {
   requests: (query: { cursor?: string | null; status?: string; provider?: string; workspace_id?: string; failed?: string }) => api.get<Paginated<AiRequestLog>>(`${A}/ai/requests`, { query }),
 
   providers: () => api.get<Envelope<AiProvider[]>>(`${A}/ai/providers`).then((r) => r.data),
-  updateProvider: (id: string, body: Partial<Pick<AiProvider, 'is_enabled' | 'priority' | 'timeout_seconds' | 'max_retries' | 'circuit_failure_threshold' | 'circuit_cooldown_seconds'>>) =>
-    api.patch<Envelope<AiProvider>>(`${A}/ai/providers/${id}`, body).then((r) => r.data),
+  createProvider: (body: { name: string; code: string; base_url: string; api_key?: string; response_format?: ResponseFormatMode }) =>
+    api.post<Envelope<AiProvider>>(`${A}/ai/providers`, body).then((r) => r.data),
+  updateProvider: (id: string, body: ProviderUpdate) => api.patch<Envelope<AiProvider>>(`${A}/ai/providers/${id}`, body).then((r) => r.data),
+  deleteProvider: (id: string) => api.delete<void>(`${A}/ai/providers/${id}`),
+  testConnection: (id: string) => api.post<Envelope<ConnectionTestResult>>(`${A}/ai/providers/${id}/test-connection`).then((r) => r.data),
   resetCircuit: (id: string) => api.post<Envelope<AiProvider>>(`${A}/ai/providers/${id}/circuit/reset`).then((r) => r.data),
 
   models: () => api.get<Envelope<AiModel[]>>(`${A}/ai/models`).then((r) => r.data),
   createModel: (body: { provider_id: string; model_name: string; display_name: string; kind?: string; tier?: string; capabilities?: Record<string, unknown>; notes?: string }) =>
     api.post<Envelope<AiModel>>(`${A}/ai/models`, body).then((r) => r.data),
-  updateModel: (id: string, body: Partial<{ display_name: string; tier: string; is_enabled: boolean; capabilities: Record<string, unknown>; notes: string | null }>) =>
+  updateModel: (id: string, body: Partial<{ model_name: string; display_name: string; tier: string; is_enabled: boolean; capabilities: Record<string, unknown>; notes: string | null }>) =>
     api.patch<Envelope<AiModel>>(`${A}/ai/models/${id}`, body).then((r) => r.data),
+  deleteModel: (id: string) => api.delete<void>(`${A}/ai/models/${id}`),
+  testModel: (id: string, body: { prompt?: string; structured?: boolean }) => api.post<Envelope<ModelTestResult>>(`${A}/ai/models/${id}/test`, body).then((r) => r.data),
   prices: (modelId: string) => api.get<Envelope<AiPrice[]>>(`${A}/ai/models/${modelId}/prices`).then((r) => r.data),
   createPrice: (modelId: string, body: PriceInput) => api.post<Envelope<AiPrice>>(`${A}/ai/models/${modelId}/prices`, body).then((r) => r.data),
   deletePrice: (modelId: string, priceId: string) => api.delete<void>(`${A}/ai/models/${modelId}/prices/${priceId}`),
@@ -319,4 +370,41 @@ export function formatTokens(n: number | null | undefined): string {
 export function newIdempotencyKey(): string {
   const c = globalThis.crypto as Crypto | undefined
   return c?.randomUUID ? c.randomUUID() : `k-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`
+}
+
+const DAY_RANGE = /^(\d)(?:-(\d))?$/
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$|^24:00$/
+
+/**
+ * "1-5 01:00-04:00" per line (ISO weekdays, UTC) → peak windows.
+ * Days: "1-5" or "1,3,5". Returns null for an empty text; throws on bad input.
+ */
+export function parsePeakWindows(text: string): PeakWindow[] | null {
+  const lines = text.split(/\n|;/).map((l) => l.trim()).filter(Boolean)
+  if (!lines.length) return null
+  return lines.map((line) => {
+    const [daysPart = '', timePart = ''] = line.split(/\s+/)
+    const [from = '', to = ''] = timePart.split('-')
+    const days = new Set<number>()
+    for (const chunk of daysPart.split(',')) {
+      const m = DAY_RANGE.exec(chunk)
+      if (!m) throw new Error(line)
+      const a = Number(m[1])
+      const b = m[2] ? Number(m[2]) : a
+      if (a < 1 || b > 7 || a > b) throw new Error(line)
+      for (let d = a; d <= b; d++) days.add(d)
+    }
+    if (!TIME.test(from) || !TIME.test(to) || to <= from) throw new Error(line)
+    return { days: [...days], from, to }
+  })
+}
+
+export function formatPeakWindows(windows: PeakWindow[] | null | undefined): string {
+  if (!windows?.length) return ''
+  return windows.map((w) => {
+    const sorted = [...w.days].sort((a, b) => a - b)
+    const contiguous = sorted.every((d, i) => i === 0 || d === (sorted[i - 1] ?? 0) + 1)
+    const days = contiguous && sorted.length > 1 ? `${sorted[0]}-${sorted[sorted.length - 1]}` : sorted.join(',')
+    return `${days} ${w.from}-${w.to}`
+  }).join('\n')
 }

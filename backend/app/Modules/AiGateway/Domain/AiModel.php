@@ -62,6 +62,17 @@ class AiModel extends Model
         return (bool) ($this->capabilities[$capability] ?? false);
     }
 
+    /**
+     * Reasoning/thinking effort sent to providers that support it (DeepSeek:
+     * none|low|high|max). null = provider default handling.
+     */
+    public function reasoningEffort(): ?string
+    {
+        $v = $this->capabilities['reasoning_effort'] ?? null;
+
+        return is_string($v) && $v !== '' ? $v : null;
+    }
+
     public function maxOutputTokens(): ?int
     {
         $v = $this->capabilities['max_output_tokens'] ?? null;

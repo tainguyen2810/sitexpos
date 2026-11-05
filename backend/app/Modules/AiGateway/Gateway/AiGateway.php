@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace SiteXPost\Modules\AiGateway\Gateway;
 
+use Carbon\CarbonInterface;
 use Illuminate\Support\Sleep;
+use Illuminate\Support\Str;
 use SiteXPost\Kernel\Logging\SecretRedactor;
 use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\AiGateway\Domain\AiModel;
@@ -49,12 +51,17 @@ final class AiGateway
      */
     public function execute(AiTask $task): AiResult
     {
-        if (! $this->context->has()) {
+        if ($task->platform) {
+            // Super Admin model test: no tenant, global budget only.
+            $workspaceId = null;
+        } elseif (! $this->context->has()) {
             throw new AiGatewayException('tenant_required', 'AI calls must run inside a workspace context.');
+        } else {
+            $workspaceId = $this->context->workspaceId();
         }
-        $workspaceId = $this->context->workspaceId();
 
         $route = AiTaskRoute::query()->where('task_key', $task->taskKey)->where('is_enabled', true)->first()
+            ?? ($task->modelId !== null ? AiTaskRoute::transient($task->taskKey) : null)
             ?? throw new AiGatewayException('route_not_found', "No enabled route for task {$task->taskKey}.");
 
         $promptChars = mb_strlen(($task->system ?? '').$task->prompt);
@@ -63,7 +70,9 @@ final class AiGateway
             throw new AiGatewayException('input_too_large', 'The prompt exceeds the limit configured for this task.');
         }
 
-        ['models' => $models, 'downgraded' => $downgraded] = $this->router->candidates($route, $task, $workspaceId);
+        ['models' => $models, 'downgraded' => $downgraded] = $task->modelId !== null
+            ? $this->router->forced($task->modelId, $task)
+            : $this->router->candidates($route, $task, $workspaceId);
         if ($models === []) {
             throw new AiGatewayException('no_model_available', 'No enabled model supports this task.');
         }
@@ -78,7 +87,7 @@ final class AiGateway
 
         foreach ($models as $index => $model) {
             $provider = $model->provider;
-            $adapter = $this->registry->get($provider->code);
+            $adapter = $this->registry->for($provider);
             $isFallback = $index > 0;
 
             if (! $adapter->isConfigured()) {
@@ -116,6 +125,7 @@ final class AiGateway
                 kind: $task->kind,
                 imageCount: $task->imageCount,
                 imageSize: $task->imageSize,
+                reasoningEffort: $model->reasoningEffort(),
             );
             $estimate = $this->costs->estimate($price, $promptTokens, $request->maxOutputTokens, $task->webSearch ? $request->maxSearches : 0, $task->kind === 'image' ? $task->imageCount : 0);
 
@@ -142,11 +152,12 @@ final class AiGateway
                 }
 
                 $started = hrtime(true);
+                $calledAt = now();
                 try {
                     $response = $adapter->generate($request);
                 } catch (ProviderException $e) {
                     $latency = (int) ((hrtime(true) - $started) / 1_000_000);
-                    $cost = $e->usage !== null ? $this->costs->cost($price, $e->usage) : 0;
+                    $cost = $e->usage !== null ? $this->costs->cost($price, $e->usage, $calledAt) : 0;
                     if ($e->billingUncertain) {
                         $this->budgets->commit($key, max($cost, $estimate), 'uncertain');
                     } elseif ($cost > 0) {
@@ -180,7 +191,7 @@ final class AiGateway
 
                 $latency = (int) ((hrtime(true) - $started) / 1_000_000);
 
-                return $this->complete($task, $route, $model, $price, $response, $key, $attemptNo, $isFallback, $downgraded, $promptHash, $latency, $attempts);
+                return $this->complete($task, $route, $model, $price, $response, $key, $attemptNo, $isFallback, $downgraded, $promptHash, $latency, $attempts, $calledAt);
             }
         }
 
@@ -193,9 +204,9 @@ final class AiGateway
     /**
      * @param  list<array<string, mixed>>  $attempts
      */
-    private function complete(AiTask $task, AiTaskRoute $route, AiModel $model, AiModelPrice $price, ProviderResponse $response, string $key, int $attemptNo, bool $isFallback, bool $downgraded, string $promptHash, int $latency, array $attempts): AiResult
+    private function complete(AiTask $task, AiTaskRoute $route, AiModel $model, AiModelPrice $price, ProviderResponse $response, string $key, int $attemptNo, bool $isFallback, bool $downgraded, string $promptHash, int $latency, array $attempts, ?CarbonInterface $calledAt = null): AiResult
     {
-        $cost = $this->costs->cost($price, $response->usage);
+        $cost = $this->costs->cost($price, $response->usage, $calledAt);
         $this->budgets->commit($key, $cost);
         $this->circuit->recordSuccess($model->provider);
 
@@ -271,7 +282,16 @@ final class AiGateway
             'prompt_hash' => $promptHash,
             'provider_request_id' => $providerRequestId !== null ? mb_substr($providerRequestId, 0, 120) : null,
             'finish_reason' => $finish,
-        ])->save();
+        ]);
+        if ($task->platform) {
+            // Platform-level row (workspace_id null): the tenant guard would
+            // reject it, so it is written without model events. Reviewed path,
+            // only reachable from the Super Admin model test.
+            $row->setAttribute('ulid', strtolower((string) Str::ulid()));
+            AiRequest::withoutEvents(fn (): bool => $row->save());
+        } else {
+            $row->save();
+        }
 
         return $row;
     }

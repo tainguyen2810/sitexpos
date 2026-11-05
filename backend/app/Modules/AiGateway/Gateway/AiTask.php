@@ -27,5 +27,9 @@ final readonly class AiTask
         public string $kind = 'text',
         public int $imageCount = 1,
         public ?string $imageSize = null,
+        // Super Admin "Test model": call exactly this model (even if disabled),
+        // outside any workspace; only the global budget applies.
+        public ?string $modelId = null,
+        public bool $platform = false,
     ) {}
 }

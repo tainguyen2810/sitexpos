@@ -34,12 +34,17 @@ Route::prefix('api/admin/v1/ai')
         Route::get('requests', [AdminAiRequestController::class, 'index'])->middleware($costs)->name('requests.index');
 
         Route::get('providers', [AdminAiProviderController::class, 'index'])->middleware($manage)->name('providers.index');
+        Route::post('providers', [AdminAiProviderController::class, 'store'])->middleware($manage)->name('providers.store');
         Route::patch('providers/{provider}', [AdminAiProviderController::class, 'update'])->middleware($manage)->name('providers.update');
+        Route::delete('providers/{provider}', [AdminAiProviderController::class, 'destroy'])->middleware($manage)->name('providers.destroy');
+        Route::post('providers/{provider}/test-connection', [AdminAiProviderController::class, 'testConnection'])->middleware([$manage, 'throttle:ai-admin-tests'])->name('providers.test-connection');
         Route::post('providers/{provider}/circuit/reset', [AdminAiProviderController::class, 'resetCircuit'])->middleware($manage)->name('providers.circuit.reset');
 
         Route::get('models', [AdminAiModelController::class, 'index'])->middleware($manage)->name('models.index');
         Route::post('models', [AdminAiModelController::class, 'store'])->middleware($manage)->name('models.store');
         Route::patch('models/{model}', [AdminAiModelController::class, 'update'])->middleware($manage)->name('models.update');
+        Route::delete('models/{model}', [AdminAiModelController::class, 'destroy'])->middleware($manage)->name('models.destroy');
+        Route::post('models/{model}/test', [AdminAiModelController::class, 'test'])->middleware([$manage, 'throttle:ai-admin-tests'])->name('models.test');
         Route::get('models/{model}/prices', [AdminAiModelController::class, 'prices'])->middleware($manage)->name('models.prices');
         Route::post('models/{model}/prices', [AdminAiModelController::class, 'storePrice'])->middleware($manage)->name('models.prices.store');
         Route::delete('models/{model}/prices/{price}', [AdminAiModelController::class, 'destroyPrice'])->middleware($manage)->name('models.prices.destroy');

@@ -110,6 +110,10 @@ SITEX_MASTER_KEY=               # Phase 2+, envelope encryption
 OPENAI_API_KEY=
 GEMINI_API_KEY=
 ANTHROPIC_API_KEY=
+DEEPSEEK_API_KEY=
+# DEEPSEEK_BASE_URL=https://api.deepseek.com
+# Có thể để trống các khóa trên và nhập từ trang admin Cấu hình AI (lưu mã hóa bằng APP_KEY;
+# đổi APP_KEY thì phải nhập lại khóa). Khóa trong DB được ưu tiên hơn .env.
 SITEX_AI_FAKE_PROVIDER=false    # production: tắt provider giả
 # Các biến tinh chỉnh khác (timeout, deadline, ngân sách, workflow): xem backend/.env.example mục "Phase 3"
 # Phase 5+: DATAFORSEO_LOGIN=, DATAFORSEO_PASSWORD=, BRAVE_SEARCH_API_KEY=

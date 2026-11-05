@@ -1,5 +1,6 @@
 <?php
 
+use Carbon\CarbonImmutable;
 use SiteXPost\Modules\AiGateway\Domain\AiModelPrice;
 use SiteXPost\Modules\AiGateway\Gateway\CostCalculator;
 use SiteXPost\Modules\AiGateway\Providers\Usage;
@@ -51,4 +52,33 @@ it('adds images and web searches', function () {
 it('estimates an upper bound with the full output limit', function () {
     $p = price(['input_per_mtok' => 1_000_000, 'output_per_mtok' => 2_000_000]);
     expect((new CostCalculator)->estimate($p, 1000, 800))->toBe(1000 + 1600);
+});
+
+it('applies DeepSeek off-peak rates outside the peak windows (UTC) and peak rates inside', function () {
+    // deepseek-flash: peak $0.30 in / $0.006 cache hit / $1.20 out; off-peak half.
+    $p = price([
+        'input_per_mtok' => 300_000, 'cached_input_per_mtok' => 6_000, 'output_per_mtok' => 1_200_000,
+        'offpeak_input_per_mtok' => 150_000, 'offpeak_cached_input_per_mtok' => 3_000, 'offpeak_output_per_mtok' => 600_000,
+        'peak_windows' => [['days' => [1, 2, 3, 4, 5], 'from' => '01:00', 'to' => '04:00'], ['days' => [1, 2, 3, 4, 5], 'from' => '06:00', 'to' => '10:00']],
+    ]);
+    $usage = new Usage(inputTokens: 1_000_000, cachedInputTokens: 1_000_000, outputTokens: 1_000_000);
+    $calc = new CostCalculator;
+    $peak = 300_000 + 6_000 + 1_200_000;
+    $off = 150_000 + 3_000 + 600_000;
+
+    expect($calc->cost($p, $usage, CarbonImmutable::parse('2026-11-05 02:30:00', 'UTC')))->toBe($peak)   // Thursday, in window
+        ->and($calc->cost($p, $usage, CarbonImmutable::parse('2026-11-05 04:00:00', 'UTC')))->toBe($off)   // window end is exclusive
+        ->and($calc->cost($p, $usage, CarbonImmutable::parse('2026-11-05 09:59:00', 'UTC')))->toBe($peak)
+        ->and($calc->cost($p, $usage, CarbonImmutable::parse('2026-11-05 12:00:00', 'UTC')))->toBe($off)
+        ->and($calc->cost($p, $usage, CarbonImmutable::parse('2026-11-07 02:30:00', 'UTC')))->toBe($off)   // Saturday
+        // 09:30 in Ho Chi Minh City (UTC+7) = 02:30 UTC → peak
+        ->and($calc->cost($p, $usage, CarbonImmutable::parse('2026-11-05 09:30:00', 'Asia/Ho_Chi_Minh')))->toBe($peak)
+        // reservations always use the peak (upper-bound) rate
+        ->and($calc->estimate($p, 1_000_000, 1_000_000))->toBe(300_000 + 1_200_000);
+});
+
+it('ignores off-peak rates when no peak window is configured', function () {
+    $p = price(['input_per_mtok' => 300_000, 'offpeak_input_per_mtok' => 150_000, 'peak_windows' => null]);
+
+    expect((new CostCalculator)->cost($p, new Usage(inputTokens: 1_000_000), CarbonImmutable::parse('2026-11-07 12:00:00', 'UTC')))->toBe(300_000);
 });

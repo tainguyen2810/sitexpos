@@ -155,7 +155,7 @@ function pluginHeaders(string $keyId, string $secret, string $path, array $body,
 function seedAi(): void
 {
     config(['sitex.ai.fake_provider' => true]);
-    foreach (['openai', 'gemini', 'anthropic'] as $p) {
+    foreach (['openai', 'gemini', 'anthropic', 'deepseek'] as $p) {
         config(["sitex.ai.providers.{$p}.api_key" => null]);
     }
     app(AiRegistry::class)->sync();

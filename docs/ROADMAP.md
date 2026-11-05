@@ -159,6 +159,17 @@ Kết quả thực tế: xem `PHASE2-REPORT.md` (đã chạy trên WP 6.4.5 và 
 **Nghiệm thu**: gửi được tác vụ AI thử; token và chi phí được ghi nhận; job nền không chặn HTTP; restart worker không mất workflow; có test đồng thời và test lỗi.
 Kết quả thực tế: xem `PHASE3-REPORT.md` (đã chạy với fake provider; **chưa** gọi API thật do chưa có khóa).
 
+### 3E. DeepSeek & quản lý model linh hoạt (bổ sung sau Phase 3, ADR-015)
+- [x] Provider DeepSeek (`deepseek-flash`, `deepseek-v4-pro`, kiểm theo api-docs.deepseek.com ngày 05/11/2026), seed ở trạng thái tắt.
+- [x] Provider tùy chỉnh theo chuẩn OpenAI-compatible (base URL qua SsrfGuard, chế độ JSON chọn được).
+- [x] API key nhập từ admin, mã hóa trong DB, ghi-một-chiều; `.env` vẫn dùng được.
+- [x] Sửa Model ID, xóa model/provider chưa dùng, mức suy luận (reasoning effort).
+- [x] Giá cao điểm/thấp điểm theo khung giờ UTC.
+- [x] Test Connection (danh sách model, miễn phí) và Test Model (lời gọi thật nhỏ, có tính phí).
+- [x] Fallback sang provider khác khi một provider lỗi (đã có từ 3A, có thêm test DeepSeek → model kế tiếp).
+
+**Nghiệm thu 3E**: gọi DeepSeek thật bằng khóa của chủ dự án; Test Connection báo đúng model; chi phí khớp bảng giá DeepSeek theo giờ. Kết quả thực tế: xem mục 3E trong `PHASE3-REPORT.md` (**chưa** gọi DeepSeek thật do chưa có khóa và mạng sandbox chặn).
+
 ## Phase 4 — Gói dịch vụ, quota, credit, thanh toán
 - Plans/prices/limits, subscription, trial, usage ledger + counters (reserve/commit/release), credit wallet — tái sử dụng cơ chế reservation của AI Gateway.
 - Adapter cổng thanh toán (chờ quyết định cổng), webhook an toàn, hóa đơn.

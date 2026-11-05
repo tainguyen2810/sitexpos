@@ -339,11 +339,11 @@ AI chỉ được đề xuất từ khóa (`origin=ai_suggested`) — **không**
 
 Tiền: số nguyên **micro-USD** (1 USD = 1.000.000); giá theo **micro-USD / 1 triệu token** (ADR-014). Migration: `backend/app/Modules/AiGateway/Database/Migrations/2026_11_07_000100_create_ai_gateway_tables.php`.
 
-**ai_providers** (toàn hệ thống): id, code UNIQUE (`openai`, `gemini`, `anthropic`, `fake`), name, is_enabled, priority, timeout_seconds, max_retries, circuit_failure_threshold, circuit_cooldown_seconds, settings JSON. **API key không ở DB** — chỉ trong `.env`.
+**ai_providers** (toàn hệ thống): id, code UNIQUE (`openai`, `gemini`, `anthropic`, `deepseek`, `fake`, hoặc mã provider tùy chỉnh), driver (adapter: `openai`, `gemini`, `anthropic`, `deepseek`, `openai_compatible`, `fake`), name, base_url NULL (chỉ provider tùy chỉnh), api_key_encrypted TEXT NULL (cast `encrypted`, ẩn khi serialize), api_key_last4, is_custom, is_enabled, priority, timeout_seconds, max_retries, circuit_failure_threshold, circuit_cooldown_seconds, settings JSON (`response_format`: `json_schema`/`json_object`/`none` cho provider tùy chỉnh). Migration `2026_11_08_000100` (Phase 3E).
 
 **ai_models**: id, provider_id, model_key UNIQUE (`provider/model`), model_name, display_name, kind (`text`, `image`), tier, capabilities JSON, is_enabled, notes; UNIQUE(provider_id, model_name). Model mới tắt cho tới khi có giá.
 
-**ai_model_prices** (bất biến khi đã hiệu lực): id, model_id, version, effective_from, currency (`USD`), input_per_mtok, cached_input_per_mtok, cache_write_per_mtok, output_per_mtok, long_context_threshold + long_* (giá ngữ cảnh dài), per_image, source_url, notes, created_by; UNIQUE(model_id, version). Chỉ xóa được version chưa hiệu lực.
+**ai_model_prices** (bất biến khi đã hiệu lực): id, model_id, version, effective_from, currency (`USD`), input_per_mtok, cached_input_per_mtok, cache_write_per_mtok, output_per_mtok, long_context_threshold + long_* (giá ngữ cảnh dài), offpeak_input_per_mtok / offpeak_cached_input_per_mtok / offpeak_output_per_mtok NULL + peak_windows JSON NULL (`[{days:[1..7 ISO], from:"HH:MM", to:"HH:MM"}]`, UTC; ngoài các khung này dùng giá thấp điểm; Phase 3E), per_image, source_url, notes, created_by; UNIQUE(model_id, version). Chỉ xóa được version chưa hiệu lực.
 
 **ai_task_routes**: id, task_key UNIQUE, description, queue, priority, primary_model_id, economy_model_id null, fallback_model_ids JSON, max_input_tokens, max_output_tokens, temperature, timeout_seconds, max_attempts, allow_paid_retry, is_enabled.
 

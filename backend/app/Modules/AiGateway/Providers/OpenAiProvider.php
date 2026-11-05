@@ -50,7 +50,7 @@ final class OpenAiProvider extends HttpProvider
         }
 
         $json = $this->postJson($this->baseUrl().'/v1/responses', [
-            'Authorization' => 'Bearer '.$this->config('api_key'),
+            'Authorization' => 'Bearer '.$this->apiKey(),
         ], $body, $request->timeoutSeconds);
 
         $text = '';
@@ -111,7 +111,7 @@ final class OpenAiProvider extends HttpProvider
         }
 
         $json = $this->postJson($this->baseUrl().'/v1/images/generations', [
-            'Authorization' => 'Bearer '.$this->config('api_key'),
+            'Authorization' => 'Bearer '.$this->apiKey(),
         ], $body, $request->timeoutSeconds);
 
         $images = [];
@@ -127,5 +127,10 @@ final class OpenAiProvider extends HttpProvider
             outputTokens: self::int($u['output_tokens'] ?? 0),
             images: count($images),
         ), 'stop', null, 200, $images);
+    }
+
+    public function listModels(int $timeoutSeconds = 15): array
+    {
+        return self::idsFrom($this->getJson($this->baseUrl().'/v1/models', ['Authorization' => 'Bearer '.$this->apiKey()], $timeoutSeconds));
     }
 }

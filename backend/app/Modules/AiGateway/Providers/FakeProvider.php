@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\AiGateway\Providers;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Sleep;
+use SiteXPost\Modules\AiGateway\Domain\AiProvider;
 
 /**
  * Deterministic offline provider for development, CI and E2E tests. Never
@@ -112,5 +113,19 @@ final class FakeProvider implements ProviderAdapter
             'null' => null,
             default => $text === '' ? 'ok' : $text,
         };
+    }
+
+    public function forProvider(AiProvider $provider): static
+    {
+        return $this;
+    }
+
+    public function listModels(int $timeoutSeconds = 15): array
+    {
+        if (! $this->isConfigured()) {
+            throw ProviderException::notConfigured('fake');
+        }
+
+        return ['fake-echo', 'fake-image'];
     }
 }

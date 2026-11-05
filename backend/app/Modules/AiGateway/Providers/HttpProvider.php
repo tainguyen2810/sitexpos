@@ -8,27 +8,62 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use SiteXPost\Kernel\Logging\SecretRedactor;
+use SiteXPost\Kernel\Security\SsrfGuard;
+use SiteXPost\Kernel\Security\SsrfViolation;
+use SiteXPost\Modules\AiGateway\Domain\AiProvider;
 
 /**
- * Shared transport: one POST, explicit timeouts, no automatic retries, no
- * redirects, errors classified for the gateway. Base URLs come from config
- * only (never from the database or user input).
+ * Shared transport: one request, explicit timeouts, no automatic retries, no
+ * redirects, errors classified for the gateway.
+ *
+ * Credentials and base URL come from the bound provider row (forProvider):
+ * the encrypted key a Super Admin saved, else .env; the row's base_url, else
+ * config. A base URL from the database is untrusted input: it is checked by
+ * SsrfGuard and the connection is pinned to the verified IP on every call.
  */
 abstract class HttpProvider implements ProviderAdapter
 {
+    protected ?AiProvider $provider = null;
+
+    public function forProvider(AiProvider $provider): static
+    {
+        $clone = clone $this;
+        $clone->provider = $provider;
+
+        return $clone;
+    }
+
     public function isConfigured(): bool
     {
-        return trim((string) $this->config('api_key')) !== '';
+        return $this->apiKey() !== '';
+    }
+
+    protected function apiKey(): string
+    {
+        if ($this->provider !== null) {
+            return (string) $this->provider->apiKey();
+        }
+
+        return trim((string) $this->config('api_key'));
     }
 
     protected function config(string $key): mixed
     {
-        return config("sitex.ai.providers.{$this->code()}.{$key}");
+        return config('sitex.ai.providers.'.($this->provider->code ?? $this->code()).'.'.$key);
     }
 
     protected function baseUrl(): string
     {
-        return rtrim((string) $this->config('base_url'), '/');
+        $custom = $this->customBaseUrl();
+
+        return $custom ?? rtrim((string) $this->config('base_url'), '/');
+    }
+
+    private function customBaseUrl(): ?string
+    {
+        $url = trim((string) ($this->provider->base_url ?? ''));
+
+        return $url !== '' ? rtrim($url, '/') : null;
     }
 
     /**
@@ -40,20 +75,59 @@ abstract class HttpProvider implements ProviderAdapter
      */
     protected function postJson(string $url, array $headers, array $body, int $timeoutSeconds): array
     {
+        return $this->send('POST', $url, $headers, $body, $timeoutSeconds);
+    }
+
+    /**
+     * @param  array<string, string>  $headers
+     * @return array<string, mixed>
+     *
+     * @throws ProviderException
+     */
+    protected function getJson(string $url, array $headers, int $timeoutSeconds): array
+    {
+        return $this->send('GET', $url, $headers, null, $timeoutSeconds);
+    }
+
+    /**
+     * @param  array<string, string>  $headers
+     * @param  array<string, mixed>|null  $body
+     * @return array<string, mixed>
+     *
+     * @throws ProviderException
+     */
+    private function send(string $method, string $url, array $headers, ?array $body, int $timeoutSeconds): array
+    {
         if (! $this->isConfigured()) {
-            throw ProviderException::notConfigured($this->code());
+            throw ProviderException::notConfigured($this->provider->code ?? $this->code());
+        }
+
+        $options = ['allow_redirects' => false];
+        if ($this->customBaseUrl() !== null) {
+            try {
+                $target = app(SsrfGuard::class)->assertSafe($url);
+            } catch (SsrfViolation $e) {
+                throw new ProviderException('blocked_url', 'Provider base URL rejected: '.$e->reason.'.');
+            }
+            if (filter_var($target['host'], FILTER_VALIDATE_IP) === false && $target['ip'] !== $target['host']) {
+                $options['curl'] = [CURLOPT_RESOLVE => [$target['host'].':'.$target['port'].':'.$target['ip']]];
+            }
         }
 
         try {
-            $response = Http::withHeaders($headers)
+            $pending = Http::withHeaders($headers)
                 ->acceptJson()
-                ->asJson()
                 ->connectTimeout(max(1, (int) config('sitex.ai.connect_timeout', 5)))
                 ->timeout(max(1, $timeoutSeconds))
-                ->withOptions(['allow_redirects' => false])
-                ->post($url, $body);
+                ->withOptions($options);
+            $response = $method === 'GET' ? $pending->get($url) : $pending->asJson()->post($url, $body ?? []);
         } catch (ConnectionException $e) {
-            throw $this->classifyConnectionError($e);
+            $error = $this->classifyConnectionError($e);
+            if ($method === 'GET' && $error->billingUncertain) {
+                // Model listing is free: a dropped GET is a plain network error.
+                $error = new ProviderException('network_error', 'The provider connection failed or timed out.', retryable: true, countsAsFailure: true);
+            }
+            throw $error;
         }
 
         if (! $response->successful()) {
@@ -66,10 +140,28 @@ abstract class HttpProvider implements ProviderAdapter
 
         $json = $response->json();
         if (! is_array($json)) {
-            throw new ProviderException('invalid_response', 'Provider returned a non-JSON body.', httpStatus: $response->status(), billingUncertain: true);
+            throw new ProviderException('invalid_response', 'Provider returned a non-JSON body.', httpStatus: $response->status(), billingUncertain: $method === 'POST');
         }
 
         return $json;
+    }
+
+    /**
+     * Model IDs from a list endpoint shaped {data: [{id}]} (OpenAI style).
+     *
+     * @param  array<string, mixed>  $json
+     * @return list<string>
+     */
+    protected static function idsFrom(array $json, string $listKey = 'data', string $idKey = 'id'): array
+    {
+        $ids = [];
+        foreach ((array) ($json[$listKey] ?? []) as $item) {
+            if (is_array($item) && isset($item[$idKey]) && is_string($item[$idKey])) {
+                $ids[] = $item[$idKey];
+            }
+        }
+
+        return $ids;
     }
 
     /**
@@ -80,7 +172,8 @@ abstract class HttpProvider implements ProviderAdapter
     private function classifyConnectionError(ConnectionException $e): ProviderException
     {
         $msg = $e->getMessage();
-        $connectPhase = (bool) preg_match('/cURL error (6|7|35|60):|Connection timed out after|Could not resolve|Failed to connect|Connection refused/i', $msg);
+        // 56 + "CONNECT tunnel failed": an egress proxy refused the tunnel before anything was sent.
+        $connectPhase = (bool) preg_match('/cURL error (6|7|35|60):|Connection timed out after|Could not resolve|Failed to connect|Connection refused|CONNECT tunnel failed/i', $msg);
 
         if ($connectPhase) {
             return new ProviderException('connect_failed', 'Could not connect to the provider.', retryable: true, countsAsFailure: true);

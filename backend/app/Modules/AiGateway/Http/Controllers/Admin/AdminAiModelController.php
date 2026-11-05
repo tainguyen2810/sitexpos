@@ -10,11 +10,19 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use SiteXPost\Kernel\Http\ApiException;
+use SiteXPost\Kernel\Logging\SecretRedactor;
+use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\AiGateway\Domain\AiModel;
 use SiteXPost\Modules\AiGateway\Domain\AiModelPrice;
 use SiteXPost\Modules\AiGateway\Domain\AiProvider;
+use SiteXPost\Modules\AiGateway\Domain\AiRequest;
+use SiteXPost\Modules\AiGateway\Domain\AiTaskRoute;
+use SiteXPost\Modules\AiGateway\Gateway\AiGateway;
+use SiteXPost\Modules\AiGateway\Gateway\AiGatewayException;
+use SiteXPost\Modules\AiGateway\Gateway\AiTask;
 use SiteXPost\Modules\AiGateway\Http\Requests\StoreAiModelRequest;
 use SiteXPost\Modules\AiGateway\Http\Requests\StoreAiPriceRequest;
+use SiteXPost\Modules\AiGateway\Http\Requests\TestAiModelRequest;
 use SiteXPost\Modules\Audit\Audit;
 
 /**
@@ -24,6 +32,17 @@ use SiteXPost\Modules\Audit\Audit;
  */
 final class AdminAiModelController
 {
+    public const TEST_TASK = 'system.model_test';
+
+    private const TEST_PROMPT = 'Xin chào! 2 + 2 bằng mấy?';
+
+    private const TEST_SCHEMA = [
+        'type' => 'object',
+        'properties' => ['answer' => ['type' => 'string'], 'confident' => ['type' => 'boolean']],
+        'required' => ['answer', 'confident'],
+        'additionalProperties' => false,
+    ];
+
     public function index(Request $request): JsonResponse
     {
         $query = AiModel::query()->with(['provider', 'prices' => fn ($q) => $q->orderByDesc('effective_from')])->orderBy('model_key');
@@ -64,6 +83,8 @@ final class AdminAiModelController
     {
         $row = $this->find($model);
         $data = $request->validated();
+        $newName = $data['model_name'] ?? null;
+        unset($data['model_name']);
         if (isset($data['capabilities'])) {
             $data['capabilities'] = $this->capabilities($row->capabilities, (array) $data['capabilities']);
         }
@@ -71,7 +92,17 @@ final class AdminAiModelController
             throw ApiException::conflict('price_missing', 'Add a price version before enabling this model.');
         }
         $before = $row->only(array_keys($data));
-        $row->fill($data)->save();
+        if (is_string($newName) && $newName !== $row->model_name) {
+            // Changing the Model ID: past ai_requests keep the old name (audit trail).
+            $key = $row->provider->code.'/'.$newName;
+            if (AiModel::query()->where('model_key', $key)->whereKeyNot($row->id)->exists()) {
+                throw ApiException::conflict('model_exists', 'Model already registered.');
+            }
+            $before['model_name'] = $row->model_name;
+            $data['model_name'] = $newName;
+            $row->forceFill(['model_name' => $newName, 'model_key' => $key]);
+        }
+        $row->fill(collect($data)->except('model_name')->all())->save();
         Audit::record('platform.ai.model.updated', $row, ['before' => $before, 'after' => $data], actorType: 'platform_staff');
 
         return new JsonResponse(['data' => $this->present($row->load(['provider', 'prices']))]);
@@ -112,6 +143,77 @@ final class AdminAiModelController
     }
 
     /**
+     * A model can be deleted only if it was never called and no route uses it;
+     * otherwise disable it (history and billing keep pointing at it).
+     */
+    public function destroy(string $model, TenantContext $context): JsonResponse
+    {
+        $row = $this->find($model);
+        $used = $context->bypass(fn (): bool => AiRequest::query()->where('model_id', $row->id)->exists());
+        $routed = AiTaskRoute::query()->get()->contains(fn (AiTaskRoute $r): bool => $r->primary_model_id === $row->id
+            || $r->economy_model_id === $row->id || in_array($row->id, $r->fallback_model_ids ?? [], true));
+        if ($used || $routed) {
+            throw ApiException::conflict('model_in_use', __('ai.errors.model_in_use'));
+        }
+        DB::transaction(function () use ($row): void {
+            $row->prices()->delete();
+            $row->delete();
+        });
+        Audit::record('platform.ai.model.deleted', $row, ['model_key' => $row->model_key], actorType: 'platform_staff');
+
+        return new JsonResponse(null, 204);
+    }
+
+    /**
+     * Test Model: one REAL (paid, tiny) call to exactly this model through the
+     * normal gateway path — budget reservation (global budget), cost from the
+     * price version, ai_requests row, no automatic paid retry. Works on a
+     * disabled model so it can be checked before it is switched on.
+     */
+    public function test(TestAiModelRequest $request, string $model, AiGateway $gateway): JsonResponse
+    {
+        $row = $this->find($model);
+        $structured = $request->boolean('structured');
+        $prompt = trim((string) $request->input('prompt', '')) ?: self::TEST_PROMPT;
+        $started = hrtime(true);
+
+        try {
+            $result = $gateway->execute(new AiTask(
+                taskKey: self::TEST_TASK,
+                prompt: $prompt,
+                callKey: 'admin-test:'.Str::lower((string) Str::ulid()),
+                system: 'You are a connectivity test for SiteX Post. Answer in one short sentence, in the language of the question.',
+                schema: $structured ? self::TEST_SCHEMA : null,
+                schemaName: 'model_test',
+                maxOutputTokens: 200,
+                modelId: $row->id,
+                platform: true,
+            ));
+            $data = [
+                'ok' => true,
+                'text' => mb_substr($result->text, 0, 2000),
+                'json' => $result->json,
+                'usage' => $result->usage->toArray(),
+                'cost_micro_usd' => $result->costMicroUsd,
+                'finish_reason' => $result->finishReason,
+                'request_id' => $result->requestId,
+            ];
+        } catch (AiGatewayException $e) {
+            $data = [
+                'ok' => false,
+                'error_code' => $e->errorCode,
+                'error_message' => SecretRedactor::redact($e->getMessage()),
+                'attempts' => $e->details['attempts'] ?? [],
+            ];
+        }
+        $data['latency_ms'] = (int) ((hrtime(true) - $started) / 1_000_000);
+        $data['model_key'] = $row->model_key;
+        Audit::record('platform.ai.model.tested', $row, ['ok' => $data['ok'], 'error_code' => $data['error_code'] ?? null, 'cost_micro_usd' => $data['cost_micro_usd'] ?? 0], actorType: 'platform_staff');
+
+        return new JsonResponse(['data' => $data]);
+    }
+
+    /**
      * Only a scheduled (not yet effective) version can be removed.
      */
     public function destroyPrice(string $model, string $price): JsonResponse
@@ -137,7 +239,7 @@ final class AdminAiModelController
      */
     private function capabilities(array $current, array $changes): array
     {
-        $defaults = array_fill_keys(AiModel::CAPABILITIES, false) + ['context_window' => null, 'max_output_tokens' => null];
+        $defaults = array_fill_keys(AiModel::CAPABILITIES, false) + ['context_window' => null, 'max_output_tokens' => null, 'reasoning_effort' => null];
 
         return array_intersect_key(array_merge($defaults, $current, $changes), $defaults);
     }

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { i18n } from '@/shared/i18n'
-import { aiApi, formatPerMtok, formatUsd, newIdempotencyKey, usdToMicro, type WorkflowRun } from '@/shared/api/ai'
+import { aiApi, formatPeakWindows, formatPerMtok, formatUsd, newIdempotencyKey, parsePeakWindows, usdToMicro, type WorkflowRun } from '@/shared/api/ai'
 import WorkflowRunDetail from '@/shared/components/ai/WorkflowRunDetail.vue'
 import WorkflowStatusBadge from '@/shared/components/ai/WorkflowStatusBadge.vue'
 import { aiErrorMessage } from '@/shared/components/ai/aiErrors'
@@ -96,5 +96,26 @@ describe('locales', () => {
     const vi_ = keys({ ai: viMessages.ai, aiAdmin: viMessages.aiAdmin, jobs: viMessages.jobs })
     const en = new Set(keys({ ai: enMessages.ai, aiAdmin: enMessages.aiAdmin, jobs: enMessages.jobs }))
     expect(vi_.filter((k) => !en.has(k))).toEqual([])
+  })
+})
+
+describe('peak windows (time-of-day pricing)', () => {
+  it('parses DeepSeek peak hours and formats them back', () => {
+    const windows = parsePeakWindows('1-5 01:00-04:00\n1-5 06:00-10:00')
+    expect(windows).toEqual([
+      { days: [1, 2, 3, 4, 5], from: '01:00', to: '04:00' },
+      { days: [1, 2, 3, 4, 5], from: '06:00', to: '10:00' },
+    ])
+    expect(formatPeakWindows(windows)).toBe('1-5 01:00-04:00\n1-5 06:00-10:00')
+    expect(parsePeakWindows('1,3,7 22:00-24:00')).toEqual([{ days: [1, 3, 7], from: '22:00', to: '24:00' }])
+    expect(formatPeakWindows([{ days: [7, 1, 3], from: '22:00', to: '24:00' }])).toBe('1,3,7 22:00-24:00')
+  })
+
+  it('returns null for empty input and rejects malformed lines', () => {
+    expect(parsePeakWindows('  \n ')).toBeNull()
+    expect(() => parsePeakWindows('8 01:00-02:00')).toThrow()
+    expect(() => parsePeakWindows('1-5 10:00-06:00')).toThrow()
+    expect(() => parsePeakWindows('1-5 1:00-4:00')).toThrow()
+    expect(() => parsePeakWindows('5-1 01:00-04:00')).toThrow()
   })
 })

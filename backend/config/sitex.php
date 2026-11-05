@@ -42,8 +42,9 @@ return [
         'log_retention_days' => 30,
     ],
 
-    // Phase 3 — AI Gateway & Queue (ARCHITECTURE.md §8, §10). API keys live ONLY here (.env),
-    // never in the database. Base URLs are not editable from the admin UI (SSRF).
+    // Phase 3 — AI Gateway & Queue (ARCHITECTURE.md §8, §10). Keys here (.env) are the
+    // fallback: a key a Super Admin saves in the UI is stored encrypted (Crypt) and wins.
+    // Built-in base URLs come from here; custom providers' base URLs are SSRF-checked.
     'ai' => [
         'providers' => [
             'openai' => [
@@ -59,6 +60,11 @@ return [
                 'base_url' => rtrim((string) env('ANTHROPIC_BASE_URL', 'https://api.anthropic.com'), '/'),
                 // Raw-HTTP API version header (verified 05/11/2026: 2026-10-21 rejects temperature/top_p/top_k).
                 'version' => env('ANTHROPIC_API_VERSION', '2026-10-21'),
+            ],
+            'deepseek' => [
+                'api_key' => env('DEEPSEEK_API_KEY'),
+                // OpenAI-format base (verified 05/11/2026 on api-docs.deepseek.com).
+                'base_url' => rtrim((string) env('DEEPSEEK_BASE_URL', 'https://api.deepseek.com'), '/'),
             ],
         ],
         // Deterministic offline provider for development/tests. Always disabled in production.

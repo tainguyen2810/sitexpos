@@ -45,6 +45,22 @@ class AiTaskRoute extends Model
         'max_input_tokens', 'max_output_tokens', 'temperature', 'timeout_seconds', 'max_attempts', 'allow_paid_retry', 'is_enabled',
     ];
 
+    /**
+     * Unsaved route with safe defaults, used only for the Super Admin model
+     * test when no route row exists for its task key.
+     */
+    public static function transient(string $taskKey): self
+    {
+        $route = new self;
+        $route->forceFill([
+            'task_key' => $taskKey, 'description' => null, 'queue' => 'default', 'priority' => 'interactive',
+            'economy_model_id' => null, 'fallback_model_ids' => [], 'max_input_tokens' => 4000, 'max_output_tokens' => 512,
+            'temperature' => null, 'timeout_seconds' => null, 'max_attempts' => 1, 'allow_paid_retry' => false, 'is_enabled' => true,
+        ]);
+
+        return $route;
+    }
+
     protected function casts(): array
     {
         return [

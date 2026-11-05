@@ -35,6 +35,10 @@ final class AiGatewayServiceProvider extends ModuleServiceProvider
                 ->by('ai-tasks:'.($request->user()?->getAuthIdentifier() ?? $request->ip()).':'.$wsKey);
         });
 
+        // Super Admin Test Connection / Test Model (real provider calls).
+        RateLimiter::for('ai-admin-tests', static fn (Request $request): Limit => Limit::perMinute(10)
+            ->by('ai-admin-tests:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
+
         if ($this->app->runningInConsole()) {
             $this->commands([SyncAiRegistry::class, ExpireAiReservations::class, PruneAiRequests::class]);
         }

@@ -49,9 +49,25 @@ final class TaskRouter
         return ['models' => $ordered, 'downgraded' => $downgraded];
     }
 
-    public function eligible(AiModel $model, AiTask $task): bool
+    /**
+     * Super Admin model test: exactly one model, enabled flags ignored (a model
+     * is tested BEFORE it is switched on), capability checks still apply.
+     *
+     * @return array{models: list<AiModel>, downgraded: bool}
+     */
+    public function forced(string $modelId, AiTask $task): array
     {
-        if (! $model->is_enabled || ! $model->provider->is_enabled || ! $this->registry->has($model->provider->code)) {
+        $model = AiModel::query()->with('provider')->find($modelId);
+
+        return ['models' => $model !== null && $this->eligible($model, $task, ignoreEnabled: true) ? [$model] : [], 'downgraded' => false];
+    }
+
+    public function eligible(AiModel $model, AiTask $task, bool $ignoreEnabled = false): bool
+    {
+        if (! $this->registry->has($model->provider->driver)) {
+            return false;
+        }
+        if (! $ignoreEnabled && (! $model->is_enabled || ! $model->provider->is_enabled)) {
             return false;
         }
         if ($task->kind === 'image') {

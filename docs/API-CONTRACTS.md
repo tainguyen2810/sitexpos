@@ -266,10 +266,15 @@ Yêu cầu `platform_role` + 2FA đã xác nhận. User thường nhận **404**
 | GET | `/invoices`, `/payments` · POST `/workspaces/{ws}/credits/grant` | SUPER_ADMIN, BILLING_ADMIN (Phase 4) |
 | GET | `/ai/usage?days=30&workspace_id=` ✦ | SUPER_ADMIN, BILLING_ADMIN — tổng, theo ngày/provider/model/task/workspace, lỗi |
 | GET | `/ai/requests?status=&provider=&task_key=&error_code=&failed=1&workspace_id=&cursor=` ✦ | SUPER_ADMIN, BILLING_ADMIN — log request (không có prompt/secret) |
-| GET · PATCH | `/ai/providers` · `/ai/providers/{id}` ✦ | SUPER_ADMIN — bật/tắt, timeout, retry; `has_api_key` chỉ đọc (khóa nằm trong `.env`) |
+| GET · PATCH | `/ai/providers` · `/ai/providers/{id}` ✦ | SUPER_ADMIN — bật/tắt, timeout, retry; `api_key` (ghi-một-chiều, min 8) hoặc `clear_api_key: true`; `base_url`, `response_format` chỉ với provider tùy chỉnh (nếu không 422 `builtin_endpoint_locked`). Trả `has_api_key`, `api_key_last4`, `api_key_source`, không bao giờ trả khóa |
+| POST | `/ai/providers` ✦ | SUPER_ADMIN — thêm provider OpenAI-compatible: `code`, `name`, `base_url` (https, qua SsrfGuard), `api_key?`, `response_format?`; tạo ở trạng thái tắt |
+| DELETE | `/ai/providers/{id}` ✦ | SUPER_ADMIN — chỉ provider tùy chỉnh chưa có model (409 `provider_builtin` / `provider_in_use`) |
+| POST | `/ai/providers/{id}/test-connection` ✦ | SUPER_ADMIN, 10/phút — gọi danh sách model (miễn phí): `ok`, `latency_ms`, `error_code`, `models_found`, `models[{model_name, available}]`, `sample` |
 | POST | `/ai/providers/{id}/circuit/reset` ✦ | SUPER_ADMIN |
-| GET · POST · PATCH | `/ai/models` · `/ai/models/{id}` ✦ | SUPER_ADMIN — model mới tắt cho tới khi có giá |
-| GET · POST | `/ai/models/{id}/prices` ✦ | SUPER_ADMIN — tạo version giá mới (không sửa version cũ) |
+| GET · POST · PATCH | `/ai/models` · `/ai/models/{id}` ✦ | SUPER_ADMIN — model mới tắt cho tới khi có giá; PATCH đổi được `model_name` (Model ID, 409 nếu trùng) và `capabilities.reasoning_effort` (`none`/`low`/`high`/`max`, dùng cho DeepSeek) |
+| DELETE | `/ai/models/{id}` ✦ | SUPER_ADMIN — chỉ khi chưa có lời gọi và chưa nằm trong route nào (409 `model_in_use`) |
+| POST | `/ai/models/{id}/test` ✦ | SUPER_ADMIN, 10/phút — một lời gọi thật có tính phí (≤ 200 token ra), `prompt?`, `structured?`; trả `ok`, `text`, `json`, `usage`, `cost_micro_usd`, `finish_reason`, hoặc `error_code` đã lọc secret |
+| GET · POST | `/ai/models/{id}/prices` ✦ | SUPER_ADMIN — tạo version giá mới (không sửa version cũ); tùy chọn `offpeak_*` + `peak_windows` (phải đi cùng nhau, `to` > `from`) |
 | DELETE | `/ai/models/{id}/prices/{price}` ✦ | SUPER_ADMIN — chỉ version chưa hiệu lực, nếu không 409 `price_version_locked` |
 | GET · PATCH | `/ai/routes` · `/ai/routes/{id}` ✦ | SUPER_ADMIN — chuỗi model, queue, timeout, `max_attempts`, `allow_paid_retry` |
 | GET | `/ai/budgets` ✦ | SUPER_ADMIN, BILLING_ADMIN |

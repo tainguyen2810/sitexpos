@@ -154,3 +154,64 @@ cd backend && DB_CONNECTION=mysql vendor/bin/pest     # gồm race test (cần M
 scripts/e2e/phase3-worker-restart.sh                  # cần MySQL, DB sitexpost_e2e
 node scripts/e2e/ai.js                                # cần API (php -S), worker, Vite đang chạy
 ```
+
+## 10. Phase 3E — DeepSeek và quản lý model linh hoạt (bổ sung 05/11/2026)
+
+Làm theo báo cáo khảo sát `DEEPSEEK-GAP-REPORT.md`, đã được chủ dự án duyệt kèm giá theo khung giờ. Không viết lại AI Gateway: chỉ thêm adapter, cột DB, endpoint admin và giao diện. Phase 1, 2 không bị đụng tới.
+
+### 10.1 Kết quả kiểm tra (đã chạy thật)
+| Kiểm tra | Kết quả |
+|---|---|
+| Pint, Larastan level 6 | Không lỗi |
+| Pest (SQLite) | 253 passed, 1 skipped (race test chỉ chạy MySQL) |
+| Pest (MySQL 8.4) | 254 passed |
+| Frontend lint, typecheck, Vitest, build | OK, 33 test |
+| `scripts/check.sh` (gồm plugin WP) | All checks passed |
+| E2E mới `scripts/e2e/ai-providers.js` (Chromium, admin thật + mock OpenAI-compatible) | 9/9 bước qua |
+| E2E cũ `scripts/e2e/ai.js` (hồi quy Phase 3) | 8/8 bước qua |
+
+E2E mới đi qua: thấy provider DeepSeek; nhập khóa DeepSeek, giao diện chỉ hiện `…7788`; Test Connection DeepSeek báo "Không kết nối được" (đúng, vì mạng sandbox chặn); thêm provider "Mock LLM" OpenAI-compatible, kết nối OK, thấy 2 model; thêm model + giá cao/thấp điểm; Test Model trả JSON, token và chi phí $0.000022 (khớp giá thấp điểm lúc 12:43 UTC thứ Năm: 100 × 0.15 + 12 × 0.60 = 22.2 micro-USD); đổi Model ID; quét 23 response API admin không thấy khóa; giao diện trên điện thoại.
+
+### 10.2 Đã làm gì
+- **DeepSeek** (`DeepSeekProvider`): `POST /chat/completions`, `GET /models`, Bearer. Model ID lấy từ api-docs.deepseek.com (đọc 05/11/2026): `deepseek-flash` và `deepseek-v4-pro`; không dùng tên cũ `deepseek-chat`, `deepseek-reasoner`. Structured output dùng `json_object` (DeepSeek không hỗ trợ `json_schema`), kết quả vẫn qua `JsonSchemaValidator`. `thinking` bật/tắt và `reasoning_effort` (low/high/max) cấu hình theo model; khi bật thinking thì bỏ `temperature`. Usage đọc `prompt_cache_hit_tokens` và `reasoning_tokens`. `content_filter` → `refused`; `insufficient_system_resource` → `provider_overloaded`. Hai model seed ở trạng thái **tắt**, kèm giá cao điểm/thấp điểm theo trang giá chính thức.
+- **Provider tùy chỉnh** (`OpenAiCompatibleProvider`, driver `openai_compatible`): base URL qua SsrfGuard lúc lưu và mỗi lần gọi, ghim IP, không redirect; chọn chế độ JSON (`json_schema`/`json_object`/`none`); chỉ văn bản.
+- **Khóa API trong DB** (ADR-015): mã hóa bằng APP_KEY, ghi-một-chiều, API chỉ trả 4 ký tự cuối và nguồn (`database`/`env`); khóa DB ưu tiên hơn `.env`; audit không chứa khóa.
+- **Quản lý model**: sửa Model ID, mức suy luận, capabilities; xóa model chưa dùng; xóa provider tùy chỉnh chưa có model.
+- **Giá theo khung giờ**: `offpeak_*` + `peak_windows` (UTC). Chi phí tính theo thời điểm gọi; giữ chỗ ngân sách luôn dùng giá cao điểm.
+- **Test Connection** (danh sách model, miễn phí) và **Test Model** (lời gọi thật ≤ 200 token ra, áp ngân sách global, được cả với model đang tắt); 10 lần/phút/admin; có audit.
+- Lỗi mạng: proxy từ chối (`CONNECT tunnel failed`) → `connect_failed`; GET danh sách model bị timeout → `network_error` (không còn báo "có thể đã bị tính phí" cho lời gọi miễn phí).
+
+### 10.3 Lỗi tìm thấy và đã sửa
+1. Validate khung giờ dùng `distinct` trên `peak_windows.*.days.*`, Laravel so trùng **giữa các khung**, nên hai khung cùng thứ 2–6 (đúng như lịch DeepSeek) bị từ chối. Chỉ lộ ra khi chạy giao diện thật. Đã bỏ `distinct` và sửa test để dùng hai khung.
+2. Test Connection DeepSeek qua proxy bị báo `response_timeout` ("có thể đã bị tính phí"), gây hiểu nhầm. Đã phân loại lại (xem trên) + test.
+3. Dòng `ai_requests` của Test Model (workspace null) không có ulid vì bỏ qua event; đã tự sinh ulid.
+4. Phụ đề trang Cấu hình AI vẫn ghi "khóa chỉ đặt trong biến môi trường"; đã sửa.
+
+### 10.4 Hạn chế (trung thực)
+1. **Chưa gọi DeepSeek thật**: chưa có khóa, và sandbox chặn api.deepseek.com. Request/response dựng đúng theo tài liệu và kiểm bằng `Http::fake`. Cần chạy Test Connection + Test Model bằng khóa thật trước khi bật model.
+2. Chưa xác minh bằng khóa thật vị trí trường `reasoning_tokens` trong usage của DeepSeek.
+3. Ngày lễ Trung Quốc (DeepSeek tính giá cao điểm cả ngày) **không** được mô hình hóa: có thể tính phí cao hơn thực tế ở những ngày đó, không bao giờ thấp hơn.
+4. Tài liệu DeepSeek ghi output tối đa 384K cho cả hai model; với `deepseek-v4-pro` chưa thấy ghi rõ riêng, nên seed theo con số chung.
+5. Đổi APP_KEY làm khóa trong DB không giải mã được, cần nhập lại (đã ghi trong DEPLOYMENT).
+6. Provider tùy chỉnh chỉ hỗ trợ văn bản (chưa có tạo ảnh).
+
+### 10.5 File thay đổi
+Backend: migration `2026_11_08_000100_add_custom_providers_and_offpeak_prices.php`; mới `DeepSeekProvider`, `OpenAiCompatibleProvider`, `StoreAiProviderRequest`, `TestAiModelRequest`; sửa `AiProvider`, `AiModel`, `AiModelPrice`, `AiTaskRoute`, `AiGateway`, `AiTask`, `TaskRouter`, `CostCalculator`, `HttpProvider`, các adapter OpenAI/Anthropic/Gemini/Fake (`apiKey()`, `listModels()`), `ProviderAdapter`, `ProviderRegistry`, `ProviderRequest`, `AiRegistry`, hai controller admin, các request, `routes.php`, `AiGatewayServiceProvider`, `config/sitex.php`, `.env.example`, `lang/*/ai.php`. Test mới `OpenAiCompatibleAdaptersTest` (8), `CustomProvidersTest` (11), thêm 2 test trong `CostCalculatorTest`.
+Frontend: `shared/api/ai.ts`, `AiSettingsPage.vue`, `locales/vi.ts`, `locales/en.ts`, `tests/ai.spec.ts`.
+Script: `scripts/e2e/ai-providers.js`, `scripts/e2e/mock-openai-compatible.js`.
+Tài liệu: ARCHITECTURE (§8, ADR-015), SECURITY §5, DATABASE §3.14, API-CONTRACTS, DEPLOYMENT, ROADMAP (3E), CLAUDE.md, báo cáo này.
+
+### 10.6 Checklist nghiệm thu 3E
+- [x] Kiểm tra code hiện có, báo cáo trước khi sửa, được duyệt
+- [x] Không viết lại AI Gateway, không ảnh hưởng Phase 1/2 (toàn bộ test cũ vẫn qua)
+- [x] DeepSeek qua kiến trúc adapter, Model ID theo tài liệu chính thức
+- [x] Model, giá, route quản lý động trong DB (đã có từ Phase 3, nay sửa/xóa được)
+- [x] Super Admin: thêm/sửa/bật/tắt model, Model ID, giá token, API key, model mặc định theo task
+- [x] Custom OpenAI-compatible API
+- [x] Fallback khi provider lỗi
+- [x] Test Connection và Test Model thật
+- [x] API key mã hóa, chỉ ở backend
+- [x] Migration và test
+- [ ] Gọi DeepSeek thật bằng khóa của chủ dự án (chờ khóa)
+
+Chạy lại E2E mới: khởi động API, `node scripts/e2e/mock-openai-compatible.js`, Vite admin (cổng 5174), rồi `node scripts/e2e/ai-providers.js <thư-mục-ảnh>` trên DB vừa `migrate:fresh --seed` + `DemoSeeder` (cần `SITEX_SSRF_ALLOW_HOSTS=127.0.0.1 SITEX_SSRF_ALLOW_HTTP=true`).

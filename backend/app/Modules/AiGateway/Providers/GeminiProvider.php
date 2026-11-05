@@ -45,7 +45,7 @@ final class GeminiProvider extends HttpProvider
         }
 
         $url = $this->baseUrl().'/v1beta/models/'.rawurlencode($request->model).':generateContent';
-        $json = $this->postJson($url, ['x-goog-api-key' => (string) $this->config('api_key')], $body, $request->timeoutSeconds);
+        $json = $this->postJson($url, ['x-goog-api-key' => $this->apiKey()], $body, $request->timeoutSeconds);
 
         $candidate = (array) (((array) ($json['candidates'] ?? []))[0] ?? []);
         $text = '';
@@ -93,5 +93,12 @@ final class GeminiProvider extends HttpProvider
             200,
             $images,
         );
+    }
+
+    public function listModels(int $timeoutSeconds = 15): array
+    {
+        $json = $this->getJson($this->baseUrl().'/v1beta/models?pageSize=1000', ['x-goog-api-key' => $this->apiKey()], $timeoutSeconds);
+
+        return array_map(static fn (string $name): string => str_starts_with($name, 'models/') ? substr($name, 7) : $name, self::idsFrom($json, 'models', 'name'));
     }
 }

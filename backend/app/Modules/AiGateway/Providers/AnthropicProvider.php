@@ -46,7 +46,7 @@ final class AnthropicProvider extends HttpProvider
         }
 
         $json = $this->postJson($this->baseUrl().'/v1/messages', [
-            'x-api-key' => (string) $this->config('api_key'),
+            'x-api-key' => $this->apiKey(),
             'anthropic-version' => (string) $this->config('version'),
         ], $body, $request->timeoutSeconds);
 
@@ -82,5 +82,13 @@ final class AnthropicProvider extends HttpProvider
             },
             is_string($json['id'] ?? null) ? $json['id'] : null,
         );
+    }
+
+    public function listModels(int $timeoutSeconds = 15): array
+    {
+        return self::idsFrom($this->getJson($this->baseUrl().'/v1/models?limit=1000', [
+            'x-api-key' => $this->apiKey(),
+            'anthropic-version' => (string) $this->config('version'),
+        ], $timeoutSeconds));
     }
 }

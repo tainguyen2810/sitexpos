@@ -26,5 +26,7 @@ final readonly class ProviderRequest
         public string $kind = 'text',
         public int $imageCount = 1,
         public ?string $imageSize = null,
+        // Reasoning/thinking effort configured on the model (DeepSeek: none|low|high|max).
+        public ?string $reasoningEffort = null,
     ) {}
 }
