@@ -14,15 +14,17 @@ Phiên bản: `v1`. Mọi API trả JSON UTF-8. Thời gian ISO-8601 UTC (`2026-
 
 ### 1.1 Response thành công
 ```json
-{ "data": { ... }, "meta": { "request_id": "01JC..." } }
+{ "data": { ... } }
 ```
 Danh sách (cursor pagination):
 ```json
 {
   "data": [ ... ],
-  "meta": { "request_id": "...", "next_cursor": "eyJ...", "prev_cursor": null, "per_page": 25 }
+  "meta": { "next_cursor": "eyJ...", "prev_cursor": null, "per_page": 25 }
 }
 ```
+`request_id` của response thành công nằm ở header `X-Request-Id` (không lặp trong body); response lỗi có thêm `error.request_id`.
+
 Query: `?cursor=...&per_page=25` (tối đa 100), `?sort=-created_at`, `?filter[status]=published`, `?q=...`.
 
 ### 1.2 Lỗi
@@ -55,7 +57,7 @@ Query: `?cursor=...&per_page=25` (tối đa 100), `?sort=-created_at`, `?filter[
 `message` dịch theo `Accept-Language` (`vi` mặc định).
 
 ### 1.3 Header
-- Request: `Accept: application/json`, `Accept-Language: vi`, `X-XSRF-TOKEN`, tùy chọn `Idempotency-Key` (bắt buộc với endpoint tiêu tốn quota/credit), `X-Request-Id`.
+- Request: `Accept: application/json`, `Accept-Language: vi`, `X-XSRF-TOKEN`, `X-Requested-With: XMLHttpRequest`, tùy chọn `X-Request-Id` (chỉ nhận ULID/UUID/chuỗi an toàn, nếu không sẽ sinh mới). `Idempotency-Key` sẽ bắt buộc với endpoint tiêu tốn quota/credit từ Phase 3 (Phase 1 chưa có endpoint như vậy).
 - Response: `X-Request-Id`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`.
 
 ### 1.4 Tác vụ bất đồng bộ
@@ -75,23 +77,30 @@ Mọi tài nguyên tenant nằm dưới `/workspaces/{workspace}`. Trường `wo
 Ký hiệu quyền: **O**wner, **A**dmin, **E**ditor, **V**iewer. ✦ = có trong Phase 1.
 
 ### 2.1 Auth & tài khoản (Fortify + Sanctum) ✦
+Endpoint auth do Fortify cung cấp (headless) dưới tiền tố `/api/v1/auth`. Đăng nhập dùng cookie session (Sanctum SPA), không có token trong localStorage.
+
 | Method | Path | Mô tả |
 |---|---|---|
-| GET | `/sanctum/csrf-cookie` (gốc, không `/api/v1`) | Lấy cookie CSRF |
-| POST | `/auth/register` | `{name, email, password, password_confirmation, locale?}` → 201 |
-| POST | `/auth/login` | `{email, password, remember?}` → 200 hoặc `{two_factor: true}` |
+| GET | `/sanctum/csrf-cookie` (gốc, không `/api/v1`) | Lấy cookie `XSRF-TOKEN` |
+| POST | `/auth/register` | `{name, email, password, password_confirmation, locale?}` → 201, tự đăng nhập, gửi email xác minh |
+| POST | `/auth/login` | `{email, password, remember?}` → `{two_factor: false}` hoặc `{two_factor: true}`. Rate limit 5/phút (email+IP), 60/giờ (IP) |
 | POST | `/auth/two-factor-challenge` | `{code}` hoặc `{recovery_code}` |
-| POST | `/auth/logout` | |
-| POST | `/auth/forgot-password` | `{email}` → luôn 200 |
-| POST | `/auth/reset-password` | `{token, email, password, password_confirmation}` |
+| POST | `/auth/logout` | 204 |
+| POST | `/auth/forgot-password` | `{email}` → luôn 200 với thông điệp chung (chống dò email) |
+| POST | `/auth/reset-password` | `{token, email, password, password_confirmation}`; đăng xuất mọi phiên |
 | POST | `/auth/email/verification-notification` | Gửi lại email xác minh |
-| GET | `/auth/verify-email/{id}/{hash}` | Link signed trong email |
-| GET | `/me` | User + danh sách workspace (id, name, role) |
-| PATCH | `/me` | `{name, locale, timezone}` |
-| PUT | `/me/password` | `{current_password, password, password_confirmation}` |
-| POST/DELETE | `/me/two-factor` | Bật/tắt 2FA; `POST /me/two-factor/confirm` `{code}` |
-| GET | `/me/two-factor/qr-code`, `/me/two-factor/recovery-codes` | |
-| GET | `/me/sessions` · DELETE `/me/sessions/{id}` | Quản lý phiên |
+| GET | `/auth/email/verify/{id}/{hash}?expires&signature` | URL ký; email trỏ tới SPA `FRONTEND_URL/verify-email?link=...`, SPA gọi URL này |
+| PUT | `/auth/user/password` | `{current_password, password, password_confirmation}`; đăng xuất các phiên khác |
+| POST | `/auth/user/confirm-password` | `{password}` — cần trước các thao tác 2FA (nếu chưa xác nhận: 423) |
+| POST/DELETE | `/auth/user/two-factor-authentication` | Bật (chưa xác nhận) / tắt 2FA |
+| POST | `/auth/user/confirmed-two-factor-authentication` | `{code}` xác nhận 2FA |
+| GET | `/auth/user/two-factor-qr-code` · `/auth/user/two-factor-secret-key` | |
+| GET/POST | `/auth/user/two-factor-recovery-codes` | Xem / tạo lại mã khôi phục |
+| GET | `/me` | User + workspace + phiên hỗ trợ đang mở (nếu có) |
+| PATCH | `/me` | `{name?, locale?, timezone?}` |
+| GET | `/me/sessions` | Danh sách phiên; `id` là handle sha256, không phải session id thật. `meta.supported=false` nếu `SESSION_DRIVER` ≠ `database` |
+| DELETE | `/me/sessions/{id}` | Đăng xuất một thiết bị |
+| DELETE | `/me/sessions/others` | `{password}` — đăng xuất mọi thiết bị khác |
 
 `GET /me` response:
 ```json
@@ -99,8 +108,9 @@ Ký hiệu quyền: **O**wner, **A**dmin, **E**ditor, **V**iewer. ✦ = có tron
   "data": {
     "id": "01JC...", "name": "Tài", "email": "a@b.com", "email_verified": true,
     "locale": "vi", "timezone": "Asia/Ho_Chi_Minh", "two_factor_enabled": false,
-    "platform_role": null,
-    "workspaces": [ { "id": "01JD...", "name": "Shop A", "slug": "shop-a", "role": "OWNER" } ]
+    "platform_role": null, "platform_permissions": [], "status": "active",
+    "workspaces": [ { "id": "01jd...", "name": "Shop A", "slug": "shop-a", "role": "OWNER", "status": "active", "is_demo": false } ],
+    "impersonation": null
   }
 }
 ```
@@ -111,8 +121,8 @@ Ký hiệu quyền: **O**wner, **A**dmin, **E**ditor, **V**iewer. ✦ = có tron
 | GET | `/workspaces` | user | Workspace của tôi |
 | POST | `/workspaces` | user đã xác minh email | `{name, timezone?, locale?}` → 201, người tạo là OWNER |
 | GET | `/workspaces/{ws}` | OAEV | Chi tiết + `my_role` + `permissions[]` |
-| PATCH | `/workspaces/{ws}` | OA | `{name, timezone, locale, settings}` |
-| DELETE | `/workspaces/{ws}` | O | `{confirm_name}` → `pending_deletion` |
+| PATCH | `/workspaces/{ws}` | OA | `{name?, timezone?, locale?}` |
+| DELETE | `/workspaces/{ws}` | O | `{confirm_name, password}` → `pending_deletion` (workspace bị khóa ngay, xóa vĩnh viễn ở phase sau) |
 | POST | `/workspaces/{ws}/transfer-ownership` | O | `{member_id, password}` |
 | GET | `/workspaces/{ws}/members` | OAEV | |
 | PATCH | `/workspaces/{ws}/members/{member}` | OA | `{role}` (không thành OWNER) |
@@ -124,7 +134,13 @@ Ký hiệu quyền: **O**wner, **A**dmin, **E**ditor, **V**iewer. ✦ = có tron
 | POST | `/invitations/{token}/accept` | user đăng nhập, email khớp | |
 | GET | `/workspaces/{ws}/audit-logs` | OA | Lọc theo action, actor, thời gian |
 | GET | `/workspaces/{ws}/job-runs/{id}` | OAEV | Trạng thái tác vụ |
-| GET | `/workspaces/{ws}/dashboard` | OAEV | Phase 1: số thành viên, site (0), trạng thái onboarding |
+| GET | `/workspaces/{ws}/dashboard` | OAEV | Phase 1: số thành viên, lời mời đang chờ, checklist onboarding, module sắp có (không có số liệu giả) |
+
+Quy tắc tenant (Phase 1, có test):
+- `{ws}` không phải workspace của user → **404** (không lộ sự tồn tại). Tài nguyên con (`{member}`, `{invitation}`) của workspace khác → 404.
+- Workspace `suspended` → 403 `workspace_suspended`; `pending_deletion` → 404.
+- Phiên hỗ trợ (impersonation) → vai trò ADMIN chỉ xem; mọi request không phải GET → 403 `impersonation_read_only`.
+- Body chứa `workspace_id`, `tenant_id`, `user_id`, `owner_id`, `platform_role` → 422.
 
 Workspace response:
 ```json
@@ -210,7 +226,7 @@ Workspace response:
 
 ## 3. Admin API (`/api/admin/v1`)
 
-Yêu cầu `platform_role` + 2FA đã xác nhận. ✦ = Phase 1.
+Yêu cầu `platform_role` + 2FA đã xác nhận. User thường nhận **404** (không lộ khu admin); staff chưa bật 2FA nhận 403 `two_factor_required`. Mọi thao tác ghi cần `reason` (5–500 ký tự) và được ghi audit. ✦ = Phase 1.
 
 | Method | Path | Vai trò |
 |---|---|---|
@@ -219,7 +235,7 @@ Yêu cầu `platform_role` + 2FA đã xác nhận. ✦ = Phase 1.
 | POST | `/workspaces/{ws}/suspend` ✦ · `/unsuspend` ✦ | SUPER_ADMIN, SUPPORT — `{reason}` |
 | GET | `/users` ✦ · `/users/{user}` ✦ | Tất cả |
 | POST | `/users/{user}/suspend` ✦ · `/unsuspend` ✦ | SUPER_ADMIN, SUPPORT |
-| POST | `/impersonations` ✦ | SUPER_ADMIN, SUPPORT — `{workspace_id, reason, read_only}` |
+| POST | `/impersonations` ✦ | SUPER_ADMIN, SUPPORT — `{workspace_id, reason}`; luôn chỉ xem, hết hạn sau `SITEX_IMPERSONATION_MAX_MINUTES` (30) |
 | DELETE | `/impersonations/current` ✦ | |
 | GET | `/audit-logs` ✦ | Theo SECURITY.md §3.1 |
 | GET/POST/PATCH | `/staff` ✦ | SUPER_ADMIN — gán/thu hồi platform_role |

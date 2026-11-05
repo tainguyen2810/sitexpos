@@ -50,7 +50,8 @@ php artisan sitex:make-super-admin admin@<domain>
 # 3. Frontend (trên máy build hoặc server có Node)
 cd "$APP_DIR/frontend"
 npm ci
-VITE_API_BASE_URL=https://api.<domain> npm run build
+VITE_API_BASE_URL=https://api.<domain> VITE_CUSTOMER_APP_URL=https://app.<domain> npm run build
+# Kết quả: dist/customer/index.html và dist/admin/index.html
 
 # 4. Quyền
 chown -R www:www "$APP_DIR"
@@ -83,7 +84,7 @@ REDIS_HOST=127.0.0.1
 REDIS_PASSWORD=
 QUEUE_CONNECTION=redis
 CACHE_STORE=redis
-SESSION_DRIVER=redis
+SESSION_DRIVER=database          # bắt buộc để có màn hình "Phiên đăng nhập" (liệt kê/đăng xuất thiết bị)
 SESSION_DOMAIN=.<domain>
 SESSION_SECURE_COOKIE=true
 SANCTUM_STATEFUL_DOMAINS=app.<domain>,admin.<domain>

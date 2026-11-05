@@ -339,7 +339,7 @@ AI chỉ được đề xuất từ khóa (`origin=ai_suggested`) — **không**
 
 **notifications** (Laravel), **jobs/failed_jobs/job_batches** (Laravel), **cache/locks** (nếu không dùng Redis).
 
-**idempotency_keys**: id, workspace_id, user_id, key, request_hash, response_status, response_body, expires_at, UNIQUE(workspace_id, user_id, key).
+**idempotency_keys** *(hoãn sang Phase 3 — Phase 1 chưa có endpoint tiêu tốn quota/credit)*: id, workspace_id, user_id, key, request_hash, response_status, response_body, expires_at, UNIQUE(workspace_id, user_id, key).
 
 ## 4. Index & hiệu năng
 
@@ -350,4 +350,4 @@ AI chỉ được đề xuất từ khóa (`origin=ai_suggested`) — **không**
 
 ## 5. Phạm vi migration của Phase 1
 
-Chỉ tạo: `users` (+ cột platform_role, 2FA, locale, timezone, status), `sessions`, `password_reset_tokens`, `workspaces`, `workspace_members`, `workspace_invitations`, `audit_logs`, `impersonation_sessions`, `system_settings`, `job_runs`, `idempotency_keys`, bảng hệ thống của Laravel (`jobs`, `failed_jobs`, `job_batches`, `cache`, `notifications`). Các bảng khác thuộc phase sau (xem ROADMAP.md).
+Chỉ tạo: `users` (+ cột platform_role, 2FA, locale, timezone, status), `sessions`, `password_reset_tokens`, `workspaces`, `workspace_members`, `workspace_invitations`, `audit_logs`, `impersonation_sessions`, `system_settings`, `job_runs`, bảng hệ thống của Laravel (`jobs`, `failed_jobs`, `job_batches`, `cache`, `notifications`). Các bảng khác thuộc phase sau (xem ROADMAP.md).

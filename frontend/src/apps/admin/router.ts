@@ -1,0 +1,59 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import { useSessionStore } from '@/shared/stores/session'
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    guest?: boolean
+    auth?: boolean
+    /** Platform permission needed to show the page (the API enforces it again). */
+    permission?: string
+  }
+}
+
+export const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    { path: '/login', name: 'login', component: () => import('./pages/LoginPage.vue'), meta: { guest: true } },
+    { path: '/two-factor', name: 'two-factor', component: () => import('./pages/TwoFactorPage.vue'), meta: { guest: true } },
+    { path: '/forgot-password', name: 'forgot-password', redirect: '/login' },
+    { path: '/register', name: 'register', redirect: '/login' },
+    { path: '/not-staff', name: 'not-staff', component: () => import('./pages/NotStaffPage.vue'), meta: { auth: true } },
+    { path: '/setup-2fa', name: 'setup-2fa', component: () => import('./pages/SetupTwoFactorPage.vue'), meta: { auth: true } },
+    {
+      path: '/',
+      component: () => import('./components/AdminShell.vue'),
+      meta: { auth: true },
+      children: [
+        { path: '', name: 'dashboard', component: () => import('./pages/DashboardPage.vue'), meta: { permission: 'platform.dashboard.view' } },
+        { path: 'workspaces', name: 'workspaces', component: () => import('./pages/WorkspacesPage.vue'), meta: { permission: 'platform.tenants.view' } },
+        { path: 'workspaces/:id', name: 'workspace', component: () => import('./pages/WorkspaceDetailPage.vue'), props: true, meta: { permission: 'platform.tenants.view' } },
+        { path: 'users', name: 'users', component: () => import('./pages/UsersPage.vue'), meta: { permission: 'platform.users.view' } },
+        { path: 'users/:id', name: 'user', component: () => import('./pages/UserDetailPage.vue'), props: true, meta: { permission: 'platform.users.view' } },
+        { path: 'staff', name: 'staff', component: () => import('./pages/StaffPage.vue'), meta: { permission: 'platform.staff.manage' } },
+        { path: 'audit', name: 'audit', component: () => import('./pages/AuditLogPage.vue') },
+        { path: 'account', name: 'account', component: () => import('./pages/AccountPage.vue') },
+      ],
+    },
+    { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('./pages/NotFoundPage.vue') },
+  ],
+})
+
+router.beforeEach(async (to) => {
+  const session = useSessionStore()
+  const user = await session.ensureLoaded()
+  const needsAuth = to.matched.some((r) => r.meta.auth)
+
+  if (to.meta.guest && user) return { name: 'dashboard' }
+  if (needsAuth && !user) return { name: 'login', query: to.fullPath === '/' ? {} : { redirect: to.fullPath } }
+  if (!user || !needsAuth) return true
+
+  if (!user.platform_role) return to.name === 'not-staff' ? true : { name: 'not-staff' }
+  // Platform staff must use 2FA (the API also refuses with two_factor_required).
+  if (!user.two_factor_enabled) return to.name === 'setup-2fa' ? true : { name: 'setup-2fa' }
+  if (to.name === 'setup-2fa' || to.name === 'not-staff') return { name: 'dashboard' }
+
+  if (to.meta.permission && !user.platform_permissions.includes(to.meta.permission)) {
+    return to.name === 'dashboard' ? { name: 'audit' } : { name: 'not-found', params: { pathMatch: to.path.slice(1).split('/') } }
+  }
+  return true
+})

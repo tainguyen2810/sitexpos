@@ -1,0 +1,45 @@
+{
+  "name": "sitex-post-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "vite --mode development",
+    "dev:admin": "cross-env SITEX_APP=admin vite --mode development",
+    "build": "npm run build:customer && npm run build:admin",
+    "build:customer": "cross-env SITEX_APP=customer vite build",
+    "build:admin": "cross-env SITEX_APP=admin vite build",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.app.json",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build"
+  },
+  "dependencies": {
+    "dompurify": "^3.4.17",
+    "pinia": "^4.1.0",
+    "vue": "^3.5.44",
+    "vue-i18n": "^11.4.18",
+    "vue-router": "^5.4.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.4",
+    "@types/node": "^24.19.2",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "@vue/eslint-config-typescript": "^14.9.0",
+    "@vue/test-utils": "^2.5.1",
+    "cross-env": "^10.1.0",
+    "eslint": "^10.14.0",
+    "eslint-plugin-vue": "^10.12.0",
+    "jsdom": "^30.1.3",
+    "tailwindcss": "^4.3.4",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0",
+    "vue-eslint-parser": "^10.4.1",
+    "vue-tsc": "^3.3.14"
+  }
+}

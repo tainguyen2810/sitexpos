@@ -157,7 +157,7 @@ Header bảo mật (Nginx): HSTS (`max-age=31536000; includeSubDomains`), `X-Con
 
 | Phạm vi | Giới hạn mặc định |
 |---|---|
-| Đăng nhập / quên mật khẩu | 5/phút theo email+IP, 20/giờ theo IP |
+| Đăng nhập / quên mật khẩu | 5/phút theo email+IP, 60/giờ theo IP (nới từ 20 để văn phòng/NAT dùng chung IP không bị khóa; giới hạn theo email+IP vẫn chặn dò mật khẩu) |
 | API chung theo user | 120/phút |
 | API theo workspace | 600/phút |
 | Endpoint tạo job AI theo workspace | 30/phút + quota |

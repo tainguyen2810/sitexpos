@@ -53,6 +53,7 @@ scripts/check.sh
 - Mỗi endpoint tenant mới phải có test cross-tenant (trả 404) và test phân quyền theo vai trò.
 
 ## Quy tắc code frontend
+- Hai SPA từ một project Vite: `SITEX_APP=customer|admin`; build ra `dist/<app>/index.html`.
 - Vue 3 `<script setup lang="ts">`, TypeScript strict, Tailwind. TypeScript ghim **6.0.x** (TS 7 làm hỏng vue-tsc — đã kiểm chứng).
 - Mọi chuỗi hiển thị qua `vue-i18n` (`t('module.key')`), file `src/locales/vi/*.json`.
 - Mỗi màn hình dữ liệu có đủ loading / empty / error state (dùng component dùng chung).
@@ -76,4 +77,6 @@ scripts/check.sh
 - Production: Ubuntu + aaPanel, Nginx, PHP-FPM 8.4, MySQL 8.4, Redis, Supervisor.
 
 ## Trạng thái hiện tại
-- Phase 0 (thiết kế) hoàn thành. Phase 1 đã được định nghĩa trong ROADMAP.md nhưng **chưa bắt đầu** — chờ người dùng yêu cầu.
+- Phase 0 (thiết kế) và Phase 1 (SaaS Core) hoàn thành — xem `docs/PHASE1-REPORT.md`. Phase 2 **chưa bắt đầu** — chờ người dùng yêu cầu.
+- Bản đồ code Phase 1: `backend/app/Kernel` (tenancy, HTTP, bảo mật), `backend/app/Modules/{Identity,Workspace,Audit,Platform}`; `frontend/src/shared` (API client, UI, auth, layout), `frontend/src/apps/{customer,admin}`.
+- Test cross-tenant tự động liệt kê mọi route tenant (`tests/Feature/Tenancy/CrossTenantIsolationTest.php`): route tenant mới tự được kiểm tra, nhưng vẫn cần test phân quyền riêng.

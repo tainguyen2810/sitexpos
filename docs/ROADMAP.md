@@ -24,77 +24,79 @@ Nguyên tắc: **chỉ làm phase được yêu cầu**, không tự chuyển ph
 
 ---
 
-## Phase 1 — Nền tảng: monorepo, xác thực, workspace, phân quyền, khung UI
+## Phase 1 — Nền tảng: monorepo, xác thực, workspace, phân quyền, khung UI ✅ (05/11/2026)
+
+> Trạng thái chi tiết và lệnh đã chạy: xem `docs/PHASE1-REPORT.md`. Ô `[ ]` = chưa làm/chưa kiểm chứng được, có ghi lý do.
 
 **Mục tiêu**: Có một ứng dụng chạy được end-to-end: đăng ký → xác minh email → tạo workspace → mời thành viên → phân quyền; Super Admin đăng nhập (2FA) vào dashboard riêng. Tenant isolation được thực thi và kiểm thử. **Chưa** có AI, billing, WordPress.
 
 ### 1A. Monorepo & tooling
-- [ ] Cấu trúc `backend/`, `frontend/`, `wordpress-plugin/` (chỉ placeholder README), `docs/`, `scripts/`.
-- [ ] Laravel 13 với namespace gốc `SiteXPost\` (composer psr-4, `bootstrap/app.php`).
-- [ ] Hạ tầng module: `ModuleServiceProvider` tự nạp routes/migrations/policies của từng module.
-- [ ] Pest 4 + Larastan (level 6) + Pint; script `composer test|analyse|lint|check`.
-- [ ] Vite 8 + Vue 3.5 + TS 6.0 + Tailwind 4, 2 entry (`customer`, `admin`); ESLint, vue-tsc, Vitest; `npm run check`.
-- [ ] `scripts/check.sh` và `scripts/check.ps1` chạy toàn bộ kiểm tra (Linux/Windows).
-- [ ] `.env.example` đầy đủ, không có giá trị thật; `.editorconfig`, `.gitignore`.
-- [ ] CI GitHub Actions (MySQL 8.4 + Redis service) — kích hoạt khi có repo.
+- [x] Cấu trúc `backend/`, `frontend/`, `wordpress-plugin/` (chỉ placeholder README), `docs/`, `scripts/`.
+- [x] Laravel 13 với namespace gốc `SiteXPost\` (composer psr-4, `bootstrap/app.php`).
+- [x] Hạ tầng module: `ModuleServiceProvider` tự nạp routes/migrations/policies của từng module.
+- [x] Pest 4 + Larastan (level 6) + Pint; script `composer test|analyse|lint|check`.
+- [x] Vite 8 + Vue 3.5 + TS 6.0 + Tailwind 4, 2 entry (`customer`, `admin`); ESLint, vue-tsc, Vitest; `npm run check`.
+- [x] `scripts/check.sh` và `scripts/check.ps1` chạy toàn bộ kiểm tra (Linux/Windows).
+- [x] `.env.example` đầy đủ, không có giá trị thật; `.editorconfig`, `.gitignore`.
+- [ ] CI GitHub Actions (MySQL 8.4 + Redis service) — đã viết `.github/workflows/ci.yml` nhưng **chưa chạy** vì chưa có repo GitHub.
 
 ### 1B. Kernel
-- [ ] `TenantContext`, middleware `ResolveWorkspace`, trait `BelongsToWorkspace` (global scope **fail-closed**), job middleware `RestoreTenantContext`.
-- [ ] Error envelope + exception handler theo API-CONTRACTS §1.2; `X-Request-Id`.
-- [ ] Base `FormRequest` cấm `workspace_id`/`platform_role` trong input.
-- [ ] Rate limiter theo user, workspace, auth (SECURITY §11).
-- [ ] Logger processor che secret.
-- [ ] `SsrfGuard` (unit test với danh sách IP chặn) — dùng từ Phase 2 nhưng làm sẵn vì là Kernel.
+- [x] `TenantContext`, middleware `ResolveWorkspace`, trait `BelongsToWorkspace` (global scope **fail-closed**), job middleware `RestoreTenantContext`.
+- [x] Error envelope + exception handler theo API-CONTRACTS §1.2; `X-Request-Id`.
+- [x] Base `FormRequest` cấm `workspace_id`/`platform_role` trong input.
+- [x] Rate limiter theo user, workspace, auth (SECURITY §11).
+- [x] Logger processor che secret.
+- [x] `SsrfGuard` (unit test với danh sách IP chặn) — dùng từ Phase 2 nhưng làm sẵn vì là Kernel.
 
 ### 1C. Identity
-- [ ] Đăng ký, đăng nhập, đăng xuất, xác minh email, quên/đặt lại mật khẩu (Fortify headless + Sanctum SPA).
-- [ ] 2FA TOTP (bật, xác nhận, mã khôi phục, challenge).
-- [ ] Hồ sơ cá nhân, đổi mật khẩu, ngôn ngữ, múi giờ; quản lý phiên.
-- [ ] Email qua mailer cấu hình `.env` (SMTP/Brevo SMTP); template email tiếng Việt.
+- [x] Đăng ký, đăng nhập, đăng xuất, xác minh email, quên/đặt lại mật khẩu (Fortify headless + Sanctum SPA).
+- [x] 2FA TOTP (bật, xác nhận, mã khôi phục, challenge).
+- [x] Hồ sơ cá nhân, đổi mật khẩu, ngôn ngữ, múi giờ; quản lý phiên.
+- [x] Email qua mailer cấu hình `.env` (SMTP/Brevo SMTP); template email tiếng Việt. *(Đã kiểm tra với `MAIL_MAILER=log`; chưa gửi thử qua SMTP thật.)*
 
 ### 1D. Workspace & phân quyền tenant
-- [ ] CRUD workspace; người tạo là OWNER; đúng một OWNER.
-- [ ] Thành viên: liệt kê, đổi vai trò, xóa, rời workspace; chuyển quyền OWNER (yêu cầu mật khẩu).
-- [ ] Lời mời qua email (token hash, hết hạn 7 ngày, thu hồi, chấp nhận khi email khớp).
-- [ ] Enum `WorkspaceRole`, `Permission`, ma trận quyền SECURITY §3.2; Policy cho mọi action.
-- [ ] `GET /workspaces/{ws}` trả `my_role` + `permissions[]` để UI ẩn/hiện.
-- [ ] Audit log workspace + màn hình xem audit.
+- [x] CRUD workspace; người tạo là OWNER; đúng một OWNER.
+- [x] Thành viên: liệt kê, đổi vai trò, xóa, rời workspace; chuyển quyền OWNER (yêu cầu mật khẩu).
+- [x] Lời mời qua email (token hash, hết hạn 7 ngày, thu hồi, chấp nhận khi email khớp).
+- [x] Enum `WorkspaceRole`, `Permission`, ma trận quyền SECURITY §3.2; Policy cho mọi action.
+- [x] `GET /workspaces/{ws}` trả `my_role` + `permissions[]` để UI ẩn/hiện.
+- [x] Audit log workspace + màn hình xem audit.
 
 ### 1E. Platform (Super Admin)
-- [ ] `platform_role` trên user; lệnh `php artisan sitex:make-super-admin {email}` (không có tài khoản admin mặc định).
-- [ ] Bắt buộc 2FA với platform staff.
-- [ ] Admin API Phase 1 (API-CONTRACTS §3 ✦): dashboard, workspaces, users, suspend/unsuspend, staff, audit logs.
-- [ ] Impersonation read-only có lý do, banner rõ ràng trên UI, audit đầy đủ, tự kết thúc sau 30 phút.
+- [x] `platform_role` trên user; lệnh `php artisan sitex:make-super-admin {email}` (không có tài khoản admin mặc định).
+- [x] Bắt buộc 2FA với platform staff.
+- [x] Admin API Phase 1 (API-CONTRACTS §3 ✦): dashboard, workspaces, users, suspend/unsuspend, staff, audit logs.
+- [x] Impersonation read-only có lý do, banner rõ ràng trên UI, audit đầy đủ, tự kết thúc sau 30 phút.
 
 ### 1F. Frontend
-- [ ] Shell khách hàng: sidebar + topbar, chuyển workspace, menu theo quyền, responsive (drawer mobile), light mode.
-- [ ] Màn hình: đăng nhập, đăng ký, quên/đặt lại mật khẩu, xác minh email, 2FA challenge, tạo workspace đầu tiên (onboarding), dashboard (thẻ trạng thái onboarding: "Kết nối website — sắp có"), thành viên & lời mời, cài đặt workspace, hồ sơ cá nhân & bảo mật, audit log.
-- [ ] Shell admin riêng (`admin.html`): dashboard số liệu thật từ DB, danh sách workspace/user, staff, audit log, impersonation.
-- [ ] Bộ UI dùng chung + EmptyState/LoadingState/ErrorState; toast; xác nhận hành động nguy hiểm.
-- [ ] vue-i18n với `vi` đầy đủ, `en` khung (fallback `vi`).
-- [ ] Route guard theo đăng nhập/xác minh email/quyền.
+- [x] Shell khách hàng: sidebar + topbar, chuyển workspace, menu theo quyền, responsive (drawer mobile), light mode.
+- [x] Màn hình: đăng nhập, đăng ký, quên/đặt lại mật khẩu, xác minh email, 2FA challenge, tạo workspace đầu tiên (onboarding), dashboard (thẻ trạng thái onboarding: "Kết nối website — sắp có"), thành viên & lời mời, cài đặt workspace, hồ sơ cá nhân & bảo mật, audit log.
+- [x] Shell admin riêng (`admin.html`): dashboard số liệu thật từ DB, danh sách workspace/user, staff, audit log, impersonation.
+- [x] Bộ UI dùng chung + EmptyState/LoadingState/ErrorState; toast; xác nhận hành động nguy hiểm.
+- [x] vue-i18n với `vi` đầy đủ, `en` khung (fallback `vi`).
+- [x] Route guard theo đăng nhập/xác minh email/quyền.
 
 ### 1G. Dữ liệu demo (chỉ development)
-- [ ] `DemoSeeder`: 2 workspace demo (`is_demo=1`), user demo mỗi vai trò, 1 super admin demo — **từ chối chạy** khi `APP_ENV=production` (có test).
-- [ ] `DatabaseSeeder` production chỉ seed dữ liệu hệ thống bắt buộc (hiện tại: không có).
+- [x] `DemoSeeder`: 2 workspace demo (`is_demo=1`), user demo mỗi vai trò, 1 super admin demo — **từ chối chạy** khi `APP_ENV=production` (có test).
+- [x] `DatabaseSeeder` production chỉ seed dữ liệu hệ thống bắt buộc (hiện tại: không có).
 
 ### Checklist nghiệm thu Phase 1
-- [ ] Từ DB rỗng: `php artisan migrate` thành công trên MySQL 8.4.
-- [ ] Đăng ký → nhận email xác minh (Mailpit/log mailer ở dev) → xác minh → tạo workspace → thấy dashboard.
-- [ ] Chưa xác minh email thì không tạo được workspace (403 `email_not_verified`).
-- [ ] OWNER mời email B vai trò EDITOR → B đăng ký/đăng nhập → chấp nhận → thấy workspace với vai trò EDITOR; EDITOR không thấy menu Thành viên/Cài đặt và API trả 403 khi gọi trực tiếp.
-- [ ] VIEWER gọi API sửa workspace → 403. ADMIN không đổi được vai trò OWNER.
-- [ ] User workspace A gọi mọi endpoint với ID workspace B / thành viên B / lời mời B → 404 (test tự động phủ toàn bộ route tenant).
-- [ ] Gửi `workspace_id` trong body → 422.
-- [ ] Truy vấn model tenant ngoài TenantContext → exception (unit test).
-- [ ] Đăng nhập sai 6 lần/phút → 429.
-- [ ] Super admin tạo bằng lệnh artisan; vào admin SPA bị buộc thiết lập 2FA; sau đó thấy dashboard với số liệu thật.
-- [ ] Impersonation read-only: staff xem được workspace, mọi request ghi bị chặn (403), audit có `impersonator_id`.
-- [ ] Mọi hành động trong SECURITY §12 thuộc phạm vi Phase 1 có audit log.
-- [ ] `DemoSeeder` chạy được ở local; với `APP_ENV=production` thoát với lỗi.
-- [ ] UI: loading/empty/error state hiện đúng; responsive 375/768/1280; tiếng Việt toàn bộ.
-- [ ] `scripts/check.sh` pass toàn bộ: Pint, Larastan, Pest, ESLint, vue-tsc, Vitest, build.
-- [ ] Hướng dẫn cài đặt dev (Windows + Linux) trong README được kiểm tra bằng cách cài từ đầu.
+- [ ] Từ DB rỗng: `php artisan migrate` thành công trên MySQL 8.4. *(Đã chạy migrate + rollback + migrate trên **MySQL 8.0.46** và SQLite; môi trường cloud không tải được MySQL 8.4 — cần kiểm tra trên server/máy dev.)*
+- [x] Đăng ký → nhận email xác minh (Mailpit/log mailer ở dev) → xác minh → tạo workspace → thấy dashboard.
+- [x] Chưa xác minh email thì không tạo được workspace (403 `email_not_verified`).
+- [x] OWNER mời email B vai trò EDITOR → B đăng ký/đăng nhập → chấp nhận → thấy workspace với vai trò EDITOR; EDITOR xem được danh sách thành viên (quyền `members.view` theo SECURITY §3.2) nhưng không có nút mời/đổi vai trò/xóa, không thấy menu Cài đặt và Nhật ký; API trả 403 khi gọi trực tiếp.
+- [x] VIEWER gọi API sửa workspace → 403. ADMIN không đổi được vai trò OWNER.
+- [x] User workspace A gọi mọi endpoint với ID workspace B / thành viên B / lời mời B → 404 (test tự động phủ toàn bộ route tenant).
+- [x] Gửi `workspace_id` trong body → 422.
+- [x] Truy vấn model tenant ngoài TenantContext → exception (unit test).
+- [x] Đăng nhập sai 6 lần/phút → 429.
+- [x] Super admin tạo bằng lệnh artisan; vào admin SPA bị buộc thiết lập 2FA; sau đó thấy dashboard với số liệu thật.
+- [x] Impersonation read-only: staff xem được workspace, mọi request ghi bị chặn (403), audit có `impersonator_id`.
+- [x] Mọi hành động trong SECURITY §12 thuộc phạm vi Phase 1 có audit log.
+- [x] `DemoSeeder` chạy được ở local; với `APP_ENV=production` thoát với lỗi.
+- [x] UI: loading/empty/error state hiện đúng; responsive 375/768/1280; tiếng Việt toàn bộ.
+- [x] `scripts/check.sh` pass toàn bộ: Pint, Larastan, Pest, ESLint, vue-tsc, Vitest, build.
+- [ ] Hướng dẫn cài đặt dev (Windows + Linux) trong README được kiểm tra bằng cách cài từ đầu. *(Đã kiểm tra trên Linux; chưa kiểm tra trên Windows.)*
 
 **Ngoài phạm vi Phase 1**: sites/WordPress, billing/quota, AI, research, nội dung, GSC, deploy production.
 
