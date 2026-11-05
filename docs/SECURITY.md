@@ -36,8 +36,9 @@ Nguyên tắc: **fail-closed**, quyền tối thiểu, không tin dữ liệu t�
 | Tạm khóa/mở tenant, user | ✓ | ✓ | – |
 | Quản lý plan, giá, credit pack | ✓ | – | ✓ |
 | Xem hóa đơn, hoàn tiền, cấp credit | ✓ | – | ✓ |
-| Cấu hình AI routing, prompt template, ngân sách AI | ✓ | – | – |
-| Xem chi phí AI | ✓ | – | ✓ |
+| Cấu hình AI: provider, model, giá, routing, ngân sách (`platform.ai.manage`) | ✓ | – | – |
+| Xem chi phí & log request AI, xem ngân sách (`platform.ai.view_costs`) | ✓ | – | ✓ |
+| Theo dõi job/workflow, hủy/retry, xử lý dead letter (`platform.jobs.manage`) | ✓ | ✓ | – |
 | Quản lý staff platform | ✓ | – | – |
 | Xem audit log toàn hệ thống | ✓ | ✓ (không gồm billing) | ✓ (chỉ billing) |
 
@@ -77,6 +78,9 @@ Xem ARCHITECTURE.md §6. Bổ sung:
 - Mã ghép nối chỉ lưu dạng HMAC-SHA256 (khóa `APP_KEY`), không lưu mã gốc.
 - Không log secret: logger processor che các khóa `password`, `token`, `secret`, `authorization`, `signature`, `*_key`.
 - API Resource không bao giờ trả `*_encrypted`, `password`, khóa riêng.
+- **AI Gateway (Phase 3):** khóa API của OpenAI/Gemini/Anthropic chỉ đọc từ `.env` (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`) qua `config/sitex.php` (`sitex.ai.providers.*.api_key`); **không** lưu trong DB, không trả qua API admin (API chỉ trả `has_api_key: true/false`), không thể nhập từ giao diện. Khóa gửi qua header (`Authorization`, `x-goog-api-key`, `x-api-key`), không đặt trong query string.
+- `ai_requests` không lưu prompt hay output gốc, chỉ lưu `prompt_hash` (SHA-256), số token, chi phí, mã lỗi. Thông báo lỗi từ provider đi qua `SecretRedactor` (che `Bearer …`, `sk-…`, `sk-ant-…`, `AIza…` và các cặp `api_key/key/token/authorization/x-api-key/x-goog-api-key = …`) trước khi lưu vào `ai_requests.error_message`, `workflow_*` hay log; có unit test (`tests/Unit/Kernel/SecretRedactorTest.php`).
+- Kết quả tác vụ (`workflow_steps.output`) thuộc tenant, được bảo vệ bởi scope `BelongsToWorkspace` fail-closed.
 
 ## 6. Bảo mật kết nối WordPress
 
@@ -181,7 +185,7 @@ Header bảo mật (Nginx): HSTS (`max-age=31536000; includeSubDomains`), `X-Con
 | Đăng nhập / quên mật khẩu | 5/phút theo email+IP, 60/giờ theo IP (nới từ 20 để văn phòng/NAT dùng chung IP không bị khóa; giới hạn theo email+IP vẫn chặn dò mật khẩu) |
 | API chung theo user | 120/phút |
 | API theo workspace | 600/phút |
-| Endpoint tạo job AI theo workspace | 30/phút + quota |
+| Endpoint tạo/retry tác vụ AI (`throttle:ai-tasks`, theo user + workspace) | 20/phút (`SITEX_RATE_AI_TASKS_PER_MINUTE`) + ngân sách AI + giới hạn đồng thời theo workspace |
 | Pairing | 10/giờ theo IP, 5 lần thử/mã |
 | Connector API (từ plugin) theo site | 60/phút |
 | Webhook theo provider | 300/phút |

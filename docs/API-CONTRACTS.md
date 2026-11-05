@@ -57,7 +57,7 @@ Query: `?cursor=...&per_page=25` (tối đa 100), `?sort=-created_at`, `?filter[
 `message` dịch theo `Accept-Language` (`vi` mặc định).
 
 ### 1.3 Header
-- Request: `Accept: application/json`, `Accept-Language: vi`, `X-XSRF-TOKEN`, `X-Requested-With: XMLHttpRequest`, tùy chọn `X-Request-Id` (chỉ nhận ULID/UUID/chuỗi an toàn, nếu không sẽ sinh mới). `Idempotency-Key` sẽ bắt buộc với endpoint tiêu tốn quota/credit từ Phase 3 (Phase 1 chưa có endpoint như vậy).
+- Request: `Accept: application/json`, `Accept-Language: vi`, `X-XSRF-TOKEN`, `X-Requested-With: XMLHttpRequest`, tùy chọn `X-Request-Id` (chỉ nhận ULID/UUID/chuỗi an toàn, nếu không sẽ sinh mới). `Idempotency-Key` bắt buộc với endpoint tạo tác vụ tốn phí (Phase 3: `POST /workspaces/{ws}/ai/tasks`), xem §2.4.
 - Response: `X-Request-Id`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`.
 
 ### 1.4 Tác vụ bất đồng bộ
@@ -179,7 +179,19 @@ Quyền: O=OWNER, A=ADMIN, E=EDITOR, V=VIEWER. `{site}` luôn được tra trong
 
 Thao tác 202 trên site chưa kết nối → `409 not_connected`.
 
-### 2.4 Billing & Usage (Phase 3)
+### 2.4 Tác vụ AI & sử dụng AI (Phase 3) ✦
+| Method | Path | Quyền | Ghi chú |
+|---|---|---|---|
+| GET | `/workspaces/{ws}/ai/tasks?status=&cursor=` | OAEV | Danh sách workflow run của workspace (mới nhất trước) |
+| POST | `/workspaces/{ws}/ai/tasks` | OAE + email đã xác minh | Body `{prompt (2–4000), structured?: bool, web_search?: bool}`; header **`Idempotency-Key`** bắt buộc (8–120 ký tự `[A-Za-z0-9_\-:.]`). Trả **202** `{data: {workflow_run, job_run}}` khi tạo mới; **200** cùng run khi lặp lại key với cùng nội dung; **409 `idempotency_conflict`** khi cùng key nhưng nội dung khác. Throttle `ai-tasks`. |
+| GET | `/workspaces/{ws}/ai/tasks/{run}` | OAEV | Trạng thái (`pending/running/retry_scheduled/succeeded/failed/canceled`), các bước, sự kiện, `output` (text/json, token, `cost_micro_usd`), `error_code` |
+| POST | `/workspaces/{ws}/ai/tasks/{run}/cancel` | OAE | 409 `invalid_state_transition` nếu đã kết thúc |
+| POST | `/workspaces/{ws}/ai/tasks/{run}/retry` | OAE | Chỉ với `failed`/`canceled`; mở chu kỳ mới → 202 |
+| GET | `/workspaces/{ws}/ai/usage` | OAEV | Tổng request/token/ảnh/lượt tìm kiếm/chi phí + trạng thái các ngân sách đang bật của workspace (đã dùng, đang giữ chỗ, giới hạn, hành động) |
+
+HTTP không bao giờ gọi provider AI trực tiếp: tác vụ chạy trên queue (`writing`/`research`/`factcheck` theo route). Lỗi nghiệp vụ AI trả qua `error_code` của run, ví dụ `budget_exceeded`, `no_model_available`, `rate_limited`, `server_error`, `connect_failed`, `response_timeout`, `invalid_output`, `refused`, `input_too_large`, `interrupted_paid_call`, `duplicate_call`, `deadline_exceeded`.
+
+### 2.4b Billing & Usage (Phase 4 — chưa triển khai)
 | Method | Path | Quyền |
 |---|---|---|
 | GET | `/plans` | công khai |
@@ -250,10 +262,23 @@ Yêu cầu `platform_role` + 2FA đã xác nhận. User thường nhận **404**
 | DELETE | `/impersonations/current` ✦ | |
 | GET | `/audit-logs` ✦ | Theo SECURITY.md §3.1 |
 | GET/POST/PATCH | `/staff` ✦ | SUPER_ADMIN — gán/thu hồi platform_role |
-| CRUD | `/plans`, `/plans/{id}/prices`, `/plans/{id}/limits`, `/credit-packs` | SUPER_ADMIN, BILLING_ADMIN (Phase 3) |
-| GET | `/invoices`, `/payments` · POST `/workspaces/{ws}/credits/grant` | SUPER_ADMIN, BILLING_ADMIN (Phase 3) |
-| CRUD | `/ai/models`, `/ai/task-routes`, `/ai/prompt-templates`, `/ai/budgets` | SUPER_ADMIN (Phase 4) |
-| GET | `/ai/costs?group_by=workspace|task|model&from&to` | SUPER_ADMIN, BILLING_ADMIN (Phase 4) |
+| CRUD | `/plans`, `/plans/{id}/prices`, `/plans/{id}/limits`, `/credit-packs` | SUPER_ADMIN, BILLING_ADMIN (Phase 4) |
+| GET | `/invoices`, `/payments` · POST `/workspaces/{ws}/credits/grant` | SUPER_ADMIN, BILLING_ADMIN (Phase 4) |
+| GET | `/ai/usage?days=30&workspace_id=` ✦ | SUPER_ADMIN, BILLING_ADMIN — tổng, theo ngày/provider/model/task/workspace, lỗi |
+| GET | `/ai/requests?status=&provider=&task_key=&error_code=&failed=1&workspace_id=&cursor=` ✦ | SUPER_ADMIN, BILLING_ADMIN — log request (không có prompt/secret) |
+| GET · PATCH | `/ai/providers` · `/ai/providers/{id}` ✦ | SUPER_ADMIN — bật/tắt, timeout, retry; `has_api_key` chỉ đọc (khóa nằm trong `.env`) |
+| POST | `/ai/providers/{id}/circuit/reset` ✦ | SUPER_ADMIN |
+| GET · POST · PATCH | `/ai/models` · `/ai/models/{id}` ✦ | SUPER_ADMIN — model mới tắt cho tới khi có giá |
+| GET · POST | `/ai/models/{id}/prices` ✦ | SUPER_ADMIN — tạo version giá mới (không sửa version cũ) |
+| DELETE | `/ai/models/{id}/prices/{price}` ✦ | SUPER_ADMIN — chỉ version chưa hiệu lực, nếu không 409 `price_version_locked` |
+| GET · PATCH | `/ai/routes` · `/ai/routes/{id}` ✦ | SUPER_ADMIN — chuỗi model, queue, timeout, `max_attempts`, `allow_paid_retry` |
+| GET | `/ai/budgets` ✦ | SUPER_ADMIN, BILLING_ADMIN |
+| PUT · DELETE | `/ai/budgets` · `/ai/budgets/{id}` ✦ | SUPER_ADMIN — `{scope: global|workspace, workspace_id?, period: day|month, limit_micro_usd, alert_threshold_pct?, action_on_exceed?: alert|pause_batch|pause_all, is_enabled?}` (upsert theo scope + period) |
+| GET | `/jobs/overview` ✦ | SUPER_ADMIN, SUPPORT — Horizon, độ dài queue, số run theo trạng thái |
+| GET | `/jobs/workflows?status=&type=&workspace_id=` · `/jobs/workflows/{id}` ✦ | SUPER_ADMIN, SUPPORT |
+| POST | `/jobs/workflows/{id}/cancel` · `/retry` ✦ | SUPER_ADMIN, SUPPORT — ghi audit |
+| GET | `/jobs/dead-letters` ✦ · POST `/{id}/retry` · `/{id}/discard` | SUPER_ADMIN, SUPPORT |
+(✦ ở các dòng `/ai/*`, `/jobs/*` = Phase 3.)
 | GET | `/system/health` | SUPER_ADMIN — queue backlog, failed jobs, provider status |
 
 ---
@@ -314,7 +339,7 @@ SEO meta: Yoast (`_yoast_wpseo_*`), Rank Math (`rank_math_*`) nếu đang bật;
 
 Idempotency: Cloud lưu `site_publications (site_id, idempotency_key) → wp_post_id`; plugin lưu `_sitex_post_idempotency_key` + khóa tạm, nên kể cả khi Cloud mất response và gửi lại, WordPress vẫn chỉ có một bài.
 
-## 6. Webhooks (`/webhooks/{provider}`) — Phase 3
+## 6. Webhooks (`/webhooks/{provider}`) — Phase 4
 
 `POST /webhooks/stripe`, `/webhooks/payos`, ... Luôn trả `200` nhanh sau khi xác minh chữ ký và lưu `webhook_events`; xử lý trong queue. Chữ ký sai → `400`, không lưu payload.
 

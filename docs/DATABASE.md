@@ -335,19 +335,43 @@ AI chỉ được đề xuất từ khóa (`origin=ai_suggested`) — **không**
 
 **refresh_suggestions**: id, workspace_id, site_id, article_id null, wp_post_id, reason (`declining_clicks`, `outdated_facts`, `low_ctr`...), evidence JSON (số liệu GSC dẫn chứng), status (`open`, `accepted`, `dismissed`, `done`).
 
-### 3.14 AiGateway
+### 3.14 AiGateway (Phase 3 — đã triển khai)
 
-**ai_providers**: id, code (`openai`, `gemini`, `anthropic`), is_enabled, priority. (API key ở `.env`, không ở DB.)
+Tiền: số nguyên **micro-USD** (1 USD = 1.000.000); giá theo **micro-USD / 1 triệu token** (ADR-014). Migration: `backend/app/Modules/AiGateway/Database/Migrations/2026_11_07_000100_create_ai_gateway_tables.php`.
 
-**ai_models**: id, provider_id, model_name, capabilities JSON, input_price_micro_usd_per_mtok, output_price_micro_usd_per_mtok, image_price_micro_usd, is_enabled, effective_from.
+**ai_providers** (toàn hệ thống): id, code UNIQUE (`openai`, `gemini`, `anthropic`, `fake`), name, is_enabled, priority, timeout_seconds, max_retries, circuit_failure_threshold, circuit_cooldown_seconds, settings JSON. **API key không ở DB** — chỉ trong `.env`.
 
-**ai_task_routes**: id, task_key UNIQUE, primary_model_id, fallback_model_id null, max_input_tokens, max_output_tokens, temperature, prompt_template_id.
+**ai_models**: id, provider_id, model_key UNIQUE (`provider/model`), model_name, display_name, kind (`text`, `image`), tier, capabilities JSON, is_enabled, notes; UNIQUE(provider_id, model_name). Model mới tắt cho tới khi có giá.
 
-**prompt_templates**: id, key, version, UNIQUE(key, version), system_prompt, user_template, output_schema JSON, is_active, created_by.
+**ai_model_prices** (bất biến khi đã hiệu lực): id, model_id, version, effective_from, currency (`USD`), input_per_mtok, cached_input_per_mtok, cache_write_per_mtok, output_per_mtok, long_context_threshold + long_* (giá ngữ cảnh dài), per_image, source_url, notes, created_by; UNIQUE(model_id, version). Chỉ xóa được version chưa hiệu lực.
 
-**ai_requests** (BIGINT PK): workspace_id null, task_key, provider, model, job_run_id, input_tokens, output_tokens, cost_micro_usd, latency_ms, status, error_code, prompt_hash, created_at. Nội dung prompt/response đầy đủ chỉ lưu trên storage có thời hạn (mặc định 30 ngày) để debug.
+**ai_task_routes**: id, task_key UNIQUE, description, queue, priority, primary_model_id, economy_model_id null, fallback_model_ids JSON, max_input_tokens, max_output_tokens, temperature, timeout_seconds, max_attempts, allow_paid_retry, is_enabled.
 
-**ai_budgets**: id, scope (`global`, `workspace`), workspace_id null, period (`day`, `month`), limit_micro_usd, alert_threshold_pct, action_on_exceed (`alert`, `pause_batch`, `pause_all`).
+**ai_requests** (tenant, `BelongsToWorkspace`; mỗi lần thử một dòng): id (BIGINT), ulid, workspace_id, task_key, provider, model, model_id, price_id, workflow_run_id, call_key, attempt, is_fallback, status, error_code, error_message (đã lọc secret), http_status, billing_uncertain, input/cached_input/cache_write/output/reasoning_tokens, image_count, search_count, cost_micro_usd, estimated_cost_micro_usd, latency_ms, prompt_hash (SHA-256, **không lưu prompt**), provider_request_id, finish_reason, created_at. Xóa sau `SITEX_AI_REQUEST_LOG_RETENTION_DAYS` (mặc định 90) (`sitex:ai:prune`).
+
+**ai_budgets**: id, scope (`global`, `workspace`), workspace_id null, scope_key, period (`day`, `month`), limit_micro_usd, alert_threshold_pct, action_on_exceed (`alert`, `pause_batch`, `pause_all`), is_enabled, updated_by; UNIQUE(scope_key, period).
+
+**ai_budget_counters**: scope_key, period, period_start, reserved_micro_usd, spent_micro_usd, alerted_at; UNIQUE(scope_key, period, period_start). Cập nhật trong transaction với `SELECT … FOR UPDATE` khớp chính xác khóa duy nhất.
+
+**ai_budget_reservations**: id, idempotency_key UNIQUE (= `call_key`), workspace_id, status (`reserved`, `committed`, `released`, `uncertain`, `expired`), amount_micro_usd, actual_micro_usd, counter_ids JSON, expires_at, settled_at.
+
+> `prompt_templates` (template có version) **chưa** làm ở Phase 3: tác vụ thử dùng system prompt cố định trong code. Sẽ bổ sung ở Phase 5–6 khi có pipeline nội dung.
+
+### 3.14b Workflows (Phase 3 — đã triển khai)
+
+Migration: `backend/app/Modules/Workflows/Database/Migrations/2026_11_07_000200_create_workflow_tables.php`.
+
+**workflow_runs** (tenant): id, workspace_id, type, queue, status (`pending`, `running`, `retry_scheduled`, `succeeded`, `failed`, `canceled`), idempotency_key, request_hash, input JSON, output JSON, current_step, attempts (trong cycle hiện tại), max_attempts, cycle (+1 mỗi lần retry thủ công), version (compare-and-set), next_attempt_at, dispatched_at, locked_by, locked_until (lease), cancel_requested_at, error_code, error_message, job_run_id, created_by, started_at, finished_at; UNIQUE(workspace_id, idempotency_key); index (workspace_id, status, created_at), (status, locked_until), (status, next_attempt_at).
+
+**workflow_steps** (tenant): id, workspace_id, workflow_run_id, key, sequence, status, attempts, output JSON (checkpoint), error_code, error_message, started_at, finished_at; UNIQUE(workflow_run_id, key).
+
+**workflow_events** (tenant, append-only): id, workspace_id, workflow_run_id, event, from_status, to_status, details JSON, created_at.
+
+**dead_letters** (toàn hệ thống, chỉ admin): id, workspace_id null, source (`workflow`, `job`), workflow_run_id null, job_class, queue, failed_job_uuid, error_code, error_message, attempts, status (`open`, `retried`, `discarded`), resolved_by, resolved_at.
+
+### Phạm vi migration Phase 3
+- Hai migration mới ở trên, chỉ **tạo bảng mới**; không sửa bảng Phase 1–2. Rollback: `php artisan migrate:rollback --step=2` (xóa toàn bộ dữ liệu AI/workflow).
+- Seed danh mục provider/model/giá/route mặc định bằng `php artisan sitex:ai:sync-registry` (chỉ tạo nếu chưa có, không ghi đè thay đổi của admin).
 
 ### 3.15 Hạ tầng dùng chung
 
@@ -355,7 +379,7 @@ AI chỉ được đề xuất từ khóa (`origin=ai_suggested`) — **không**
 
 **notifications** (Laravel), **jobs/failed_jobs/job_batches** (Laravel), **cache/locks** (nếu không dùng Redis).
 
-**idempotency_keys** *(hoãn sang Phase 3 — Phase 1 chưa có endpoint tiêu tốn quota/credit)*: id, workspace_id, user_id, key, request_hash, response_status, response_body, expires_at, UNIQUE(workspace_id, user_id, key).
+**idempotency_keys** *(chưa tạo — Phase 3 dùng UNIQUE(workspace_id, idempotency_key) ngay trên `workflow_runs`; bảng chung sẽ xét lại ở Phase 4 cho thanh toán)*: id, workspace_id, user_id, key, request_hash, response_status, response_body, expires_at, UNIQUE(workspace_id, user_id, key).
 
 ## 4. Index & hiệu năng
 

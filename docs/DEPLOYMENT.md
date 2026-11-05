@@ -106,7 +106,12 @@ MAIL_FROM_ADDRESS=no-reply@<domain>
 MAIL_FROM_NAME="SiteX Post"
 
 SITEX_MASTER_KEY=               # Phase 2+, envelope encryption
-# Phase 4+: OPENAI_API_KEY=, GEMINI_API_KEY=, ANTHROPIC_API_KEY=
+# Phase 3: AI Gateway — khóa CHỈ đặt ở đây (không có ô nhập trong giao diện). Để trống = provider đó không dùng được.
+OPENAI_API_KEY=
+GEMINI_API_KEY=
+ANTHROPIC_API_KEY=
+SITEX_AI_FAKE_PROVIDER=false    # production: tắt provider giả
+# Các biến tinh chỉnh khác (timeout, deadline, ngân sách, workflow): xem backend/.env.example mục "Phase 3"
 # Phase 5+: DATAFORSEO_LOGIN=, DATAFORSEO_PASSWORD=, BRAVE_SEARCH_API_KEY=
 # Phase 9+: GOOGLE_CLIENT_ID=, GOOGLE_CLIENT_SECRET=
 ```
@@ -171,6 +176,16 @@ Dashboard Horizon tại `https://api.<domain>/horizon`, chỉ SUPER_ADMIN truy c
 - Plugin mặc định gọi `https://api.sitexpost.com` (tên miền thật chưa chốt — câu hỏi mở Q2). Trước khi phát hành plugin phải sửa hằng mặc định trong `wordpress-plugin/sitex-post/sitex-post.php` hoặc hướng dẫn khách đặt `SITEX_POST_CLOUD_URL`.
 - Đóng gói plugin: `wordpress-plugin/scripts/build-plugin.sh` → `wordpress-plugin/dist/sitex-post-<version>.zip`. Hướng dẫn cài: `docs/WORDPRESS-PLUGIN.md`.
 
+**Phase 3 — AI Gateway & Queue:**
+- File Supervisor mẫu: `deploy/supervisor/sitexpost-horizon.conf` (khuyến nghị) **hoặc** `deploy/supervisor/sitexpost-queue-work.conf` (không dùng Horizon). Chỉ dùng một trong hai.
+- Horizon có 6 supervisor: `supervisor-core` (critical, default, notifications, billing), `supervisor-connector`, `supervisor-publishing`, `supervisor-ai` (writing, research, factcheck — tối đa 3 process, timeout 300 s), `supervisor-media`, `supervisor-analytics`. Sau khi đổi `config/horizon.php`: `php artisan horizon:terminate` (Supervisor tự khởi động lại).
+- Không dùng Horizon: `php artisan queue:work redis --queue=critical,default,notifications,billing,connector,publishing,writing,research,factcheck,media,analytics --timeout=300`.
+- Bất biến thời gian, giữ nguyên thứ tự khi chỉnh: timeout job 300 s < `REDIS_QUEUE_RETRY_AFTER` 330 s < `SITEX_WORKFLOW_LEASE_SECONDS` 360 s; `SITEX_AI_CALL_DEADLINE_SECONDS` (240) < 300.
+- Scheduler thêm: `sitex:workflows:recover` mỗi phút (khôi phục run có lease hết hạn sau khi worker chết), `sitex:ai:expire-reservations` mỗi 5 phút, `horizon:snapshot` mỗi 5 phút (biểu đồ Horizon), `sitex:ai:prune` và `sitex:workflows:prune` hằng ngày. **Không có cron `schedule:run` thì workflow bị gián đoạn sẽ không tự khôi phục.**
+- Sau `migrate`: chạy `php artisan sitex:ai:sync-registry` để tạo provider/model/giá/route mặc định (không ghi đè chỉnh sửa của admin). Giá mặc định cần Super Admin đối chiếu lại với trang giá chính thức trước khi bật provider thật.
+- Bật provider thật: đặt khóa trong `.env` → `php artisan config:cache` → Super Admin vào **Cấu hình AI** bật provider/model và đặt ngân sách toàn hệ thống.
+- Windows (dev): không có Horizon/pcntl → dùng `php artisan queue:work --queue=...` như trên.
+
 ## 7. Nâng cấp (zero-downtime cơ bản)
 
 ```bash
@@ -194,7 +209,7 @@ Rollback: checkout tag cũ, `composer install`, chỉ `migrate:rollback --step=N
 1. Chuyển `FILESYSTEM_DISK=s3` (bắt buộc — worker và web phải thấy cùng file).
 2. Redis và MySQL lắng nghe trên mạng riêng, firewall chỉ cho IP server web/worker; bật mật khẩu Redis, TLS nếu qua mạng công cộng.
 3. Server worker: clone cùng tag, cùng `.env` (trừ không cần Nginx), chạy Supervisor Horizon. Không chạy `schedule:run` trên nhiều server (hoặc dùng `onOneServer()` — đã cấu hình sẵn với Redis lock).
-4. Cấu hình Horizon theo env: `HORIZON_ROLE=worker-ai` để server chỉ chạy nhóm queue AI.
+4. Server worker riêng cho AI: hiện **chưa** có biến `HORIZON_ROLE`; dùng `deploy/supervisor/sitexpost-queue-work.conf` và chỉ giữ chương trình `sitexpost-worker-ai` trên server đó (nợ kỹ thuật, xem `PHASE3-REPORT.md`).
 
 ## 9. Backup & khôi phục
 

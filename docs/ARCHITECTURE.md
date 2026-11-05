@@ -231,16 +231,17 @@ Quy tắc cứng:
 - Nguồn trích dẫn chỉ được lấy từ `research_sources` đã thực sự tải về; URL không có trong danh sách nguồn bị loại.
 - Số liệu SEO (search volume, KD, thứ hạng) chỉ hiển thị khi có nguồn dữ liệu thật; nếu không có → hiển thị "Chưa có dữ liệu" kèm lý do.
 
-## 8. AI Gateway
+## 8. AI Gateway (Phase 3 — đã triển khai, module `app/Modules/AiGateway`)
 
-- Interface `AiProvider` với adapter `OpenAiProvider`, `GeminiProvider`, `AnthropicProvider`.
-- **Routing theo task** (`research.summarize`, `keywords.expand`, `content.draft`, `verification.claims`, `media.image`...) cấu hình bởi Super Admin: provider chính, model, fallback, giới hạn token, nhiệt độ.
-- **Structured output**: mọi task trả JSON được validate bằng JSON Schema; lỗi schema → retry có giới hạn → fail rõ ràng.
-- **Đo chi phí**: mỗi lời gọi ghi `ai_requests` (provider, model, token in/out, chi phí micro-USD, độ trễ, workspace, task, job). Bảng giá model do admin quản lý.
-- **Ngân sách**: giới hạn chi phí theo ngày/tháng cho từng workspace và toàn hệ thống; vượt ngưỡng → tạm dừng job mức thấp + cảnh báo admin.
-- **Bền vững**: timeout, retry với backoff, circuit breaker theo provider, fallback provider.
-- **Chống prompt injection**: xem SECURITY.md §8.
-- API key AI chỉ nằm trong `.env`/secret store của Cloud.
+- **Adapter** (`Providers/`): `OpenAiProvider` (Responses API `POST /v1/responses`, ảnh qua `/v1/images/generations`), `GeminiProvider` (`models/{model}:generateContent`), `AnthropicProvider` (Messages API `POST /v1/messages`), `FakeProvider` cho test/dev. Gọi bằng HTTP thuần của Laravel (ADR-011), không dùng SDK. Lỗi được phân loại trong `ProviderException`: an toàn để retry (429, 5xx, không kết nối được), **không chắc đã bị tính phí** (`response_timeout`), lỗi vĩnh viễn (4xx, `refused`).
+- **Registry** (`ai_providers`, `ai_models`, `ai_model_prices`): model có `kind`, `tier`, `capabilities` (structured_output, web_search, vision, image_output, reasoning, context_window...). Giá có version, bất biến khi đã hiệu lực (ADR-014). `sitex:ai:sync-registry` nạp danh mục mặc định từ `config/sitex.php`.
+- **Routing theo task** (`ai_task_routes`): `task_key` → chuỗi model (chính + fallback), queue, timeout, `max_attempts`, `allow_paid_retry`, giới hạn token. Model bị tắt, thiếu capability, hết giá hoặc circuit đang mở sẽ bị bỏ qua.
+- **Structured output**: schema JSON gửi theo cách riêng của từng provider; kết quả luôn được kiểm tra lại bằng `JsonSchemaValidator` → `invalid_output` nếu sai.
+- **Đo chi phí**: `CostCalculator` tính micro-USD từ input/output/cached/reasoning token, ảnh, lượt tìm kiếm theo version giá hiệu lực; mỗi lần gọi ghi một dòng `ai_requests` (kèm `price_id`, `call_key`, `prompt_hash`, độ trễ, mã lỗi đã lọc secret).
+- **Ngân sách** (`BudgetManager`): `ai_budgets` theo `global` hoặc từng workspace, theo ngày/tháng. Trước mỗi lời gọi **giữ chỗ** chi phí ước tính tối đa trong transaction có khóa hàng (`ai_budget_counters` + `ai_budget_reservations`), sau đó commit chi phí thật hoặc release. Reservation quá hạn được `sitex:ai:expire-reservations` giải phóng. Vượt giới hạn → `budget_exceeded` (hành động `alert`/`pause_batch`/`pause_all`).
+- **Bền vững**: timeout theo route/provider; deadline toàn lời gọi 240 s (< timeout job 300 s); retry trong provider chỉ với lỗi an toàn; `CircuitBreaker` theo provider+model (Redis/cache); fallback sang model kế tiếp.
+- **Chống gọi trùng có tính phí**: mỗi lời gọi có `call_key` (run + step + cycle + attempt). Nếu reservation cho `call_key` đã tồn tại (job bị chạy lại) → `duplicate_call`, không gọi provider.
+- **Chống prompt injection**: xem SECURITY.md §8. API key AI chỉ nằm trong `.env` (SECURITY §5).
 
 ## 9. Dịch vụ dữ liệu bên ngoài (adapter, cấu hình qua .env)
 
@@ -254,21 +255,35 @@ Quy tắc cứng:
 | Thanh toán | Adapter: Stripe (quốc tế) + cổng nội địa (PayOS/VNPay/MoMo) — **chờ quyết định** | |
 | Email | SMTP hoặc Brevo (Laravel mailer) | |
 
-## 10. Queue
+## 10. Queue (Phase 3)
 
-| Queue | Dùng cho | Ưu tiên |
+Redis + Horizon (`config/horizon.php`), tên queue tập trung ở `SiteXPost\Modules\Workflows\Support\Queues`.
+
+| Queue | Dùng cho | Supervisor Horizon |
 |---|---|---|
-| `critical` | Webhook thanh toán, thu hồi kết nối | cao nhất |
-| `default` | Tác vụ ngắn | |
-| `notifications` | Email | |
-| `connector` | Gọi plugin WP (health, đồng bộ taxonomy) | |
-| `publishing` | Đăng/cập nhật bài lên WP | |
-| `ai-interactive` | Tác vụ AI do người dùng đang chờ | |
-| `ai-batch` | Pipeline nền (research, viết hàng loạt) | |
-| `media` | Tải/tạo/xử lý ảnh | |
-| `analytics` | Đồng bộ GSC | thấp |
+| `critical` | Thu hồi kết nối, webhook (Phase 4) | `supervisor-core` |
+| `default` | Tác vụ ngắn | `supervisor-core` |
+| `notifications` | Email | `supervisor-core` |
+| `billing` | Ghi nhận sử dụng/thanh toán (Phase 4) | `supervisor-core` |
+| `connector` | Gọi plugin WP (health, đồng bộ) | `supervisor-connector` |
+| `publishing` | Đăng/cập nhật bài lên WP | `supervisor-publishing` |
+| `writing`, `research`, `factcheck` | Workflow AI (tác vụ thử Phase 3 chạy ở `writing`) | `supervisor-ai` (tối đa 3 process, timeout 300 s) |
+| `media` | Tải/tạo/xử lý ảnh | `supervisor-media` |
+| `analytics` | Đồng bộ GSC | `supervisor-analytics` |
 
-Horizon cấu hình supervisor riêng cho nhóm AI để giới hạn đồng thời (tránh vượt rate limit provider). Fairness: giới hạn số job AI đồng thời **mỗi workspace** bằng `RateLimited`/`WithoutOverlapping` middleware theo key workspace.
+Bất biến thời gian: timeout job (300 s) < `retry_after` của Redis (330 s) < lease workflow (360 s). Không có Horizon (Windows/dev) → `php artisan queue:work --queue=critical,default,...` (xem DEPLOYMENT §6).
+
+### 10.1 Workflow engine (module `app/Modules/Workflows`, ADR-013)
+
+- **Trạng thái lưu DB**: `workflow_runs` (`pending → running → retry_scheduled/succeeded/failed/canceled`), `workflow_steps` (checkpoint output từng bước), `workflow_events` (lịch sử). Mọi chuyển trạng thái qua `WorkflowStateMachine` và cập nhật compare-and-set theo `version`.
+- **Idempotency**: UNIQUE(`workspace_id`, `idempotency_key`) + hash đầu vào; cùng key khác nội dung → 409.
+- **Job** `ProcessWorkflow` chỉ mang `run_id`; worker lấy **lease** (`locked_by`, `locked_until`), chạy từng bước chưa xong, lưu checkpoint sau mỗi bước.
+- **Retry**: exponential backoff có jitter (`backoff_base` 15 s, tối đa 900 s), giới hạn `max_attempts`. Bước **tốn phí** (`isPaidStep`) bị gián đoạn hoặc timeout không chắc chắn → `failed` với `interrupted_paid_call` (không gọi lại), trừ khi route bật `allow_paid_retry`.
+- **Đồng thời theo tenant**: `ConcurrencyLimiter` (tối đa `SITEX_WORKFLOW_TENANT_CONCURRENCY` run đang chạy/workspace, mặc định 2); vượt → hoãn `defer_seconds`.
+- **Hủy**: đặt `cancel_requested`; worker dừng ở ranh giới bước.
+- **Khôi phục**: `sitex:workflows:recover` mỗi phút lấy lại run có lease hết hạn hoặc `pending` quá lâu và dispatch lại.
+- **Dead letter**: job thất bại hết lượt (`RecordFailedJob`) và run `failed` được ghi vào `dead_letters`; admin retry (mở cycle mới) hoặc discard.
+- Engine không phụ thuộc AiGateway/Sites (kiểm bằng ArchitectureTest); workflow cụ thể (vd. `AiTestWorkflow`) đăng ký qua `WorkflowRegistry`.
 
 ## 11. Frontend
 
@@ -316,3 +331,7 @@ Horizon cấu hình supervisor riêng cho nhóm AI để giới hạn đồng th
 | ADR-008 | Pest 4 thay vì Pest 5 | Giữ tương thích PHP 8.3 cho môi trường dev hiện có |
 | ADR-009 | TypeScript 6.0 thay vì 7.0 | `vue-tsc`/Volar chưa hỗ trợ TS 7 native |
 | ADR-010 | MySQL 8.4 LTS | 8.0 đã EOL 04/2026 |
+| ADR-011 | AI provider gọi bằng HTTP thuần (Laravel `Http`), không dùng SDK chính thức | SDK tự retry/timeout ngầm sẽ phá chính sách "không retry lời gọi tốn phí khi không chắc đã bị tính tiền"; HTTP thuần cho phép phân loại lỗi chính xác và test bằng `Http::fake`. Đánh đổi: tự cập nhật khi API đổi |
+| ADR-012 | Đổi thứ tự phase: Phase 3 = AI Gateway & Queue, gói/thanh toán chuyển sang Phase 4 | Theo yêu cầu Phase 3 của chủ dự án; cơ chế reservation nguyên tử của ngân sách AI sẽ được tái dùng cho quota/credit |
+| ADR-013 | Workflow engine tự viết trên DB (state machine + lease + checkpoint) thay vì chỉ dựa vào queue | Queue không đảm bảo trạng thái sau khi worker chết; DB là nguồn sự thật, job chỉ là tín hiệu "hãy chạy run X". Không dùng Laravel Workflow/Temporal để giữ hạ tầng đơn giản |
+| ADR-014 | Tiền là số nguyên micro-USD, bảng giá có version bất biến | Tránh sai số float; hóa đơn/chi phí cũ giữ nguyên giá đã áp dụng (`ai_requests.price_id`) |

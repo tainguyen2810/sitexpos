@@ -128,18 +128,43 @@ Nguyên tắc: **chỉ làm phase được yêu cầu**, không tự chuyển ph
 **Nghiệm thu**: ghép nối thành công với WP 6.4 và bản mới nhất (PHP 7.4 và 8.3); request có chữ ký sai/timestamp lệch/nonce lặp đều bị từ chối (test cả hai phía); thu hồi từ Cloud hoặc WP làm request sau thất bại ngay; site trỏ tới IP private bị từ chối; plugin qua `WP_DEBUG` không notice, Plugin Check không lỗi bảo mật.
 Kết quả thực tế: xem `PHASE2-REPORT.md` (đã chạy trên WP 6.4.5 và 6.8.3 với PHP 8.3; **chưa** chạy trên PHP 7.4 thật và chưa chạy Plugin Check).
 
-## Phase 3 — Gói dịch vụ, quota, credit, thanh toán
-- Plans/prices/limits, subscription, trial, usage ledger + counters (reserve/commit/release), credit wallet.
+## Phase 3 — AI Gateway & Queue ✦ (đã triển khai, chờ nghiệm thu — xem `PHASE3-REPORT.md`)
+> Thứ tự phase đã đổi (ADR-012): AI Gateway & hàng đợi làm trước, gói dịch vụ/thanh toán chuyển sang Phase 4.
+
+### 3A. AI Gateway
+- [x] Adapter OpenAI (Responses API), Gemini (`generateContent`), Anthropic (Messages API) bằng HTTP thuần (ADR-011) + fake provider cho test/dev.
+- [x] Model registry + capabilities, bảng giá có version (micro-USD / 1M token, ADR-014), tính chi phí theo giá hiệu lực tại thời điểm gọi.
+- [x] Routing theo task type (`ai_task_routes`) + chuỗi fallback, chặn theo ngân sách.
+- [x] Đo usage: input/output/cached/reasoning token, ảnh, lượt tìm kiếm.
+- [x] Timeout, retry có kiểm soát, circuit breaker theo provider/model, fallback.
+- [x] Log request (`ai_requests`) không chứa secret/prompt thô (chỉ hash), `SecretRedactor` cho thông báo lỗi.
+- [x] Ngân sách theo workspace và toàn hệ thống: reserve → commit/release nguyên tử, cảnh báo ngưỡng, hành động `pause_all`/`block_paid`.
+- [x] Super Admin quản lý provider, model, giá, route, ngân sách.
+
+### 3B. Hàng đợi
+- [x] Redis + Horizon, các queue: `research`, `writing`, `factcheck`, `media`, `publishing`, `analytics`, `billing`, `notifications` (+ `critical`, `default`, `connector` có sẵn).
+- [x] Cấu hình Supervisor mẫu (`deploy/supervisor/`).
+
+### 3C. Workflow engine (ADR-013)
+- [x] State machine lưu DB (`workflow_runs/steps/events`), compare-and-set theo `version`.
+- [x] Idempotency key, exponential backoff, giới hạn đồng thời theo tenant.
+- [x] Hủy, khôi phục sau khi worker chết (lease + `workflows:recover` mỗi phút).
+- [x] Failed jobs, dead letter, retry thủ công.
+- [x] Không retry lời gọi tốn phí khi không chắc đã bị tính tiền (trừ khi route cho phép).
+
+### 3D. Giao diện
+- [x] Khách hàng: trang "Tác vụ AI" (gửi tác vụ thử, xem kết quả, chi phí, hủy/retry).
+- [x] Admin: dashboard sử dụng & chi phí AI, cấu hình AI (provider/model/giá/route/ngân sách), theo dõi job (queue, workflow, dead letter).
+
+**Nghiệm thu**: gửi được tác vụ AI thử; token và chi phí được ghi nhận; job nền không chặn HTTP; restart worker không mất workflow; có test đồng thời và test lỗi.
+Kết quả thực tế: xem `PHASE3-REPORT.md` (đã chạy với fake provider; **chưa** gọi API thật do chưa có khóa).
+
+## Phase 4 — Gói dịch vụ, quota, credit, thanh toán
+- Plans/prices/limits, subscription, trial, usage ledger + counters (reserve/commit/release), credit wallet — tái sử dụng cơ chế reservation của AI Gateway.
 - Adapter cổng thanh toán (chờ quyết định cổng), webhook an toàn, hóa đơn.
 - Admin: quản lý plan, credit pack, cấp credit, xem hóa đơn.
 
 **Nghiệm thu**: không thể vượt quota dưới tải đồng thời (test race); webhook lặp không kích hoạt hai lần; webhook sai chữ ký bị từ chối; hết hạn gói → chặn tác vụ tốn quota với 402.
-
-## Phase 4 — AI Gateway
-- Provider OpenAI/Gemini/Anthropic, task routing, structured output + JSON Schema, retry/fallback/circuit breaker, đo token & chi phí, ngân sách, prompt template có version.
-- Admin: cấu hình model/route/template/ngân sách, dashboard chi phí AI.
-
-**Nghiệm thu**: mọi lời gọi có bản ghi `ai_requests` với chi phí; vượt ngân sách → tạm dừng theo cấu hình; provider lỗi → fallback; test dùng fake provider (không gọi API thật trong CI).
 
 ## Phase 5 — Hồ sơ doanh nghiệp, Research, Keywords, Topic Cluster, Calendar
 - Business profile & offerings; research ngành/đối thủ với nguồn thật (provenance); keyword discovery với số liệu từ DataForSEO (hoặc "Chưa có dữ liệu"); topic cluster; content calendar.
@@ -176,8 +201,8 @@ Kết quả thực tế: xem `PHASE2-REPORT.md` (đã chạy trên WP 6.4.5 và 
 
 | # | Câu hỏi | Cần trước |
 |---|---|---|
-| Q1 | Cổng thanh toán: Stripe, PayOS, VNPay, MoMo? Có xuất hóa đơn VAT điện tử? | Phase 3 |
+| Q1 | Cổng thanh toán: Stripe, PayOS, VNPay, MoMo? Có xuất hóa đơn VAT điện tử? | Phase 4 |
 | Q2 | Domain chính thức (`app.`, `admin.`, `api.`)? | Deploy staging |
 | Q3 | Nhà cung cấp dữ liệu từ khóa/SERP (DataForSEO đề xuất) và tìm kiếm web (Brave/Tavily) | Phase 5 |
-| Q4 | Giá và giới hạn từng gói | Phase 3 |
+| Q4 | Giá và giới hạn từng gói | Phase 4 |
 | Q5 | Chính sách lưu giữ dữ liệu, xóa tài khoản | Phase 10 |
