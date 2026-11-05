@@ -1,23 +1,12 @@
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
 import '@/styles.css'
-import App from './App.vue'
-import { router } from './router'
-import { i18n, currentLocale } from '@/shared/i18n'
-import { configureApi } from '@/shared/api/client'
-import { useSessionStore } from '@/shared/stores/session'
+import { bootstrap } from './bootstrap'
 
-const app = createApp(App)
-const pinia = createPinia()
-app.use(pinia).use(i18n).use(router)
-
-configureApi({
-  locale: currentLocale,
-  onUnauthenticated: () => {
-    useSessionStore(pinia).clear()
-    const current = router.currentRoute.value
-    if (!current.meta.guest) void router.replace({ name: 'login', query: { redirect: current.fullPath } })
-  },
-})
-
-app.mount('#app')
+// Inline env check (not an imported const) so Rollup drops the dynamic imports in builds.
+if (import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE === 'true') {
+  // Development-only UI demo (npm run demo:admin) — removed from production builds.
+  void Promise.all([import('@/demo/boot'), import('@/demo/admin/routes')]).then(([{ bootDemo }, { adminDemoRoutes }]) =>
+    bootDemo(adminDemoRoutes, 'SiteX Post Admin'),
+  )
+} else {
+  bootstrap()
+}

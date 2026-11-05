@@ -18,6 +18,8 @@ echo "==> Frontend: unit tests"
 (cd "$ROOT/frontend" && npm run --silent test)
 echo "==> Frontend: build"
 (cd "$ROOT/frontend" && npm run --silent build)
+echo "==> Frontend: no demo code in production build"
+(cd "$ROOT/frontend" && npm run --silent check:no-demo)
 
 echo "==> WordPress plugin: lint, PHP 7.4 check, signer test, translations, zip"
 "$ROOT/wordpress-plugin/scripts/build-plugin.sh"

@@ -34,6 +34,7 @@ php artisan migrate:fresh --seed --seeder=DemoSeeder   # chỉ local
 
 # Frontend (thư mục frontend/)
 npm run dev | build | typecheck | lint | test
+npm run demo | demo:admin   # UI demo dữ liệu mẫu, không cần backend (docs/DEMO-UI.md)
 
 # Toàn bộ
 scripts/check.sh
@@ -55,7 +56,7 @@ scripts/check.sh
 ## Quy tắc code frontend
 - Hai SPA từ một project Vite: `SITEX_APP=customer|admin`; build ra `dist/<app>/index.html`.
 - Vue 3 `<script setup lang="ts">`, TypeScript strict, Tailwind. TypeScript ghim **6.0.x** (TS 7 làm hỏng vue-tsc — đã kiểm chứng).
-- Mọi chuỗi hiển thị qua `vue-i18n` (`t('module.key')`), file `src/locales/vi/*.json`.
+- Mọi chuỗi hiển thị qua `vue-i18n` (`t('module.key')`), file `src/locales/vi/*.json`. Ngoại lệ duy nhất: nguyên mẫu `src/demo/` (xem docs/DEMO-UI.md); không import gì từ `src/demo/` vào app thật.
 - Mỗi màn hình dữ liệu có đủ loading / empty / error state (dùng component dùng chung).
 - Không `v-html` trừ component `SafeHtml`. Không lưu token trong localStorage.
 - Ẩn/hiện UI theo `permissions[]` từ API, nhưng **backend luôn là nơi kiểm tra quyền**.
@@ -70,7 +71,7 @@ scripts/check.sh
 - SEO score là checklist, không phải bảo đảm thứ hạng.
 - Không sao chép bài đối thủ; ảnh AI luôn gắn nhãn và không dùng làm ảnh sản phẩm thật.
 - Nội dung đã tạo luôn có lịch sử phiên bản.
-- Dữ liệu demo chỉ ở development (`DemoSeeder` từ chối chạy trong production).
+- Dữ liệu demo chỉ ở development (`DemoSeeder` từ chối chạy trong production; UI demo `npm run demo` bị loại khỏi build, kiểm bằng `npm run check:no-demo`).
 
 ## Môi trường
 - Dev có thể trên Windows (Horizon không chạy được → `php artisan queue:work`). Không hardcode đường dẫn; dùng `.env`, `base_path()`, `storage_path()`.
