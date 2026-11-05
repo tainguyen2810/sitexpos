@@ -1,0 +1,24 @@
+{
+  "name": "sitexpost/resolve-check",
+  "type": "project",
+  "require": {
+    "php": "^8.3",
+    "laravel/framework": "^13.0",
+    "laravel/sanctum": "^4.3",
+    "laravel/fortify": "^1.41",
+    "laravel/horizon": "^5.50",
+    "laravel/tinker": "^3.0",
+    "ezyang/htmlpurifier": "^4.18",
+    "league/flysystem-aws-s3-v3": "^3.0"
+  },
+  "require-dev": {
+    "larastan/larastan": "^3.14",
+    "laravel/pint": "^1.0",
+    "pestphp/pest": "^4.7",
+    "pestphp/pest-plugin-laravel": "^4.0",
+    "fakerphp/faker": "^1.24",
+    "mockery/mockery": "^1.6"
+  },
+  "config": { "platform": { "php": "8.3.6" }, "allow-plugins": { "pestphp/pest-plugin": true } },
+  "minimum-stability": "stable", "prefer-stable": true
+}
