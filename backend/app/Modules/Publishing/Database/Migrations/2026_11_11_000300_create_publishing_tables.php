@@ -126,7 +126,8 @@ return new class extends Migration
 
             $table->foreign(['workspace_id', 'site_id'])->references(['workspace_id', 'id'])->on('sites')->cascadeOnDelete();
             $table->foreign(['workspace_id', 'article_id'])->references(['workspace_id', 'id'])->on('articles')->cascadeOnDelete();
-            $table->foreign(['workspace_id', 'publishing_batch_id'])->references(['workspace_id', 'id'])->on('publishing_batches')->nullOnDelete();
+            // MySQL cannot SET NULL through a composite key whose workspace_id is NOT NULL: single-column key (tenant match is enforced by the scoped models).
+            $table->foreign('publishing_batch_id')->references('id')->on('publishing_batches')->nullOnDelete();
             $table->unique(['workspace_id', 'id']);
             $table->unique(['workspace_id', 'idempotency_key']);
             $table->index(['workspace_id', 'status', 'updated_at']);

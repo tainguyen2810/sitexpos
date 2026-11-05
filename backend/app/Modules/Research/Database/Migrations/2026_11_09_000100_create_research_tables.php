@@ -446,7 +446,7 @@ return new class extends Migration
             $table->foreign(['workspace_id', 'content_idea_id'])->references(['workspace_id', 'id'])->on('content_ideas')->cascadeOnDelete();
             $table->foreign('cluster_id')->references('id')->on('topic_clusters')->nullOnDelete();
             $table->unique('content_idea_id');
-            $table->index(['workspace_id', 'campaign_id', 'scheduled_for']);
+            $table->index(['workspace_id', 'campaign_id', 'scheduled_for'], 'calendar_items_ws_campaign_scheduled_index'); // auto name > 64 chars (MySQL limit)
         });
 
         // ---- Integrations, notifications, quotas ----------------------------------

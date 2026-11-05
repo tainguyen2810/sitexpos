@@ -154,7 +154,8 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign(['workspace_id', 'article_id'])->references(['workspace_id', 'id'])->on('articles')->cascadeOnDelete();
-            $table->foreign(['workspace_id', 'media_asset_id'])->references(['workspace_id', 'id'])->on('media_assets')->nullOnDelete();
+            // MySQL cannot SET NULL through a composite key whose workspace_id is NOT NULL: single-column key (tenant match is enforced by the scoped models).
+            $table->foreign('media_asset_id')->references('id')->on('media_assets')->nullOnDelete();
             $table->unique(['workspace_id', 'id']);
             $table->index(['article_id', 'status', 'position']);
         });

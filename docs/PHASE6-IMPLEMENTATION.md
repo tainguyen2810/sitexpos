@@ -26,7 +26,7 @@ Tài liệu chi tiết: `MEDIA-ENGINE.md`, `SEO-AUDIT-RULES.md`, `WORDPRESS-PUBL
 ## 3. Chưa xong / ngoài phạm vi
 
 - **Chưa thử với nhà cung cấp ảnh thật** (không có API key): ảnh AI được kiểm bằng `FakeImageProvider` (trả PNG thật). Adapter OpenAI images có từ Phase 3 nhưng chưa gọi API thật.
-- **Chưa chạy E2E với WordPress thật** cho Phase 6: môi trường này không có MySQL và không tải được WordPress (proxy chặn wordpress.org). Script E2E Phase 2 (`wordpress-plugin/tests/e2e`) chưa được mở rộng cho kịch bản xung đột / state / lookup. Plugin chỉ được kiểm `php -l`, tương thích PHP 7.4, test ký, bản dịch.
+- **Chưa chạy E2E với WordPress thật** cho Phase 6: môi trường này không tải được WordPress (proxy chặn wordpress.org). Script E2E Phase 2 (`wordpress-plugin/tests/e2e`) chưa được mở rộng cho kịch bản xung đột / state / lookup. Plugin chỉ được kiểm `php -l`, tương thích PHP 7.4, test ký, bản dịch.
 - **Chưa thử Yoast SEO / Rank Math thật**: adapter (ghi meta, `state_hash`) chỉ được kiểm tĩnh; phía Cloud dùng `FakeWordPress`.
 - Nguồn ảnh stock (`stock`) chỉ giữ chỗ, chưa tích hợp nhà cung cấp.
 - Job kiểm tra link ngoài `CheckArticleLinks` chưa có test riêng (dùng lại `PublicWebFetcher` đã test ở Phase 4).
@@ -36,7 +36,7 @@ Tài liệu chi tiết: `MEDIA-ENGINE.md`, `SEO-AUDIT-RULES.md`, `WORDPRESS-PUBL
 
 - Bài đăng bằng plugin < 1.1.0 không có `written_hash`: phát hiện sửa tay dựa vào thời điểm sửa (kém chính xác hơn). Cần cập nhật plugin trên các site trước khi bật chế độ cập nhật.
 - AVIF phụ thuộc bản GD trên server; không có thì bỏ qua biến thể AVIF.
-- Ràng buộc "một job hoạt động / bài / site" dựa vào UNIQUE `active_key`; test đồng thời chạy trên SQLite, chưa đo trên MySQL dưới tải.
+- Ràng buộc "một job hoạt động / bài / site" dựa vào UNIQUE `active_key`; test đồng thời đã chạy trên MySQL 8.0 nhưng chưa đo dưới tải thật.
 - Ghi giới hạn ở trang Super Admin có audit nhưng không bắt nhập `reason` (giống trang cài đặt Phase 3–5), lệch quy ước "mọi thao tác ghi admin cần reason" trong `API-CONTRACTS.md` §3.
 - Scheduler phải chạy (`schedule:work`/cron) và có worker queue `media`, `default`; nếu không, lịch sẽ bị đánh dấu lỡ sau `missed_grace_minutes`.
 

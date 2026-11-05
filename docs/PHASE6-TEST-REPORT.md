@@ -28,6 +28,15 @@ real	1m32.303s
 
 Test bị skip: `never oversells a budget under concurrent reservations (MySQL, …)` của Phase 3 — chỉ chạy khi có MySQL; không liên quan Phase 6. Toàn bộ test Phase 1–5 vẫn đạt (không xung đột giữa các phase).
 
+## 1b. MySQL (phát hiện qua CI GitHub)
+
+CI chạy Pest trên MySQL 8.4 và phát hiện lỗi mà SQLite không có (đều tồn tại từ trước, nay đã sửa trong PR):
+- Thiếu `APP_KEY` khi không có `.env` → thêm khóa chỉ dùng cho test vào `phpunit.xml`.
+- Tên index tự sinh dài 67 ký tự (> 64, Phase 4 `content_calendar_items`) → đặt tên ngắn.
+- Khóa ngoại tổng hợp `(workspace_id, x)` với `ON DELETE SET NULL` (Phase 5 `articles.writing_batch_id`, Phase 6 `image_placements.media_asset_id`, `publishing_jobs.publishing_batch_id`): MySQL từ chối vì `workspace_id` NOT NULL → đổi thành khóa ngoại một cột.
+
+Kết quả chạy lại với MySQL 8.0.46 cài tại máy: `migrate:fresh`, `migrate:rollback`, `migrate` đều đạt; **Pest: 376 passed (2632 assertions)** — gồm cả test đồng thời chỉ chạy trên MySQL.
+
 ## 2. Test backend Phase 6 (`backend/tests/Feature/Phase6`, 32 test)
 
 **MediaTest (5)**: tải lên → kiểm tra → tối ưu trong queue (WebP + thumbnail); từ chối file thực thi ngụy trang, polyglot, sai phần mở rộng; tạo ảnh AI qua AI Gateway, gắn nhãn và không bao giờ làm ảnh sản phẩm; infographic chỉ từ dữ liệu có nguồn / khách cung cấp, kết quả xác định; file chỉ phục vụ qua URL ký có hạn.
@@ -65,5 +74,5 @@ Backend `php -S` + SQLite, `migrate:fresh --seed --seeder=DemoSeeder` (toàn b�
 
 ## 6. Không chạy được trong môi trường này
 
-- E2E với WordPress thật (6.4 / mới nhất) và MySQL: không có MySQL, proxy chặn tải WordPress (`wordpress.org` → 403). Lệnh chạy khi có môi trường: `wordpress-plugin/tests/e2e/README.md` (cần bổ sung kịch bản xung đột Phase 6).
-- Test đồng thời trên MySQL (bị skip như trên).
+- E2E với WordPress thật (6.4 / mới nhất): proxy chặn tải WordPress (`wordpress.org` → 403). Lệnh chạy khi có môi trường: `wordpress-plugin/tests/e2e/README.md` (cần bổ sung kịch bản xung đột Phase 6).
+- Test trên đúng MySQL 8.4 chạy ở CI GitHub (máy này dùng MySQL 8.0.46).
