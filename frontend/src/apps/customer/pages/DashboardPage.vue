@@ -24,7 +24,12 @@ const { data, loading, error, run } = useAsync(() => workspaceApi.dashboard(ws.c
     <LoadingState v-if="loading" :rows="3" />
     <ErrorState v-else-if="error" :error="error" @retry="run" />
     <template v-else-if="data">
-      <div class="grid gap-4 sm:grid-cols-2">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <AppCard>
+          <p class="text-sm text-ink-muted">{{ $t('dashboard.sites') }}</p>
+          <p class="mt-1 text-3xl font-bold">{{ data.connected_sites_count }}<span class="text-base font-normal text-ink-muted"> / {{ data.sites_count }}</span></p>
+          <RouterLink :to="{ name: 'sites' }" class="mt-1 inline-block text-sm text-brand-600 hover:underline">{{ $t('dashboard.manageSites') }}</RouterLink>
+        </AppCard>
         <AppCard>
           <p class="text-sm text-ink-muted">{{ $t('dashboard.members') }}</p>
           <p class="mt-1 text-3xl font-bold">{{ data.members_count }}</p>
@@ -44,6 +49,7 @@ const { data, loading, error, run } = useAsync(() => workspaceApi.dashboard(ws.c
               </span>
               <span :class="step.done ? 'text-ink-muted line-through' : 'text-ink'">{{ $t(`dashboard.steps.${step.key}`) }}</span>
               <AppBadge v-if="step.available === false" class="ml-auto">{{ $t('common.comingSoon') }}</AppBadge>
+              <RouterLink v-else-if="!step.done && step.key === 'connect_site'" :to="{ name: 'sites' }" class="ml-auto text-brand-600 hover:underline">{{ $t('sites.add') }}</RouterLink>
               <RouterLink v-else-if="!step.done && step.key === 'invite_team'" :to="{ name: 'members' }" class="ml-auto text-brand-600 hover:underline">{{ $t('members.invite') }}</RouterLink>
             </li>
           </ul>
