@@ -18,3 +18,8 @@ Schedule::command('sitex:ai:expire-reservations')->everyFiveMinutes()->withoutOv
 Schedule::command('sitex:ai:prune')->daily();
 Schedule::command('sitex:workflows:prune')->daily();
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
+
+// Phase 4 — Topic Discovery & SEO Planner
+Schedule::command('sitex:research:schedule')->everyFifteenMinutes()->withoutOverlapping();
+Schedule::command('sitex:research:sync')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('sitex:research:prune')->daily();

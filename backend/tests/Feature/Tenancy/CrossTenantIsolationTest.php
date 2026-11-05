@@ -67,6 +67,7 @@ function twoTenants(): array
 
     $wpB = (new FakeWordPress)->install();
     $siteB = connectedSite($b['workspace'], $wpB, 'Site B');
+    $researchB = researchFixture($b['workspace'], $siteB);
 
     return [
         'a' => $a,
@@ -77,7 +78,7 @@ function twoTenants(): array
             'jobRun' => $jobB->id,
             'site' => $siteB->id,
             'workflowRun' => $runB->id,
-        ],
+        ] + $researchB,
         'siteB' => $siteB,
         'wpB' => $wpB,
     ];
@@ -117,7 +118,7 @@ it('returns 404 when tenant A uses its own workspace with tenant B child ids', f
     ['a' => $a, 'b' => $b, 'ids' => $ids] = twoTenants();
 
     foreach (tenantRoutes() as [$method, $uri]) {
-        if (! preg_match('/\{(member|invitation|jobRun|site|workflowRun)\}/', $uri)) {
+        if (! preg_match('/\{(member|invitation|jobRun|site|workflowRun|campaign|notification)\}/', $uri)) {
             continue;
         }
         $url = fillUri($uri, $a['workspace']->id, $ids);
@@ -128,6 +129,30 @@ it('returns 404 when tenant A uses its own workspace with tenant B child ids', f
 
     expect(memberOf($b['workspace'], $b['editor'])->role->value)->toBe('EDITOR')
         ->and(app(TenantContext::class)->runAs($b['workspace'], null, fn () => WorkflowRun::query()->sole()->status->value))->toBe('pending');
+});
+
+it('never lets tenant A reach tenant B research rows through its own campaign', function () {
+    ['a' => $a, 'b' => $b, 'ids' => $ids] = twoTenants();
+    $siteA = connectedSite($a['workspace'], new FakeWordPress('https://a.example.com'), 'Site A');
+    $own = researchFixture($a['workspace'], $siteA, 'A');
+
+    $checked = 0;
+    foreach (tenantRoutes() as [$method, $uri]) {
+        if (! str_contains($uri, '{campaign}') || ! preg_match('/\{(knowledge|researchRun|keyword|idea|cluster|gap|competitor|calendarItem)\}/', $uri)) {
+            continue;
+        }
+        $url = fillUri($uri, $a['workspace']->id, ['campaign' => $own['campaign']] + $ids);
+        $res = $this->actingAs($a['owner'])->json($method, $url, ['status' => 'rejected', 'value' => 'hacked', 'name' => 'hacked']);
+        expect($res->status())->toBe(404, "{$method} {$url} returned {$res->status()}");
+        $checked++;
+    }
+    expect($checked)->toBeGreaterThanOrEqual(15);
+
+    $body = $this->actingAs($a['owner'])->getJson("/api/v1/workspaces/{$a['workspace']->id}/research/campaigns")->getContent()
+        .$this->actingAs($a['owner'])->getJson("/api/v1/workspaces/{$a['workspace']->id}/research/notifications")->getContent()
+        .$this->actingAs($a['owner'])->getJson("/api/v1/workspaces/{$a['workspace']->id}/research/calendar")->getContent()
+        .$this->actingAs($a['owner'])->getJson("/api/v1/workspaces/{$a['workspace']->id}/research/campaigns/{$own['campaign']}/keywords")->getContent();
+    expect($body)->not->toContain('Secret idea B')->not->toContain('secret keyword B')->not->toContain('Campaign B')->not->toContain('Secret note B');
 });
 
 it('never lets tenant A operate tenant B WordPress sites', function () {

@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    // Phase 4 — Google Search Console OAuth (read-only scope). Leave empty to
+    // keep the Search Console source unavailable.
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect_uri' => env('GOOGLE_REDIRECT_URI', rtrim((string) env('APP_URL', 'http://localhost:8000'), '/').'/api/v1/oauth/google/callback'),
+    ],
+
 ];

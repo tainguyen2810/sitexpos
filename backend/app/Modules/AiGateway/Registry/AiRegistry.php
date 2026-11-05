@@ -134,7 +134,12 @@ final class AiRegistry
             'research.summarize' => ['desc' => 'Summarise downloaded research sources', 'queue' => 'research', 'priority' => 'batch',
                 'primary' => 'anthropic/claude-sonnet-5-5', 'economy' => 'anthropic/claude-haiku-5-5', 'fallbacks' => ['openai/gpt-6.1-terra', 'gemini/gemini-3.8-flash'], 'max_out' => 4000],
             'keywords.expand' => ['desc' => 'Keyword ideas (no fabricated metrics)', 'queue' => 'research', 'priority' => 'batch',
-                'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra'], 'max_out' => 3000],
+                'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'deepseek/deepseek-flash', 'fake/fake-echo'], 'max_out' => 3000],
+            // Phase 4 — topic discovery (models are defaults; Super Admin re-routes them in AI Settings).
+            'research.profile' => ['desc' => 'Website knowledge profile (industry, brand, audience)', 'queue' => 'research', 'priority' => 'batch',
+                'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'deepseek/deepseek-flash', 'fake/fake-echo'], 'max_out' => 2500],
+            'topics.ideas' => ['desc' => 'SEO content ideas from collected evidence', 'queue' => 'research', 'priority' => 'batch',
+                'primary' => 'anthropic/claude-sonnet-5-5', 'economy' => 'gemini/gemini-3.8-flash', 'fallbacks' => ['openai/gpt-6.1-terra', 'deepseek/deepseek-flash', 'fake/fake-echo'], 'max_out' => 6000],
             'content.draft' => ['desc' => 'Article drafting', 'queue' => 'writing', 'priority' => 'batch',
                 'primary' => 'anthropic/claude-sonnet-5-5', 'economy' => 'openai/gpt-6.1-terra', 'fallbacks' => ['openai/gpt-6.1-sol', 'gemini/gemini-3.8-flash'], 'max_out' => 12000, 'max_in' => 120000],
             'verification.claims' => ['desc' => 'Claim verification against sources', 'queue' => 'factcheck', 'priority' => 'batch',

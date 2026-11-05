@@ -4,6 +4,27 @@ use SiteXPost\Kernel\Http\Requests\ApiRequest;
 use SiteXPost\Kernel\Support\JobRun;
 use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
 use SiteXPost\Modules\AiGateway\Domain\AiRequest;
+use SiteXPost\Modules\Research\Domain\CampaignSettings;
+use SiteXPost\Modules\Research\Domain\CompetitorFinding;
+use SiteXPost\Modules\Research\Domain\CompetitorWebsite;
+use SiteXPost\Modules\Research\Domain\ContentCalendarItem;
+use SiteXPost\Modules\Research\Domain\ContentGap;
+use SiteXPost\Modules\Research\Domain\ContentIdea;
+use SiteXPost\Modules\Research\Domain\ContentIdeaKeyword;
+use SiteXPost\Modules\Research\Domain\InternalLinkSuggestion;
+use SiteXPost\Modules\Research\Domain\Keyword;
+use SiteXPost\Modules\Research\Domain\KeywordMetric;
+use SiteXPost\Modules\Research\Domain\ResearchNotification;
+use SiteXPost\Modules\Research\Domain\ResearchRun;
+use SiteXPost\Modules\Research\Domain\ResearchSchedule;
+use SiteXPost\Modules\Research\Domain\ResearchSource;
+use SiteXPost\Modules\Research\Domain\ResearchUsageCounter;
+use SiteXPost\Modules\Research\Domain\SearchConsoleConnection;
+use SiteXPost\Modules\Research\Domain\SeoCampaign;
+use SiteXPost\Modules\Research\Domain\SourceSnapshot;
+use SiteXPost\Modules\Research\Domain\TopicCluster;
+use SiteXPost\Modules\Research\Domain\WebsiteKnowledge;
+use SiteXPost\Modules\Research\Domain\WebsiteProfile;
 use SiteXPost\Modules\Sites\Domain\Site;
 use SiteXPost\Modules\Sites\Domain\SiteActivityLog;
 use SiteXPost\Modules\Sites\Domain\SiteContentItem;
@@ -45,6 +66,27 @@ arch('tenant-owned models use the fail-closed workspace scope')
         WorkflowRun::class,
         WorkflowStep::class,
         WorkflowEvent::class,
+        SeoCampaign::class,
+        ContentIdea::class,
+        SearchConsoleConnection::class,
+        TopicCluster::class,
+        ContentGap::class,
+        CompetitorFinding::class,
+        CompetitorWebsite::class,
+        Keyword::class,
+        ResearchSource::class,
+        InternalLinkSuggestion::class,
+        ResearchSchedule::class,
+        WebsiteProfile::class,
+        ContentCalendarItem::class,
+        CampaignSettings::class,
+        KeywordMetric::class,
+        SourceSnapshot::class,
+        WebsiteKnowledge::class,
+        ResearchRun::class,
+        ContentIdeaKeyword::class,
+        ResearchNotification::class,
+        ResearchUsageCounter::class,
     ])
     ->toUseTrait(BelongsToWorkspace::class);
 
@@ -53,8 +95,12 @@ arch('kernel does not depend on module controllers')
     ->not->toUse('SiteXPost\Modules\Workspace\Http');
 
 arch('tenant API requests extend the base ApiRequest')
-    ->expect(['SiteXPost\Modules\Workspace\Http\Requests', 'SiteXPost\Modules\Sites\Http\Requests', 'SiteXPost\Modules\AiGateway\Http\Requests'])
+    ->expect(['SiteXPost\Modules\Workspace\Http\Requests', 'SiteXPost\Modules\Sites\Http\Requests', 'SiteXPost\Modules\AiGateway\Http\Requests', 'SiteXPost\Modules\Research\Http\Requests'])
     ->toExtend(ApiRequest::class);
+
+arch('research reads WordPress data only through the Sites contract')
+    ->expect('SiteXPost\Modules\Research')
+    ->not->toUse(['SiteXPost\Modules\Sites\Domain', 'SiteXPost\Modules\Sites\Connector', 'SiteXPost\Modules\AiGateway\Providers']);
 
 arch('the WordPress connector never touches AI provider credentials')
     ->expect('SiteXPost\Modules\Sites')
