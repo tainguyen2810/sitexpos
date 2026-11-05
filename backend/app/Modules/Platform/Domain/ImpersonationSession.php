@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 use SiteXPost\Modules\Identity\Domain\User;
+use SiteXPost\Modules\Platform\Enums\PlatformPermission;
 use SiteXPost\Modules\Workspace\Domain\Workspace;
 
 /**
@@ -48,6 +49,20 @@ class ImpersonationSession extends Model
     public function isActive(): bool
     {
         return $this->ended_at === null && $this->expiresAt()->isFuture();
+    }
+
+    /**
+     * Re-checked on every request, not only when the session starts: a staff
+     * member who lost the impersonate permission, their 2FA or their account
+     * status can no longer use an open session (PHASE1-AUDIT C14).
+     */
+    public function isUsableBy(User $user): bool
+    {
+        return $this->isActive()
+            && $this->staff_user_id === $user->getKey()
+            && $user->isActive()
+            && $user->hasConfirmedTwoFactor()
+            && $user->hasPlatformPermission(PlatformPermission::Impersonate);
     }
 
     /**

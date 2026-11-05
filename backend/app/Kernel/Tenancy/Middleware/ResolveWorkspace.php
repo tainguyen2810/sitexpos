@@ -101,9 +101,8 @@ final class ResolveWorkspace
         $session = ImpersonationSession::query()->find($id);
 
         if ($session === null
-            || $session->staff_user_id !== $user->getKey()
             || $session->workspace_id !== $workspace->getKey()
-            || ! $session->isActive()) {
+            || ! $session->isUsableBy($user)) {
             return null;
         }
 

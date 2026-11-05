@@ -80,7 +80,9 @@ final class WorkspaceController
         $member = $workspace->members()->find($request->string('member_id')->toString())
             ?? throw ApiException::notFound();
 
-        $action->handle($workspace, $member);
+        /** @var User $actor */
+        $actor = $request->user();
+        $action->handle($workspace, $member, $actor);
 
         return response()->noContent();
     }

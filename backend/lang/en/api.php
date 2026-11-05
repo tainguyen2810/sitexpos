@@ -24,6 +24,7 @@ return [
     'invitation_email_mismatch' => 'This invitation was sent to a different email address.',
     'password_reset_link_sent' => 'If the email exists, we have sent a password reset link.',
     'invalid_state_transition' => 'This state transition is not allowed.',
+    'membership_changed' => 'This member was just changed by someone else. Reload and try again.',
     'cannot_suspend_self' => 'You cannot suspend your own account.',
     'cannot_change_own_platform_role' => 'You cannot change your own platform role.',
     'last_super_admin' => 'At least one SUPER_ADMIN must remain.',

@@ -48,7 +48,7 @@ final class MeController
         if ($request->hasSession() && $user->isPlatformStaff()) {
             $id = $request->session()->get(ResolveWorkspace::IMPERSONATION_SESSION_KEY);
             $session = is_string($id) ? ImpersonationSession::query()->with('workspace')->find($id) : null;
-            if ($session !== null && $session->isActive() && $session->staff_user_id === $user->id) {
+            if ($session !== null && $session->isUsableBy($user)) {
                 $impersonation = [
                     'id' => $session->id,
                     'workspace_id' => $session->workspace_id,
