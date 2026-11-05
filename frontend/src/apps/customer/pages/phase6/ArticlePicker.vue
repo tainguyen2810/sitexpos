@@ -6,7 +6,11 @@ import { useI18n } from 'vue-i18n'
 const props = defineProps<{ articles: { id: string; title: string }[]; label?: string }>()
 const model = defineModel<string>({ default: '' })
 const { t } = useI18n()
-const options = computed(() => props.articles.map((a) => ({ value: a.id, label: a.title })))
+// An article opened by link may not be in the list (e.g. not approved yet): keep it selectable instead of a blank select.
+const options = computed(() => {
+  const list = props.articles.map((a) => ({ value: a.id, label: a.title }))
+  return model.value !== '' && !list.some((o) => o.value === model.value) ? [{ value: model.value, label: t('p6.common.currentArticle') }, ...list] : list
+})
 </script>
 
 <template>

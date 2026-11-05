@@ -195,8 +195,17 @@ Nhánh `feature/phase5-ai-writer`. Gộp phần "Pipeline viết bài & kiểm c
 
 **Nghiệm thu**: không VERIFIED khi không có bằng chứng nguyên văn; "không tìm thấy" không thành CONTRADICTED; claim CRITICAL chưa xác minh chặn duyệt (UI + API); sửa nội dung làm mất phê duyệt; mọi citation trỏ bằng chứng đã tải; không model ID trong code; không đăng WordPress.
 
-## Phase 6 trở đi
-Nội dung Phase 6–9 do chủ dự án xác định. Các mục dưới là kế hoạch ban đầu, giữ để tham khảo.
+## Phase 6 — AI Image Engine, SEO Audit & WordPress Publisher ✦ (đã triển khai, chờ nghiệm thu)
+Nhánh `claude/project-thread-i3nn1q` (tách từ `feature/phase5-ai-writer`). Xem `PHASE6-IMPLEMENTATION.md`, `PHASE6-TEST-REPORT.md`, `MEDIA-ENGINE.md`, `SEO-AUDIT-RULES.md`, `WORDPRESS-PUBLISHER.md`, `PUBLISHING-RECOVERY.md`. Gộp "Media & SEO" và "Duyệt & xuất bản" của kế hoạch ban đầu (ADR-018).
+- [x] Media: nguồn WordPress/WooCommerce/upload, ảnh AI qua AI Gateway (capability `image_generation`, gắn nhãn), xử lý ảnh an toàn (MIME thật, re-encode, WebP/AVIF, chống trùng), infographic từ dữ liệu có nguồn, placement engine, alt text.
+- [x] SEO: metadata xác định, canonical/noindex cần chính sách, audit 19 quy tắc PASS/WARNING/ERROR/BLOCKED có giải thích, schema không trùng Yoast/Rank Math, link nội bộ chỉ tới URL thật.
+- [x] Publishing: state machine 9 trạng thái, 8 cổng không bỏ qua được, mode A–E (mặc định bản nháp), lịch theo múi giờ site + lỡ lịch, đăng idempotent + đối soát sau timeout, xung đột 5 cách giải quyết (sửa P0 Phase 2), retry có backoff, preview mô phỏng, bulk.
+- [x] 12 trang khách hàng, 2 trang Super Admin, dữ liệu demo chỉ ở development, plugin 1.1.0.
+
+**Nghiệm thu**: ảnh AI không thể gắn làm ảnh sản phẩm thật (API + UI); bài chưa duyệt / còn claim CRITICAL-HIGH / SEO BLOCKED không thể đăng (cả UI và API, kiểm tra lại ngay trước khi gửi); đăng lặp và timeout không tạo bài trùng; bài sửa tay trên WordPress không bao giờ bị ghi đè tự động; lỡ lịch không tự đăng muộn; nhãn "không bảo đảm thứ hạng" hiển thị.
+
+## Phase 7 trở đi
+Nội dung Phase 7–9 do chủ dự án xác định. Các mục dưới là kế hoạch ban đầu, giữ để tham khảo (phần Media/SEO và Duyệt/xuất bản đã làm ở Phase 6).
 
 ## Phase 7 — Media & SEO
 - Ảnh stock (license), ảnh AI (gắn nhãn), infographic, alt text; metadata, schema, internal link, SEO checklist.

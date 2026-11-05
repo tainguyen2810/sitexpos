@@ -7,6 +7,7 @@ import { jobTone, localInputToIso, newIdempotencyKey, resolutionAvailable } from
 import { lengthTone, severityTone, sortIssues } from '@/shared/api/seo'
 import { isValidScope } from '@/shared/api/phase6Admin'
 import SimulationFrame from '@/apps/customer/pages/phase6/SimulationFrame.vue'
+import { SECTION_NAV, sectionLocaleNs, type Phase6Section } from '@/apps/customer/pages/phase6/sectionNav'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -140,5 +141,37 @@ describe('Phase 6 i18n', () => {
       expect(has(viMessages, `p6.pub.conflictType.${c}`)).toBe(true)
       expect(has(viMessages, `p6.pub.conflictHint.${c}`)).toBe(true)
     }
+  })
+  it('labels every tab of the media / SEO / publishing navigation', () => {
+    const missing: string[] = []
+    for (const section of Object.keys(SECTION_NAV) as Phase6Section[]) {
+      const ns = sectionLocaleNs(section)
+      if (!has(viMessages, `p6.${ns}.title`)) missing.push(`p6.${ns}.title`)
+      for (const i of SECTION_NAV[section]) if (!has(viMessages, `p6.${ns}.nav.${i.key}`)) missing.push(`p6.${ns}.nav.${i.key}`)
+    }
+    expect(missing).toEqual([])
+  })
+
+  it('labels every value the API can return for dynamic keys', () => {
+    const sets: Record<string, string[]> = {
+      'p6.pub.mode': ['wp_draft', 'publish_now', 'scheduled', 'auto', 'update'],
+      'p6.pub.resolution': ['keep_wordpress', 'overwrite', 'merge_manually', 'new_draft', 'cancel_update'],
+      'p6.pub.resolutionHint': ['keep_wordpress', 'overwrite', 'merge_manually', 'new_draft', 'cancel_update'],
+      'p6.pub.syncState': ['in_sync', 'manual_edit', 'slug_changed', 'seo_modified', 'domain_changed', 'missing', 'unreachable'],
+      'p6.pub.batchStatus': ['running', 'paused', 'completed', 'canceled'],
+      'p6.media.status': ['processing', 'ready', 'failed', 'rejected'],
+      'p6.media.source': ['wordpress', 'woocommerce', 'upload', 'ai', 'stock', 'infographic'],
+      'p6.media.license': ['owned', 'customer_provided', 'wordpress_site', 'ai_generated', 'licensed_stock', 'unknown'],
+      'p6.media.slot': ['featured', 'intro', 'section', 'comparison', 'infographic', 'product'],
+      'p6.media.jobStatus': ['queued', 'running', 'succeeded', 'failed', 'blocked', 'canceled'],
+      'p6.media.placementStatus': ['suggested', 'accepted', 'rejected'],
+      'p6.media.sourceStatus': ['idle', 'syncing', 'failed', 'unavailable'],
+      'p6.seo.severity': ['PASS', 'WARNING', 'ERROR', 'BLOCKED'],
+      'p6.seo.category': ['structure', 'metadata', 'content', 'links', 'media', 'schema', 'indexing', 'wordpress'],
+      'p6.seo.links.status': ['suggested', 'accepted', 'rejected'],
+    }
+    const missing: string[] = []
+    for (const [prefix, values] of Object.entries(sets)) for (const v of values) if (!has(viMessages, `${prefix}.${v}`)) missing.push(`${prefix}.${v}`)
+    expect(missing).toEqual([])
   })
 })

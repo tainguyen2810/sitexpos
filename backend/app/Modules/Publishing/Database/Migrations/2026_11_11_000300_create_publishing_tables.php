@@ -159,7 +159,7 @@ return new class extends Migration
             $table->ulid('id')->primary();
             $table->ulid('workspace_id');
             $table->ulid('mapping_id');
-            $table->string('state', 16); // in_sync | wp_modified | missing | slug_changed | seo_modified | domain_changed | unreachable
+            $table->string('state', 16); // in_sync | manual_edit | slug_changed | seo_modified | domain_changed | missing | unreachable
             $table->string('wp_status', 20)->nullable();
             $table->string('wp_slug', 200)->nullable();
             $table->char('wp_content_hash', 64)->nullable();

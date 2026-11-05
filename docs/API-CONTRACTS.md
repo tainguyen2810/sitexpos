@@ -272,24 +272,54 @@ Tiền tố `/api/v1/workspaces/{ws}/writer`. Danh sách dùng envelope cursor `
 | POST | `/articles/{a}/duplicate-decision` | `{decision: create_new\|update_existing\|merge\|reject, note?}` |
 | GET | `/articles/{a}/usage` | Chi phí AI theo bước |
 
-### 2.6 Media, SEO, Publishing (thiết kế cũ — phần bài viết/kiểm chứng đã thay bằng §2.5b)
-| Method | Path |
-|---|---|
-| GET/POST | `/workspaces/{ws}/sites/{site}/articles` |
-| GET/PATCH/DELETE | `/workspaces/{ws}/articles/{article}` |
-| POST | `/workspaces/{ws}/articles/{article}/generate` `{from_step?}` → 202 (Idempotency-Key bắt buộc) |
-| GET | `/workspaces/{ws}/articles/{article}/versions` · `/versions/{v}` · `/versions/{a}/diff/{b}` |
-| POST | `/workspaces/{ws}/articles/{article}/versions` — lưu chỉnh sửa thủ công → phiên bản mới |
-| POST | `/workspaces/{ws}/articles/{article}/versions/{v}/restore` |
-| GET | `/workspaces/{ws}/articles/{article}/verification` — claims + evidence |
-| POST | `/workspaces/{ws}/articles/{article}/verification/override` — OA, `{reason}` (audit) |
-| GET/POST | `/workspaces/{ws}/articles/{article}/media` |
-| POST | `/workspaces/{ws}/media/uploads` (multipart) |
-| GET/PATCH | `/workspaces/{ws}/articles/{article}/internal-links` |
-| POST | `/workspaces/{ws}/articles/{article}/submit-for-approval` |
-| POST | `/workspaces/{ws}/articles/{article}/approve` · `/request-changes` · `/reject` |
-| POST | `/workspaces/{ws}/articles/{article}/schedule` `{run_at, wp_status}` — 409 nếu chưa qua kiểm chứng |
-| POST | `/workspaces/{ws}/articles/{article}/publish-now` |
+### 2.6 Media, SEO & Publishing (Phase 6) ✦
+
+Tiền tố `/workspaces/{ws}`. `{articleRef}` = id bài Writer (Phase 5) của workspace — bài của workspace khác trả 404. Quyền: đọc = `workspace.view`; ghi = `content.edit`; đánh dấu **P** = `content.publish`; **S** = `sites.manage`. Tác vụ dài trả **202 + `job_run`**. Chi tiết: `MEDIA-ENGINE.md`, `SEO-AUDIT-RULES.md`, `WORDPRESS-PUBLISHER.md`.
+
+**Media** (`/media`)
+| Method | Path | Ghi chú |
+|---|---|---|
+| GET | `/assets` | Lọc `site_id`, `source_type`, `ai=1`, `status`, `license`, `q`; cursor. URL file là URL ký hạn 30 phút |
+| POST | `/assets` | multipart `file`, `license` (`owned`/`customer_provided`/`licensed_stock`), alt?, caption?, site_id? → 202 (xử lý trong queue `media`). Sai MIME / file ngụy trang → 422 |
+| GET/PATCH/DELETE | `/assets/{asset}` | PATCH: title, alt_text, caption. Ảnh AI không bỏ được nhãn AI |
+| POST | `/assets/{asset}/derive` | Cắt / đổi kích thước → bản sao mới (201) |
+| GET | `/sources` · POST `/sources/sync` `{site_id}` | Đồng bộ Media Library / ảnh WooCommerce (tham chiếu) → 202 |
+| POST | `/infographics` | Dữ liệu có cấu trúc + `sources[]` hoặc `customer_provided: true` → 201 |
+| GET | `/usage` | Dung lượng, lượt tải / ảnh AI hôm nay so với giới hạn |
+| POST | `/generations/preview` | Prompt đề xuất + ước tính chi phí + model khả dụng (không gọi AI) |
+| GET/POST | `/generations` | POST: article_id?, image_type, prompt (đã sửa), aspect_ratio, style, quality, image_count, budget_cap → 202. Không có model `image_generation` → 422 `no_image_model` |
+| GET | `/generations/{job}` · POST `/generations/{job}/regenerate` | Regenerate → phiên bản mới, 202 |
+| GET | `/articles/{articleRef}/placements` · POST `/placements/suggest` · PUT `/placements` | Ảnh AI vào ô `product` → 422 `ai_not_product_photo`; license `unknown` → 422 `license_unknown`. Vượt hạn mức media → 429; ảnh AI bị tắt → 403 `ai_images_disabled` |
+| GET | `/api/v1/media-files/{ws}/{asset}/{variant}` | Không phiên đăng nhập; chữ ký URL là quyền truy cập; hết hạn → 403 |
+
+**SEO** (`/seo`)
+| Method | Path | Ghi chú |
+|---|---|---|
+| GET | `/articles` | Bài kèm điểm audit gần nhất |
+| GET · POST `/generate` · PUT | `/articles/{articleRef}/metadata` | PUT cần `lock_version` (409 `stale_metadata` khi lệch). Canonical khác domain / noindex khi website chưa cho phép → 422 `canonical_requires_policy` / `robots_requires_policy` |
+| GET · POST | `/articles/{articleRef}/audits` | POST chạy audit đồng bộ (201) |
+| POST | `/articles/{articleRef}/audits/link-check` | Kiểm tra link ngoài qua SsrfGuard → 202 |
+| GET | `/audits/{auditRun}` | Kết quả + issues (rule, severity, message, explanation, fix, context) |
+| GET | `/articles/{articleRef}/schema` | JSON-LD sẽ chèn + loại bị bỏ qua và lý do |
+| GET · POST `/suggest` | `/articles/{articleRef}/links` | Gợi ý link nội bộ |
+| PATCH | `/links/{suggestion}` `{status: accepted\|rejected}` | |
+| GET · PUT (**S**) | `/sites/{site}/config` | Cấu hình schema + cho phép canonical/robots |
+
+**Publishing** (`/publishing`)
+| Method | Path | Ghi chú |
+|---|---|---|
+| GET | `/articles` · `/articles/{articleRef}/preview` | Preview = HTML render + snippet SEO, gắn nhãn mô phỏng |
+| GET · POST | `/jobs` | POST `{article_id, mode: wp_draft\|publish_now\|scheduled\|update, scheduled_at?, approve?}` + `Idempotency-Key` (8–120 ký tự). `approve: true` cần **P**. Trùng job hoạt động → 409 `active_job_exists` |
+| GET | `/jobs/{job}` · `/jobs/{job}/html` | Kết quả từng cổng, lần thử, HTML đã gửi |
+| POST | `/jobs/{job}/recheck` | Chạy lại cổng |
+| POST (**P**) | `/jobs/{job}/approve` `{scheduled_at?}` · `/reschedule` `{scheduled_at}` · `/retry` (202) | Cổng không đạt → 422 `gates_failed` (`details.gates` = kết quả từng cổng); chuyển trạng thái sai → 409 `invalid_transition` |
+| POST | `/jobs/{job}/cancel` | Bài đã có trên WP không bị xóa |
+| GET | `/calendar?from&to&site_id` | Lịch đăng + mục lịch nội dung Phase 4, theo múi giờ website |
+| GET | `/conflicts` · `/conflicts/{c}` · POST (**P**) `/conflicts/{c}/resolve` `{resolution, note?}` | resolution: `keep_wordpress`, `overwrite`, `merge_manually`, `new_draft`, `cancel_update`; đã giải quyết → 409 |
+| GET | `/mappings` · POST `/mappings/{m}/check` (202) | Kiểm tra đồng bộ với WordPress |
+| GET · PUT (**S**) | `/sites/{site}/policy` | Bật auto-publish cần `confirm_auto_publish: true` (422 nếu thiếu) và nền tảng cho phép; có audit |
+| GET · POST (**P**) | `/batches` · POST `/batches/preview` | Bulk: tối đa `max_bulk_items`; `Idempotency-Key` |
+| GET · POST (**P**) | `/batches/{b}` · `/pause` · `/resume` · `/cancel` | |
 
 ### 2.7 Analytics (Phase 9)
 | Method | Path |
@@ -354,6 +384,15 @@ Yêu cầu `platform_role` + 2FA đã xác nhận. User thường nhận **404**
 
 ---
 
+
+**Phase 6 — Media & Publishing** (`/api/admin/v1`)
+| Method | Path | Quyền nền tảng |
+|---|---|---|
+| GET | `/media/overview` | `platform.ai.view_costs` — dung lượng, ảnh AI, chi phí, lỗi theo workspace |
+| GET · PUT | `/media/limits` | `platform.ai.manage` — `scope_key` `global` / `ws:<id>`; có audit |
+| GET | `/publishing/overview` | `platform.jobs.manage` — job theo trạng thái, lỗi, xung đột mở |
+| GET · PUT | `/publishing/limits` | `platform.jobs.manage` — kill switch `publishing_enabled`, `auto_publish_allowed`, giới hạn; có audit |
+
 ## 4. Connector API trên Cloud (`/connector/v1`) — plugin gọi (Phase 2) ✦
 
 | Method | Path | Xác thực | Mô tả |
@@ -404,11 +443,19 @@ Fallback khi site dùng permalink mặc định: `/?rest_route=/sitex-post/v1/..
 | POST | `/credentials/rotate` | `{key_id, secret, grace_seconds}` (ký bằng khóa hiện tại) |
 | POST | `/disconnect` | Xóa secret cục bộ (response vẫn được ký bằng khóa vừa xóa) |
 
+**Bổ sung Phase 6 (plugin 1.1.0)**
+| Method | Path | Mô tả |
+|---|---|---|
+| GET | `/posts/{id}/state` | Trạng thái có ký: status, slug, url, modified_gmt, `content_hash`, `written_hash`, `revision_id`, SEO + `seo_hash`, `seo_adapter` |
+| GET | `/posts/lookup?idempotency_key=` | Tìm bài theo khóa (đối soát sau timeout) |
+| GET | `/media?page&per_page` | Media Library (tham chiếu, ≤ 100/trang) |
+| POST/PUT | `/posts`, `/posts/{id}` | Thêm `expected {content_hash, slug, seo_hash}`, `force` (chỉ khi người dùng chọn ghi đè), `schema` (JSON-LD). Cập nhật bài đã bị sửa trên WP → **409 `sitex_conflict`** |
+
 Ảnh nội dung: Cloud tải ảnh lên trước, rồi thay placeholder `{{sitex-image:KEY}}` (URL) và `{{sitex-image-id:KEY}}` (ID) trong `content_html`.
 
 SEO meta: Yoast (`_yoast_wpseo_*`), Rank Math (`rank_math_*`) nếu đang bật; nếu không, plugin in thẻ `<title>`/description/robots/canonical qua `wp_head`. Plugin luôn lưu bản sao `_sitex_post_seo_*`.
 
-Idempotency: Cloud lưu `site_publications (site_id, idempotency_key) → wp_post_id`; plugin lưu `_sitex_post_idempotency_key` + khóa tạm, nên kể cả khi Cloud mất response và gửi lại, WordPress vẫn chỉ có một bài.
+Idempotency: Cloud lưu `site_publications (site_id, idempotency_key) → wp_post_id` (Phase 2, đăng thử) và `wordpress_post_mappings` (Phase 6); plugin lưu `_sitex_post_idempotency_key` + khóa tạm, nên kể cả khi Cloud mất response và gửi lại, WordPress vẫn chỉ có một bài.
 
 ## 6. Webhooks (`/webhooks/{provider}`) — Phase 4
 

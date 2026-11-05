@@ -10,7 +10,7 @@ const conflictType = {
 }
 export default {
   common: {
-    site: 'Website', allSites: 'Tất cả website', article: 'Bài viết', chooseArticle: '— Chọn bài viết —',
+    site: 'Website', allSites: 'Tất cả website', article: 'Bài viết', chooseArticle: '— Chọn bài viết —', currentArticle: 'Bài đang mở (không có trong danh sách)',
     noSite: 'Chưa có website nào được kết nối.', pickArticleFirst: 'Chọn một bài viết để bắt đầu.',
     rateLimited: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.',
   },

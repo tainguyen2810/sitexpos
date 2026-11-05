@@ -185,9 +185,9 @@ Test đặt trong `backend/tests/{Feature,Unit}/<Module>/` để chạy chung b�
 | **Planning** | Topic cluster, pillar/cluster, content calendar | | Keywords |
 | **Content** | Brief, bài viết, phiên bản (immutable), pipeline viết, trạng thái bài | Đăng bài | Research, AiGateway, Usage |
 | **Verification** | Trích claim, đối chiếu nguồn, chấm điểm, cổng chặn xuất bản | | Content, Research |
-| **Media** | Ảnh stock có license, ảnh AI (gắn nhãn), infographic, alt text | Dùng ảnh AI làm ảnh sản phẩm thật | AiGateway, Usage |
-| **Seo** | Metadata, schema, heading, internal link, SEO checklist (không phải bảo đảm thứ hạng) | | Content, Sites |
-| **Publishing** | Quy trình duyệt, lịch, auto-publish có điều kiện, đẩy lên WP, đồng bộ trạng thái | | Content, Verification, Sites |
+| **Media** ✦ Phase 6 | Nguồn ảnh (WordPress/WooCommerce/upload), ảnh AI (gắn nhãn), xử lý ảnh, infographic, vị trí ảnh, alt text | Dùng ảnh AI làm ảnh sản phẩm thật | AiGateway (registry/route, chỉ đọc), Sites/Writer/Research qua Contracts |
+| **Seo** ✦ Phase 6 | Metadata, schema, internal link, SEO audit có giải thích (không phải bảo đảm thứ hạng), bản render để đăng | Đăng WordPress | Writer, Sites, Research, Media qua Contracts |
+| **Publishing** ✦ Phase 6 | Job đăng bài (state machine + cổng), lịch theo múi giờ site, auto-publish có điều kiện, đăng idempotent, xung đột, phục hồi, bulk | Ghi đè sửa tay trên WP | Writer, Sites (WordPressGateway), Seo (SeoGate), Media (MediaLibrary) qua Contracts |
 | **Analytics** | OAuth Google Search Console, đồng bộ số liệu, phát hiện bài suy giảm, đề xuất cập nhật | | Sites, Content |
 | **AiGateway** | Provider OpenAI/Gemini/Claude, routing theo task, retry/fallback, đo token & chi phí, ngân sách, prompt template có version, lọc output | Logic nghiệp vụ | Usage, Kernel |
 | **Notifications** | Email (SMTP/Brevo), thông báo trong app, digest | | Identity |
@@ -259,8 +259,17 @@ Quy tắc cứng:
 - **Pipeline** (chi tiết `AI-WRITER-PIPELINE.md`): ResearchWorkflow → (duyệt brief) → OutlineWorkflow → (duyệt dàn ý) → DraftWorkflow (write → claims → factcheck → revise ≤ N vòng → quality) → biên tập → RecheckWorkflow → ApprovalGate. Trạng thái do `ArticleStateMachine` quản lý.
 - **AI**: 11 task key (`writer.*`, `content.draft`, `verification.claims`) đăng ký trong AI Gateway; Super Admin chọn model. Không model ID trong code.
 - **Bằng chứng**: chỉ nguồn do hệ thống tải (`SourceRetriever` dùng `Research\Contracts\PublicWebFetcher`), đoạn trích phải khớp nguyên văn; verdict quyết định bằng quy tắc (`VerdictRules`, `FACT-CHECK-POLICY.md`).
-- **Ranh giới**: Writer đọc dữ liệu Phase 4 qua `Research\Contracts\PlannerDirectory`, dùng engine `Workflows`, gọi AI qua `AiGateway`. Không đăng WordPress (phase sau).
+- **Ranh giới**: Writer đọc dữ liệu Phase 4 qua `Research\Contracts\PlannerDirectory`, dùng engine `Workflows`, gọi AI qua `AiGateway`. Không đăng WordPress (do Publishing Phase 6 đảm nhận qua `Writer\Contracts\ArticleCatalog`).
 - **Bảo mật nội dung**: HTML sanitize ở backend (`HtmlSanitizer`) và frontend (`sanitizeArticleHtml`, chỉ render qua `SafeHtml`).
+
+## 8d. Media, SEO & WordPress Publisher (Phase 6 — `app/Modules/{Media,Seo,Publishing}`, xem `PHASE6-IMPLEMENTATION.md`)
+
+- **Media** (`MEDIA-ENGINE.md`): ảnh AI qua AI Gateway task `media.image`, chỉ model có capability `image_generation`; xử lý ảnh GD (kiểm tra MIME thật, re-encode, WebP/AVIF, dHash); lưu trữ riêng tư, chỉ phục vụ qua URL ký có hạn; infographic xác định từ dữ liệu có nguồn; `PlacementEngine` không cho ảnh AI vào ô ảnh sản phẩm.
+- **Seo** (`SEO-AUDIT-RULES.md`): `PublishableRenderer` dựng đúng HTML sẽ đăng; `SeoRules` 19 quy tắc PASS/WARNING/ERROR/BLOCKED; metadata xác định (không AI); schema tắt mặc định và không trùng Yoast/Rank Math; link nội bộ chỉ tới URL thật.
+- **Publishing** (`WORDPRESS-PUBLISHER.md`, `PUBLISHING-RECOVERY.md`): state machine 9 trạng thái, 8 cổng chạy lại ngay trước khi gọi connector, mode A–E (mặc định bản nháp), claim nguyên tử, mapping bài ⇄ post với khóa idempotency, đối soát sau timeout, phát hiện xung đột hai lớp (Cloud + plugin 409) — sửa P0 Phase 2 (cập nhật ghi đè sửa tay).
+- **Ranh giới** (kiểm bằng `ArchitectureTest`): ba module không chạm Domain/Actions của module khác; chỉ dùng `Writer\Contracts\ArticleCatalog`, `Sites\Contracts\{SiteDirectory,WordPressGateway}`, `Research\Contracts\{PlannerDirectory,PublicWebFetcher}`, `Seo\Contracts\SeoGate`, `Media\Contracts\MediaLibrary` cùng vài tiện ích thuần (`Research\Support\Text`, `Writer\Support\{ArticleDocument,HtmlSanitizer}`). Chỉ Publishing gọi WordPress để đăng; Seo không phụ thuộc Publishing.
+- **Scheduler**: `sitex:publishing:dispatch` mỗi phút (lịch đến hạn, lỡ lịch, job kẹt), `sitex:publishing:auto` mỗi giờ.
+- **Queue**: `media` (xử lý ảnh, ảnh AI, đồng bộ Media Library), `default` (đăng bài, kiểm tra link, kiểm tra đồng bộ).
 
 ## 9. Dịch vụ dữ liệu bên ngoài (adapter, cấu hình qua .env)
 
@@ -357,3 +366,5 @@ Bất biến thời gian: timeout job (300 s) < `retry_after` của Redis (330 s
 | ADR-015 | API key AI có thể lưu trong DB, mã hóa bằng APP_KEY (cast `encrypted`), ghi-một-chiều | Super Admin cần thêm provider tùy chỉnh và đổi khóa không cần SSH. Thay quy tắc "chỉ `.env`" của Phase 3. Khóa không bao giờ trả qua API (chỉ `has_api_key`, 4 ký tự cuối, nguồn), không vào audit/log. Đánh đổi: lộ APP_KEY + DB thì lộ khóa, nên xoay APP_KEY phải nhập lại khóa |
 | ADR-016 | Đổi thứ tự phase lần 2: Phase 4 = SEO Planner (Topic Discovery), gói/thanh toán lùi sang sau | Theo yêu cầu Phase 4 của chủ dự án. Quota/ngân sách riêng cho research (`research_limits`, `research_usage_counters`) dùng cùng cơ chế reservation nguyên tử, sẽ gộp vào hệ thống gói khi làm billing |
 | ADR-017 | Ý tưởng chủ đề sinh từ bằng chứng bằng quy tắc; AI chỉ mở rộng gợi ý từ khóa và diễn đạt tiêu đề, có kiểm tra lạc đề | Đảm bảo hệ thống hữu ích cả khi AI lỗi/tắt, mọi ý tưởng truy được nguồn, và không có số liệu do AI bịa. Đánh đổi: tiêu đề theo quy tắc kém tự nhiên hơn |
+| ADR-018 | Phase 6 = Media + SEO Audit + WordPress Publisher (gộp "Media & SEO" và "Duyệt & xuất bản" của kế hoạch ban đầu) | Theo yêu cầu Phase 6 của chủ dự án; cần sửa P0 Phase 2 (ghi đè sửa tay) trước khi cho phép cập nhật bài. Phase 7–9 do chủ dự án xác định lại |
+| ADR-019 | Không bao giờ tự ghi đè bài đã bị sửa trên WordPress: Cloud kiểm tra state có ký trước khi ghi, plugin kiểm tra lại nguyên tử (409), ghi đè chỉ sau quyết định của người kèm `expected.content_hash` | Kiểm tra một phía có race (sửa giữa lúc kiểm tra và lúc ghi). Đánh đổi: bài ghi trước plugin 1.1.0 chỉ so được theo thời điểm sửa |

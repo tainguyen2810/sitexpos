@@ -301,29 +301,43 @@ Một migration `app/Modules/Writer/Database/Migrations/2026_11_10_000100_create
 
 Rollback: `php artisan migrate:rollback --step=1` (xóa toàn bộ dữ liệu writer). Dữ liệu DEMO: `WriterDemoSeeder` (cờ `is_demo`, tiêu đề `[DEMO]`, chặn ở production).
 
-### 3.11 Media
+### 3.11–3.12 Media, Seo & Publishing ✦ Phase 6 (đã triển khai — thay thiết kế dự kiến trước đây)
 
-**media_assets**
-| Cột | Ghi chú |
+Migration theo module: `Media/Database/Migrations/2026_11_11_000100_create_media_tables.php`, `Seo/.../2026_11_11_000200_create_seo_tables.php`, `Publishing/.../2026_11_11_000300_create_publishing_tables.php`. Mọi bảng tenant có `workspace_id` + `BelongsToWorkspace`, khóa ngoại tổng hợp `(workspace_id, id)`. Tiền: micro-USD số nguyên. Thời gian UTC.
+
+**Media**
+| Bảng | Cột chính | Ràng buộc |
+|---|---|---|
+| `media_sources` | site_id, type (`wordpress`/`woocommerce`/`upload`/`ai`/`stock`/`infographic`), enabled, status, config, items_count, last_synced_at | UNIQUE (site_id, type) |
+| `media_assets` | site_id?, source_type, source_url, source_ref, original_filename, mime, width, height, bytes, sha256, dhash, duplicate_of_id, storage_path, license (`owned`/`customer_provided`/`licensed_stock`/`wordpress_site`/`ai_generated`/`unknown`), attribution, **is_ai_generated**, ai_provider, ai_model, ai_prompt, generation_job_id, title, alt_text, caption, metadata, status (`processing`/`ready`/`failed`/`rejected`), error_code, wp_media_id, usage_count, is_demo | UNIQUE (site_id, source_type, source_ref) |
+| `media_versions` | media_asset_id, kind (`original`/`optimized`/`webp`/`avif`/`thumbnail`/`crop`), mime, width, height, bytes, sha256, storage_path, params | UNIQUE (media_asset_id, kind) |
+| `image_generation_jobs` | site_id, article_id, parent_job_id, version, image_type, section_key, aspect_ratio, style, quality, image_count, brand_colors, prompt_template, prompt, prompt_edited, status (`queued`/`running`/`succeeded`/`failed`/`blocked`/`canceled`), budget_cap_micro_usd, estimated/cost_micro_usd, provider, model, ai_request_id, **call_key** UNIQUE, result_asset_ids, job_run_id | |
+| `image_placements` | article_id, media_asset_id?, slot (`featured`/`intro`/`section`/`comparison`/`infographic`/`product`), section_key, section_heading, position, alt_text, caption, status (`suggested`/`accepted`/`rejected`), reason, origin (`engine`/`user`) | |
+| `media_limits` (nền tảng) | scope_key (`global` / `ws:<id>`) UNIQUE, max_storage_bytes, max_uploads_per_day, max_ai_images_per_day, max_ai_cost_per_job_micro_usd, ai_images_enabled | |
+
+**Seo**
+| Bảng | Cột chính |
 |---|---|
-| id, workspace_id | |
-| kind | `stock_photo`, `customer_upload`, `ai_image`, `infographic` |
-| is_ai_generated | bool, bắt buộc true với `ai_image`/`infographic` do AI |
-| represents_real_product | bool — **không bao giờ** true với ảnh AI (ràng buộc trong Action + CHECK) |
-| storage_disk, path, mime, width, height, bytes, sha256 | |
-| source_provider, source_url, license, attribution | với ảnh stock |
-| alt_text, caption | |
-| moderation_status | `pending`, `approved`, `rejected` |
+| `seo_metadata` | article_id, site_id, seo_title, meta_description, slug, canonical_url, focus_keyword, secondary_keywords, og_title, og_description, social_image_asset_id, robots_noindex, robots_nofollow, schema_types, **manual_fields**, source, **lock_version** |
+| `seo_audit_runs` | article_id, site_id, article_version_id, content_hash, **rules_version**, status, score, pass/warning/error/blocked_count, links_checked, summary |
+| `seo_audit_issues` | seo_audit_run_id, rule, category, severity, weight, points, message, explanation, fix, context |
+| `seo_link_suggestions` | article_id, site_id, target_wp_post_id, target_post_type, target_url, target_title, anchor_text, section_key, paragraph_index, relevance, signals, reason, status, verified_at — UNIQUE (article_id, target_wp_post_id) |
+| `schema_configs` | site_id, injection_enabled (mặc định false), enabled_types, organization_name, logo_url, breadcrumbs_supported, allow_canonical_override, allow_robots_override |
 
-**article_media**: id, workspace_id, article_id, media_asset_id, role (`featured`, `inline`), position, wp_media_id null.
+**Publishing**
+| Bảng | Cột chính | Ràng buộc |
+|---|---|---|
+| `publishing_policies` | site_id, default_mode, auto_publish_enabled(+_by, _at), require_seo_pass, require_media_ready, allow_update_published, max_posts_per_day, max_posts_per_campaign_per_day, min_minutes_between_posts, window_start/end_hour, window_days, max_schedule_days_ahead, max_attempts, missed_grace_minutes | |
+| `publishing_jobs` | site_id, article_id, campaign_id, publishing_batch_id, mapping_id, mode, status, **active_key**, article_version_id, **content_hash**, rendered_html, payload_meta, gate_results, scheduled_at, wp_target_status, attempts, max_attempts, next_attempt_at, last_error_*, blocked_reason, idempotency_key, approval_source, approved_by/at, published_at, **locked_until** | UNIQUE active_key (một job hoạt động / bài / site); UNIQUE (workspace_id, idempotency_key) |
+| `publishing_attempts` | publishing_job_id, attempt_no, operation, outcome, error_code, http_status, retryable, payload_hash, wp_post_id, duration_ms, details | UNIQUE (publishing_job_id, attempt_no) |
+| `wordpress_post_mappings` | site_id, article_id, external_content_id, **idempotency_key**, is_current, wp_post_id, wp_status, url, slug, site_host, last_published_version_id, last_payload_hash, **last_synced_hash**, **last_seo_hash**, last_modified_gmt, last_revision_id, last_published_at, last_checked_at | UNIQUE (site_id, external_content_id); UNIQUE (site_id, idempotency_key) |
+| `wordpress_sync_states` | mapping_id, state (`in_sync`/`manual_edit`/`slug_changed`/`seo_modified`/`domain_changed`/`missing`/`unreachable`), wp_status, wp_slug, wp_content_hash, wp_seo_hash, wp_modified_gmt, wp_revision_id, details, checked_at | |
+| `publishing_conflicts` | site_id, article_id, mapping_id, publishing_job_id, types, status (`open`/`resolved`), resolution, wp_state, expected_state, note, resolved_by/at | |
+| `publishing_schedules` | site_id, publishing_job_id, scheduled_at (UTC), timezone, local_time, status (`pending`/`dispatched`/`done`/`missed`/`canceled`), dispatched_at, note | |
+| `publishing_batches` | site_id, mode, status (`running`/`paused`/`completed`/`canceled`), start_at, interval_minutes, total, idempotency_key | UNIQUE (workspace_id, idempotency_key) |
+| `publishing_limits` (nền tảng) | scope_key UNIQUE, max_publishes_per_day, max_bulk_items, max_schedule_days_ahead, auto_publish_allowed, publishing_enabled | |
 
-### 3.12 Seo & Publishing
-
-**internal_link_suggestions**: id, workspace_id, article_id, target_post_index_id, anchor_text, status (`suggested`,`applied`,`rejected`).
-
-**publish_jobs**: id, workspace_id, site_id, article_id, content_version_id, action (`create`, `update`, `unpublish`), wp_status (`draft`, `publish`, `future`), run_at, status (`queued`, `running`, `succeeded`, `failed`, `canceled`), attempts, last_error, wp_post_id, idempotency_key UNIQUE.
-
-**approval_requests**: id, workspace_id, article_id, content_version_id, requested_by, decided_by, decision (`approved`, `changes_requested`, `rejected`), comment, decided_at.
+Dữ liệu demo: `Phase6DemoSeeder` (gọi từ `DemoSeeder`, từ chối chạy ở production; cờ `is_demo`). Rollback: `php artisan migrate:rollback --step=3` (xóa dữ liệu Phase 6; file ảnh trong `storage/app/media` cần xóa tay).
 
 ### 3.13 Analytics
 
