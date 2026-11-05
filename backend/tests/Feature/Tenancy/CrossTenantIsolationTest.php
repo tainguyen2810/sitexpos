@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
@@ -68,6 +69,7 @@ function twoTenants(): array
     $wpB = (new FakeWordPress)->install();
     $siteB = connectedSite($b['workspace'], $wpB, 'Site B');
     $researchB = researchFixture($b['workspace'], $siteB);
+    $writerB = writerFixture($b['workspace'], $siteB);
 
     return [
         'a' => $a,
@@ -78,7 +80,7 @@ function twoTenants(): array
             'jobRun' => $jobB->id,
             'site' => $siteB->id,
             'workflowRun' => $runB->id,
-        ] + $researchB,
+        ] + $researchB + $writerB,
         'siteB' => $siteB,
         'wpB' => $wpB,
     ];
@@ -93,6 +95,10 @@ function fillUri(string $uri, string $workspaceId, array $ids): string
 
     return '/'.$uri;
 }
+
+// The enumeration sends more requests than the per-user API limit allows
+// in one minute; throttling is covered by its own tests.
+beforeEach(fn () => $this->withoutMiddleware(ThrottleRequests::class));
 
 it('covers at least the known tenant routes', function () {
     expect(count(tenantRoutes()))->toBeGreaterThanOrEqual(19);
@@ -118,7 +124,7 @@ it('returns 404 when tenant A uses its own workspace with tenant B child ids', f
     ['a' => $a, 'b' => $b, 'ids' => $ids] = twoTenants();
 
     foreach (tenantRoutes() as [$method, $uri]) {
-        if (! preg_match('/\{(member|invitation|jobRun|site|workflowRun|campaign|notification)\}/', $uri)) {
+        if (! preg_match('/\{(member|invitation|jobRun|site|workflowRun|campaign|notification|article|preset|batch)\}/', $uri)) {
             continue;
         }
         $url = fillUri($uri, $a['workspace']->id, $ids);

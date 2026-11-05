@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Sleep;
 use SiteXPost\Kernel\Security\SsrfGuard;
 use SiteXPost\Kernel\Security\SsrfViolation;
+use SiteXPost\Modules\Research\Contracts\PublicWebFetcher;
 use SiteXPost\Modules\Research\Support\ResearchSettings;
 
 /**
@@ -20,7 +21,7 @@ use SiteXPost\Modules\Research\Support\ResearchSettings;
  * - per-host rate limit + crawl delay, connect/total timeouts, size cap;
  * - only text/html and XML bodies are accepted; no cookies, no auth.
  */
-class PublicFetcher
+class PublicFetcher implements PublicWebFetcher
 {
     public function __construct(
         private readonly SsrfGuard $guard,

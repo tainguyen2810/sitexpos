@@ -23,3 +23,7 @@ Schedule::command('horizon:snapshot')->everyFiveMinutes();
 Schedule::command('sitex:research:schedule')->everyFifteenMinutes()->withoutOverlapping();
 Schedule::command('sitex:research:sync')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('sitex:research:prune')->daily();
+
+// Phase 5 — AI Writer & Fact-Check
+Schedule::command('sitex:writer:sync')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('sitex:writer:autonomous')->dailyAt('02:30')->withoutOverlapping();

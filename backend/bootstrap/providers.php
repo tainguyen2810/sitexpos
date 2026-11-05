@@ -9,6 +9,7 @@ use SiteXPost\Modules\Research\ResearchServiceProvider;
 use SiteXPost\Modules\Sites\SitesServiceProvider;
 use SiteXPost\Modules\Workflows\WorkflowsServiceProvider;
 use SiteXPost\Modules\Workspace\WorkspaceServiceProvider;
+use SiteXPost\Modules\Writer\WriterServiceProvider;
 
 return [
     KernelServiceProvider::class,
@@ -20,4 +21,5 @@ return [
     WorkflowsServiceProvider::class,
     AiGatewayServiceProvider::class,
     ResearchServiceProvider::class,
+    WriterServiceProvider::class,
 ];

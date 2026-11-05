@@ -338,3 +338,36 @@ function researchFixture(Workspace $workspace, Site $site, string $label = 'B'):
             'cluster' => $cluster->id, 'gap' => $gap->id, 'competitor' => $competitor->id, 'calendarItem' => $item->id, 'notification' => $note->id];
     });
 }
+
+/**
+ * Minimal Phase 5 writer rows (article + version + claim + revision +
+ * preset + batch) for tenant-isolation tests.
+ *
+ * @return array{article: string, version: string, claim: string, revision: string, preset: string, batch: string}
+ */
+function writerFixture(Workspace $workspace, Site $site, string $label = 'B'): array
+{
+    return app(TenantContext::class)->runAs($workspace, null, function () use ($site, $label): array {
+        $m = static function (string $class, array $attrs) {
+            $row = new $class;
+            $row->forceFill($attrs)->save();
+
+            return $row;
+        };
+        $W = 'SiteXPost\\Modules\\Writer\\Domain\\';
+        $preset = $m($W.'WritingPreset', ['name' => 'Preset '.$label, 'tone' => 'Secret tone '.$label]);
+        $batch = $m($W.'WritingBatch', ['site_id' => $site->id, 'status' => 'paused', 'total' => 0, 'per_article_budget_micro_usd' => 100000]);
+        $article = $m($W.'Article', ['site_id' => $site->id, 'title' => 'Secret article '.$label, 'status' => 'NEEDS_HUMAN_REVIEW', 'primary_keyword' => 'secret '.$label,
+            'search_intent' => 'informational', 'content_type' => 'blog_article', 'settings' => [], 'budget_limit_micro_usd' => 100000, 'fingerprint' => sha1('a'.$label)]);
+        $html = '<h1>Secret article '.$label.'</h1><p>Secret body '.$label.'.</p>';
+        $version = $m($W.'ArticleVersion', ['article_id' => $article->id, 'number' => 1, 'source' => 'human', 'title' => 'Secret article '.$label,
+            'content_html' => $html, 'content_hash' => hash('sha256', $html), 'section_hashes' => [['key' => 'intro', 'heading' => '', 'hash' => 'x', 'claims_checked' => true]], 'word_count' => 4]);
+        $article->forceFill(['current_version_id' => $version->id])->save();
+        $claim = $m($W.'ArticleClaim', ['article_id' => $article->id, 'article_version_id' => $version->id, 'section_key' => 'intro', 'claim_text' => 'Secret claim '.$label,
+            'claim_hash' => sha1('c'.$label), 'category' => 'other', 'risk_level' => 'LOW', 'origin' => 'rule', 'extracted_at' => now()]);
+        $revision = $m($W.'ArticleRevision', ['article_id' => $article->id, 'kind' => 'editor', 'action' => 'rewrite', 'status' => 'proposed', 'section_key' => 'intro',
+            'from_version_id' => $version->id, 'proposed_html' => '<p>Secret proposal '.$label.'</p>']);
+
+        return ['article' => $article->id, 'version' => $version->id, 'claim' => $claim->id, 'revision' => $revision->id, 'preset' => $preset->id, 'batch' => $batch->id];
+    });
+}

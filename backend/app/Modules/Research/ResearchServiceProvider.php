@@ -11,8 +11,12 @@ use SiteXPost\Kernel\Modules\ModuleServiceProvider;
 use SiteXPost\Modules\Research\Console\DispatchResearchSchedules;
 use SiteXPost\Modules\Research\Console\PruneResearchData;
 use SiteXPost\Modules\Research\Console\SyncResearchRuns;
+use SiteXPost\Modules\Research\Contracts\PlannerDirectory;
+use SiteXPost\Modules\Research\Contracts\PublicWebFetcher;
+use SiteXPost\Modules\Research\Crawler\PublicFetcher;
 use SiteXPost\Modules\Research\Domain\SeoCampaign;
 use SiteXPost\Modules\Research\Policies\SeoCampaignPolicy;
+use SiteXPost\Modules\Research\Support\PlannerDirectoryService;
 use SiteXPost\Modules\Research\Support\ResearchSettings;
 use SiteXPost\Modules\Research\Workflows\ResearchDiscoveryWorkflow;
 use SiteXPost\Modules\Workflows\Engine\WorkflowRegistry;
@@ -29,6 +33,9 @@ final class ResearchServiceProvider extends ModuleServiceProvider
     public function register(): void
     {
         $this->app->scoped(ResearchSettings::class);
+        // Read-only facades for other modules (Phase 5 writer).
+        $this->app->bind(PlannerDirectory::class, PlannerDirectoryService::class);
+        $this->app->bind(PublicWebFetcher::class, PublicFetcher::class);
     }
 
     protected function bootModule(): void

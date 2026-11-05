@@ -117,3 +117,17 @@ arch('only the AI Gateway talks to AI provider adapters')
 arch('strict types everywhere in app')
     ->expect('SiteXPost')
     ->toUseStrictTypes();
+
+arch('AI Writer tenant models use the fail-closed workspace scope')
+    ->expect('SiteXPost\\Modules\\Writer\\Domain')
+    ->classes()
+    ->toUseTrait(BelongsToWorkspace::class)
+    ->ignoring('SiteXPost\\Modules\\Writer\\Domain\\WriterSetting');
+
+arch('AI Writer requests extend the base ApiRequest')
+    ->expect('SiteXPost\\Modules\\Writer\\Http\\Requests')
+    ->toExtend(ApiRequest::class);
+
+arch('AI Writer reads planner / WordPress data only through contracts and never publishes')
+    ->expect('SiteXPost\\Modules\\Writer')
+    ->not->toUse(['SiteXPost\\Modules\\Research\\Domain', 'SiteXPost\\Modules\\Sites\\Domain', 'SiteXPost\\Modules\\Sites\\Connector', 'SiteXPost\\Modules\\AiGateway\\Providers']);
