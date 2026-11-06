@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use SiteXPost\Modules\Sites\Http\Controllers\ConnectorController;
+use SiteXPost\Modules\Sites\Http\Controllers\PluginDownloadController;
 use SiteXPost\Modules\Sites\Http\Controllers\SiteActionController;
 use SiteXPost\Modules\Sites\Http\Controllers\SiteController;
 use SiteXPost\Modules\Sites\Http\Controllers\SiteDataController;
@@ -31,6 +32,11 @@ Route::prefix('api/v1/workspaces/{workspace}')
         Route::get('sites/{site}/logs', [SiteDataController::class, 'logs'])->name('sites.logs');
         Route::get('sites/{site}/health-checks', [SiteDataController::class, 'healthChecks'])->name('sites.health-checks');
     });
+
+// ---- WordPress plugin download (public: the zip holds no secret) ----
+Route::get('api/v1/plugin/sitex-post.zip', PluginDownloadController::class)
+    ->middleware('throttle:plugin-download')
+    ->name('plugin.download');
 
 // ---- Connector API (called by the WordPress plugin; no cookies, no CSRF) ----
 Route::prefix('connector/v1')

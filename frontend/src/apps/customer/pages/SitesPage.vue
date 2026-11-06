@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { siteApi, siteStatusTone, type Site } from '@/shared/api/sites'
+import { pluginDownloadUrl, siteApi, siteStatusTone, type Site } from '@/shared/api/sites'
 import { useAsync } from '@/shared/composables/useAsync'
 import { useApiForm } from '@/shared/composables/useApiForm'
 import { formatDateTime } from '@/shared/utils/format'
@@ -62,7 +62,16 @@ function closeAdd() {
         <h1 class="text-2xl font-bold">{{ $t('sites.title') }}</h1>
         <p class="mt-1 text-sm text-ink-muted">{{ $t('sites.subtitle') }}</p>
       </div>
-      <AppButton v-if="canManage" data-testid="add-site" @click="openAdd">{{ $t('sites.add') }}</AppButton>
+      <div class="flex flex-wrap items-center gap-2">
+        <a
+          :href="pluginDownloadUrl()"
+          download
+          :title="$t('sites.downloadPluginHint')"
+          class="inline-flex items-center rounded-lg border border-line bg-surface px-3 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
+          data-testid="download-plugin"
+        >{{ $t('sites.downloadPlugin') }}</a>
+        <AppButton v-if="canManage" data-testid="add-site" @click="openAdd">{{ $t('sites.add') }}</AppButton>
+      </div>
     </div>
 
     <AppCard :padded="false">

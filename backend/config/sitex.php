@@ -22,6 +22,13 @@ return [
     ],
 
     // Phase 2 — WordPress connector (SECURITY.md §6)
+    // WordPress plugin source served by GET /api/v1/plugin/sitex-post.zip, with the
+    // default Cloud URL rewritten to connector.public_url.
+    'plugin' => [
+        'source_path' => env('SITEX_PLUGIN_SOURCE_PATH', base_path('../wordpress-plugin/sitex-post')),
+        'downloads_per_minute_ip' => (int) env('SITEX_PLUGIN_DOWNLOADS_PER_MINUTE_IP', 20),
+    ],
+
     'connector' => [
         // Public base URL of this API as seen by WordPress sites (no trailing slash).
         'public_url' => rtrim((string) env('SITEX_CONNECTOR_PUBLIC_URL', env('APP_URL', 'http://localhost:8000')), '/'),

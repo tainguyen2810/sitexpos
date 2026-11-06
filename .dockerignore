@@ -16,7 +16,10 @@ backend/storage/framework/testing
 backend/storage/logs/*
 backend/bootstrap/cache/*.php
 frontend/dist
-wordpress-plugin
+# Only the plugin source is shipped (served as a download by the API).
+wordpress-plugin/dist
+wordpress-plugin/scripts
+wordpress-plugin/tests
 docs
 scripts
 deploy

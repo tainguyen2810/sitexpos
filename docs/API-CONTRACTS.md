@@ -478,6 +478,8 @@ Yêu cầu `platform_role` + 2FA đã xác nhận. User thường nhận **404**
 
 ## 4. Connector API trên Cloud (`/connector/v1`) — plugin gọi (Phase 2) ✦
 
+**Tải plugin (công khai, sau v1.0.0):** `GET /api/v1/plugin/sitex-post.zip`, không cần đăng nhập vì plugin không chứa bí mật nào; giới hạn `SITEX_PLUGIN_DOWNLOADS_PER_MINUTE_IP` (mặc định 20/phút/IP). File zip được dựng từ `wordpress-plugin/sitex-post`, trong đó giá trị mặc định của `SITEX_POST_CLOUD_URL` được thay bằng `sitex.connector.public_url` (chỉ chấp nhận URL http(s) thuần). `wp-config.php` vẫn ghi đè được. Việc ghép nối vẫn cần mã dùng một lần.
+
 | Method | Path | Xác thực | Mô tả |
 |---|---|---|---|
 | POST | `/pair/preview` | Mã ghép nối | Xem trước: workspace, site, URL, danh sách quyền. Không cấp gì |

@@ -156,3 +156,4 @@ docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 - Các quy tắc của trình cài đặt giữ nguyên (ADR-025): mã cài đặt chỉ lấy được qua SSH, không ghi đè database có dữ liệu, khóa vĩnh viễn sau khi cài.
 - Web vẫn không tải hay ghi đè mã nguồn (ADR-026): nâng cấp = người vận hành đổi tag image.
 - Cả 3 tên miền luôn chặn máy tìm kiếm: header `X-Robots-Tag: noindex, nofollow` và `robots.txt` → `Disallow: /` (`docker/nginx-noindex.conf`).
+- Image chứa mã nguồn plugin WordPress (`/var/www/html/wordpress-plugin/sitex-post`). API phục vụ file zip đã cấu hình sẵn URL API của máy chủ tại `/api/v1/plugin/sitex-post.zip` (nút "Tải plugin WordPress" trong app khách).

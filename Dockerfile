@@ -40,6 +40,8 @@ FROM base AS runtime
 WORKDIR /var/www/html/backend
 COPY --from=vendor /var/www/html/backend /var/www/html/backend
 COPY --from=frontend /src/frontend/dist /var/www/html/frontend/dist
+# Plugin source: the API serves it as a zip pre-configured with this Cloud's URL.
+COPY wordpress-plugin/sitex-post /var/www/html/wordpress-plugin/sitex-post
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/nginx-spa.conf /etc/nginx/sitex-spa.conf
 COPY docker/nginx-noindex.conf /etc/nginx/sitex-noindex.conf

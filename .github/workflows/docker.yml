@@ -14,6 +14,8 @@ on:
       - backend/composer.lock
       - frontend/package-lock.json
       - .github/workflows/docker.yml
+      - wordpress-plugin/sitex-post/**
+      - backend/app/Modules/Sites/**
   push:
     tags: ['v*']
   workflow_dispatch:

@@ -65,4 +65,9 @@ $DC logs app | grep -q 'Database is up to date' || fail "pre-flight on restart"
 curl -fsS "$API/up" > /dev/null || fail "site down after restart"
 $DC exec -T app sh -c '[ ! -f /var/www/html/backend/storage/framework/down ]' || fail "maintenance mode left on"
 
+step "WordPress plugin download"
+curl -fsS -o /tmp/sitex-plugin.zip "$API/api/v1/plugin/sitex-post.zip" || fail "plugin download"
+unzip -p /tmp/sitex-plugin.zip sitex-post/sitex-post.php | grep -q "define( 'SITEX_POST_CLOUD_URL', 'http://localhost:8080' );" || fail "plugin Cloud URL"
+unzip -l /tmp/sitex-plugin.zip | grep -q 'sitex-post/includes/Autoloader.php' || fail "plugin zip content"
+
 echo "Docker stack E2E: OK"
