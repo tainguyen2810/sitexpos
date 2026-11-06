@@ -168,8 +168,9 @@ it('never oversells a budget under concurrent reservations (MySQL, forked proces
             ->and(AiBudgetCounter::query()->sole()->reserved_micro_usd)->toBe(9_000)
             ->and(AiBudgetReservation::query()->count())->toBe(3);
     } finally {
-        // RefreshDatabase cannot roll back committed rows: clean up.
-        foreach (['ai_budget_reservations', 'ai_budget_counters', 'ai_budgets', 'audit_logs', 'workspace_members', 'workspaces', 'users'] as $t) {
+        // RefreshDatabase cannot roll back committed rows: clean up, including the
+        // AI registry seeded in beforeEach (later tests expect no routes by default).
+        foreach (['ai_budget_reservations', 'ai_budget_counters', 'ai_budgets', 'ai_requests', 'ai_task_routes', 'ai_model_prices', 'ai_models', 'ai_providers', 'audit_logs', 'workspace_members', 'workspaces', 'users'] as $t) {
             DB::table($t)->delete();
         }
         DB::beginTransaction();
