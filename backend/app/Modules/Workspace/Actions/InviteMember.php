@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use SiteXPost\Kernel\Http\ApiException;
 use SiteXPost\Modules\Audit\Audit;
+use SiteXPost\Modules\Billing\Contracts\Entitlements;
 use SiteXPost\Modules\Identity\Domain\User;
 use SiteXPost\Modules\Workspace\Domain\Workspace;
 use SiteXPost\Modules\Workspace\Domain\WorkspaceInvitation;
@@ -27,6 +28,11 @@ final class InviteMember
         if ($alreadyMember) {
             throw ApiException::conflict('already_member', __('api.already_member'));
         }
+
+        // Phase 7: plan member limit — active members + pending invitations.
+        $seats = $workspace->members()->count() + $workspace->invitations()->whereNull('accepted_at')->whereNull('revoked_at')
+            ->where('email', '!=', $email)->where('expires_at', '>', now())->count();
+        app(Entitlements::class)->assertWithin($workspace->id, 'members', $seats);
 
         $token = Str::random(64);
 

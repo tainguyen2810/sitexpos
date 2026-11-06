@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace SiteXPost\Modules\Writer\Console;
 
 use Illuminate\Console\Command;
+use SiteXPost\Kernel\Http\ApiException;
 use SiteXPost\Kernel\Tenancy\TenantContext;
+use SiteXPost\Modules\Billing\Contracts\Entitlements;
 use SiteXPost\Modules\Research\Contracts\PlannerDirectory;
 use SiteXPost\Modules\Workspace\Domain\Workspace;
 use SiteXPost\Modules\Writer\Actions\Batches;
@@ -38,6 +40,11 @@ final class RunAutonomousWriter extends Command
                 continue;
             }
             $context->runAs($workspace, null, function () use ($settings, $workspace, &$created): void {
+                try {
+                    app(Entitlements::class)->assertActive($workspace->id, 'automation'); // Phase 7: paid automation
+                } catch (ApiException) {
+                    return;
+                }
                 $planner = app(PlannerDirectory::class);
                 $perDay = $settings->int('autonomous_articles_per_day', $workspace->id);
                 $today = WritingBatch::query()->where('source', 'autonomous')->where('created_at', '>=', now()->startOfDay())->sum('total');

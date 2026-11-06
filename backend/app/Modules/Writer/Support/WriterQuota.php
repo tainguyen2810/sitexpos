@@ -8,6 +8,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use SiteXPost\Kernel\Http\ApiException;
 use SiteXPost\Kernel\Tenancy\TenantContext;
+use SiteXPost\Modules\Billing\Contracts\Entitlements;
 use SiteXPost\Modules\Writer\Domain\WriterUsageCounter;
 
 /**
@@ -21,7 +22,7 @@ final class WriterQuota
     public function reserve(int $count): void
     {
         $ws = $this->context->workspaceId();
-        $limit = $this->settings->int('max_articles_per_month', $ws);
+        $limit = $this->limit($ws, true);
         $period = now()->format('Y-m');
         DB::transaction(function () use ($count, $limit, $period): void {
             $row = WriterUsageCounter::query()->where('period', $period)->lockForUpdate()->first();
@@ -51,9 +52,22 @@ final class WriterQuota
     public function status(): array
     {
         $ws = $this->context->workspaceId();
-        $limit = $this->settings->int('max_articles_per_month', $ws);
+        $limit = $this->limit($ws, false);
         $used = (int) WriterUsageCounter::query()->where('period', now()->format('Y-m'))->value('articles_reserved');
 
         return ['period' => now()->format('Y-m'), 'used' => $used, 'limit' => $limit, 'remaining' => max(0, $limit - $used)];
+    }
+
+    /**
+     * Phase 7: plan article limit when billing applies, else the interim setting.
+     */
+    private function limit(string $ws, bool $assertActive): int
+    {
+        $entitlements = app(Entitlements::class);
+        if ($assertActive) {
+            $entitlements->assertActive($ws, 'ai_writer');
+        }
+
+        return $entitlements->limit($ws, 'articles') ?? $this->settings->int('max_articles_per_month', $ws);
     }
 }

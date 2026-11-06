@@ -26,7 +26,7 @@ const nav = computed<NavItem[]>(() => {
     { label: t('nav.mediaAdmin'), to: '/media', icon: 'image', permission: 'platform.ai.view_costs' },
     { label: t('nav.publishingAdmin'), to: '/publishing', icon: 'send', permission: 'platform.jobs.manage' },
     { label: t('nav.audit'), to: '/audit', icon: 'list' },
-    { label: t('nav.billing'), icon: 'card', soon: true },
+    { label: t('nav.billing'), to: '/billing/plans', icon: 'card', permission: 'platform.billing.manage' },
   ]
   return items.filter((i) => (!i.permission || perms.includes(i.permission)) && (!i.anyOf || i.anyOf.some((p) => perms.includes(p))))
 })

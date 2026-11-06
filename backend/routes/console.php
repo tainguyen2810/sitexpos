@@ -31,3 +31,9 @@ Schedule::command('sitex:writer:autonomous')->dailyAt('02:30')->withoutOverlappi
 // Phase 6 — Media, SEO & WordPress Publisher
 Schedule::command('sitex:publishing:dispatch')->everyMinute()->withoutOverlapping();
 Schedule::command('sitex:publishing:auto')->hourly()->withoutOverlapping();
+
+// Phase 7 — Billing, subscriptions, AI credits
+Schedule::command('sitex:billing:lifecycle')->everyFifteenMinutes()->withoutOverlapping();
+Schedule::command('sitex:billing:expire-credits')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('sitex:billing:aggregate-costs --days=2')->hourly()->withoutOverlapping();
+Schedule::command('sitex:billing:verify-ledger')->dailyAt('03:15');

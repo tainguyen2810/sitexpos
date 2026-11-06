@@ -7,6 +7,9 @@ use Illuminate\Support\Facades\Queue;
 use SiteXPost\Kernel\Support\JobRun;
 use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\Audit\Audit;
+use SiteXPost\Modules\Billing\Accounting\Documents;
+use SiteXPost\Modules\Billing\Payments\PaymentOrders;
+use SiteXPost\Modules\Billing\Support\InTenant;
 use SiteXPost\Modules\Identity\Domain\User;
 use SiteXPost\Modules\Sites\Domain\Site;
 use SiteXPost\Modules\Workflows\Domain\WorkflowRun;
@@ -72,6 +75,12 @@ function twoTenants(): array
     $writerB = writerFixture($b['workspace'], $siteB);
     $phase6B = phase6Fixture($b['workspace'], $siteB, $writerB);
 
+    // Phase 7: a payment order + internal receipt owned by tenant B.
+    billingPlan('ct-pro', 100_000);
+    billingProvider();
+    $orderB = app(PaymentOrders::class)->forSubscription($b['workspace']->id, 'ct-pro', 'month', null, null, $b['owner']->id);
+    $docB = InTenant::run($b['workspace']->id, fn () => app(Documents::class)->receipt($orderB));
+
     return [
         'a' => $a,
         'b' => $b,
@@ -81,6 +90,8 @@ function twoTenants(): array
             'jobRun' => $jobB->id,
             'site' => $siteB->id,
             'workflowRun' => $runB->id,
+            'paymentOrder' => $orderB->id,
+            'billingDocument' => $docB->id,
         ] + $researchB + $writerB + $phase6B,
         'siteB' => $siteB,
         'wpB' => $wpB,
@@ -125,7 +136,7 @@ it('returns 404 when tenant A uses its own workspace with tenant B child ids', f
     ['a' => $a, 'b' => $b, 'ids' => $ids] = twoTenants();
 
     foreach (tenantRoutes() as [$method, $uri]) {
-        if (! preg_match('/\{(member|invitation|jobRun|site|workflowRun|campaign|notification|article|preset|batch|articleRef|asset|imageJob|auditRun|suggestion|publishingBatch|mapping|publishingJob|conflict)\}/', $uri)) {
+        if (! preg_match('/\{(member|invitation|jobRun|site|workflowRun|campaign|notification|article|preset|batch|articleRef|asset|imageJob|auditRun|suggestion|publishingBatch|mapping|publishingJob|conflict|paymentOrder|billingDocument)\}/', $uri)) {
             continue;
         }
         $url = fillUri($uri, $a['workspace']->id, $ids);

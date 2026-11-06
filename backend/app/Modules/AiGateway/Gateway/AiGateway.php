@@ -9,6 +9,8 @@ use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use SiteXPost\Kernel\Logging\SecretRedactor;
 use SiteXPost\Kernel\Tenancy\TenantContext;
+use SiteXPost\Modules\AiGateway\Contracts\UsageDenied;
+use SiteXPost\Modules\AiGateway\Contracts\UsageMeter;
 use SiteXPost\Modules\AiGateway\Domain\AiModel;
 use SiteXPost\Modules\AiGateway\Domain\AiModelPrice;
 use SiteXPost\Modules\AiGateway\Domain\AiRequest;
@@ -44,6 +46,7 @@ final class AiGateway
         private readonly CostCalculator $costs,
         private readonly JsonSchemaValidator $validator,
         private readonly TenantContext $context,
+        private readonly UsageMeter $meter,
     ) {}
 
     /**
@@ -139,9 +142,20 @@ final class AiGateway
                 $attemptNo++;
                 $key = $task->callKey.':'.$attemptNo;
 
+                // Commercial layer first (plan / credits, Phase 7), then the
+                // platform cost budget. Both are keyed by the same call key.
+                if ($workspaceId !== null) {
+                    try {
+                        $this->meter->reserve($key, $workspaceId, $task->taskKey, $estimate);
+                    } catch (UsageDenied $e) {
+                        $this->log($task, $model, $price, $attemptNo, $isFallback, 'blocked', $promptHash, error: new ProviderException($e->errorCode, $e->getMessage()), estimate: $estimate);
+                        throw new AiGatewayException($e->errorCode, $e->getMessage(), details: $e->details);
+                    }
+                }
                 try {
                     $reservation = $this->budgets->reserve($key, $workspaceId, $estimate, $route->priority);
                 } catch (BudgetExceeded $e) {
+                    $this->meter->release($key);
                     $this->log($task, $model, $price, $attemptNo, $isFallback, 'blocked', $promptHash, error: new ProviderException('budget_exceeded', $e->getMessage()), estimate: $estimate);
                     throw new AiGatewayException('budget_exceeded', __('ai.errors.budget_exceeded'), details: ['scope' => $e->scopeKey === 'global' ? 'global' : 'workspace', 'period' => $e->period]);
                 }
@@ -160,10 +174,13 @@ final class AiGateway
                     $cost = $e->usage !== null ? $this->costs->cost($price, $e->usage, $calledAt) : 0;
                     if ($e->billingUncertain) {
                         $this->budgets->commit($key, max($cost, $estimate), 'uncertain');
+                        $this->meter->settle($key, max($cost, $estimate), 'uncertain');
                     } elseif ($cost > 0) {
                         $this->budgets->commit($key, $cost);
+                        $this->meter->settle($key, $cost);
                     } else {
                         $this->budgets->release($key);
+                        $this->meter->release($key);
                     }
                     if ($e->countsAsFailure) {
                         $this->circuit->recordFailure($provider);
@@ -208,6 +225,7 @@ final class AiGateway
     {
         $cost = $this->costs->cost($price, $response->usage, $calledAt);
         $this->budgets->commit($key, $cost);
+        $this->meter->settle($key, $cost);
         $this->circuit->recordSuccess($model->provider);
 
         $json = null;

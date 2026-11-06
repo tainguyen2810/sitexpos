@@ -9,7 +9,9 @@ use Illuminate\Support\Facades\DB;
 use SiteXPost\Kernel\Http\ApiException;
 use SiteXPost\Kernel\Security\SsrfGuard;
 use SiteXPost\Kernel\Security\SsrfViolation;
+use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\Audit\Audit;
+use SiteXPost\Modules\Billing\Contracts\Entitlements;
 use SiteXPost\Modules\Identity\Domain\User;
 use SiteXPost\Modules\Sites\Domain\Site;
 
@@ -33,6 +35,8 @@ final class CreateSite
         if (Site::query()->where('url_hash', $hash)->exists()) {
             throw ApiException::conflict('site_exists', __('sites.errors.site_exists'));
         }
+        // Phase 7: plan website limit (backend-enforced; no-op while billing is not enforced).
+        app(Entitlements::class)->assertWithin(app(TenantContext::class)->workspaceId(), 'websites', Site::query()->count());
 
         return DB::transaction(function () use ($user, $data, $url, $hash): array {
             $site = new Site;

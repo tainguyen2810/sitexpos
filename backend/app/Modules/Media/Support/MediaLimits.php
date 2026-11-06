@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SiteXPost\Modules\Media\Support;
 
+use SiteXPost\Modules\Billing\Contracts\Entitlements;
 use SiteXPost\Modules\Media\Domain\ImageGenerationJob;
 use SiteXPost\Modules\Media\Domain\MediaAsset;
 use SiteXPost\Modules\Media\Domain\MediaLimit;
@@ -38,6 +39,12 @@ final class MediaLimits
             }
         }
 
+        // Phase 7: a plan storage limit (when billing applies) can only lower the cap.
+        $planMb = app(Entitlements::class)->limit($workspaceId, 'storage_mb');
+        if ($planMb !== null) {
+            $defaults['max_storage_bytes'] = min($defaults['max_storage_bytes'], $planMb * 1024 * 1024);
+        }
+
         return $defaults;
     }
 
@@ -65,6 +72,15 @@ final class MediaLimits
         $l = $this->for($workspaceId);
         if (! $l['ai_images_enabled']) {
             throw new MediaRejected('ai_images_disabled');
+        }
+        // Phase 7: subscription status / feature + monthly plan limit (backend-enforced).
+        $entitlements = app(Entitlements::class);
+        $entitlements->assertActive($workspaceId, 'ai_images');
+        $monthLimit = $entitlements->limit($workspaceId, 'ai_images');
+        if ($monthLimit !== null) {
+            $month = (int) ImageGenerationJob::query()->where('created_at', '>=', now()->startOfMonth())
+                ->whereIn('status', ['queued', 'running', 'succeeded'])->sum('image_count');
+            $entitlements->assertWithin($workspaceId, 'ai_images', $month, $count);
         }
         $today = (int) ImageGenerationJob::query()->where('created_at', '>=', now()->startOfDay())
             ->whereIn('status', ['queued', 'running', 'succeeded'])->sum('image_count');

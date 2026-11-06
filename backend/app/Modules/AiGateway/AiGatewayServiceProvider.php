@@ -11,6 +11,8 @@ use SiteXPost\Kernel\Modules\ModuleServiceProvider;
 use SiteXPost\Modules\AiGateway\Console\ExpireAiReservations;
 use SiteXPost\Modules\AiGateway\Console\PruneAiRequests;
 use SiteXPost\Modules\AiGateway\Console\SyncAiRegistry;
+use SiteXPost\Modules\AiGateway\Contracts\NullUsageMeter;
+use SiteXPost\Modules\AiGateway\Contracts\UsageMeter;
 use SiteXPost\Modules\AiGateway\Providers\ProviderRegistry;
 use SiteXPost\Modules\AiGateway\Workflows\AiTestWorkflow;
 use SiteXPost\Modules\Workflows\Engine\WorkflowRegistry;
@@ -20,6 +22,8 @@ final class AiGatewayServiceProvider extends ModuleServiceProvider
     public function register(): void
     {
         $this->app->singleton(ProviderRegistry::class);
+        // Replaced by Billing (Phase 7) with the credit meter.
+        $this->app->bindIf(UsageMeter::class, NullUsageMeter::class);
     }
 
     protected function bootModule(): void

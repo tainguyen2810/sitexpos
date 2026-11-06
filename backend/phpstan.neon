@@ -12,6 +12,7 @@ parameters:
     treatPhpDocTypesAsCertain: false
     databaseMigrationsPath:
         - app/Modules/AiGateway/Database/Migrations
+        - app/Modules/Billing/Database/Migrations
         - app/Modules/Audit/Database/Migrations
         - app/Modules/Identity/Database/Migrations
         - app/Modules/Media/Database/Migrations
