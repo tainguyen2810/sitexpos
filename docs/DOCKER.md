@@ -155,3 +155,4 @@ docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 - Mã nguồn trong image thuộc root, PHP chạy bằng `www-data` chỉ ghi được `storage/`, `bootstrap/cache` và volume `config`.
 - Các quy tắc của trình cài đặt giữ nguyên (ADR-025): mã cài đặt chỉ lấy được qua SSH, không ghi đè database có dữ liệu, khóa vĩnh viễn sau khi cài.
 - Web vẫn không tải hay ghi đè mã nguồn (ADR-026): nâng cấp = người vận hành đổi tag image.
+- Cả 3 tên miền luôn chặn máy tìm kiếm: header `X-Robots-Tag: noindex, nofollow` và `robots.txt` → `Disallow: /` (`docker/nginx-noindex.conf`).

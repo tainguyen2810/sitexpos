@@ -4,6 +4,11 @@ Format: `## [version] - YYYY-MM-DD`, one bullet per change. The Upgrade Wizard
 shows the sections between the installed version and the deployed code.
 Bump `config/sitex.php` → `version` together with this file.
 
+## [1.0.1] - 2026-11-06
+- Docker: the API, customer app and admin domains are never indexed by search engines (`X-Robots-Tag: noindex, nofollow` and `robots.txt` → `Disallow: /`).
+- Backups: verification accepts dumps made by `mariadb-dump` (Docker image); `sitex:backup:run --verify` exits with an error when verification fails.
+- Upgrade pre-flight reads the recorded version from the database, not from a stale settings cache (workers no longer wait up to 5 minutes after installation).
+
 ## [1.0.0] - 2026-11-06
 - Phase 9: web installer (/install) protected by a one-time setup token, Setup Wizard, Upgrade Wizard, System Health, monitoring alerts (email/Telegram), encrypted backups with verification.
 - Phase 8: Search Console analytics, content opportunities and decay, content refresh, before/after experiments, reports, SEO Copilot, autonomous SEO agent with a server-side policy engine.
