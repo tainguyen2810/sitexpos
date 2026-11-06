@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # One-command upgrade of a Docker install (docs/DOCKER.md §4).
 #
-#   sudo /opt/sitexpost/update.sh            # newest image of the current tag (e.g. latest)
-#   sudo /opt/sitexpost/update.sh 1.1.0      # switch to version 1.1.0
+#   sudo /opt/sitexpost/update.sh            # newest release (reads the version of :latest)
+#   sudo /opt/sitexpost/update.sh 1.1.0      # switch to version 1.1.0 (or back to an older one)
 #
 # Steps: encrypted backup (+verify) → set SITEX_VERSION → pull → up -d → wait for the
 # app's pre-flight/migrations → report. If the new version is blocked (destructive
 # migration, failed requirement) the site is left in maintenance mode by the
 # container; this script prints the one command that goes back to the old version.
-# It never deletes volumes and never touches Laravel's .env.
+# It never deletes volumes and never touches Laravel's .env. After a successful
+# upgrade it replaces itself with the update.sh shipped in the new image.
 set -euo pipefail
 SELF="$(readlink -f "$0")"
 cd "$(dirname "$SELF")"
@@ -25,7 +26,24 @@ say() { echo "==> $*"; }
 if [ -n "$NEW" ] && ! [[ "$NEW" =~ ^[A-Za-z0-9._-]{1,64}$ ]]; then die "Invalid version: $NEW"; fi
 OLD=$(grep -E '^SITEX_VERSION=' .env | cut -d= -f2- || true)
 OLD="${OLD:-latest}"
-TARGET="${NEW:-$OLD}"
+
+# No version given: pull :latest, read the version it carries and pin that, so
+# .env always names a real version and "go back" commands stay meaningful.
+if [ -z "$NEW" ] || [ "$NEW" = "latest" ]; then
+  IMAGE=$(grep -E '^SITEX_IMAGE=' .env | cut -d= -f2- || true)
+  IMAGE="${IMAGE:-ghcr.io/tainguyen2810/sitexpos}"
+  say "Looking up the newest release ($IMAGE:latest)"
+  if [ "${SITEX_SKIP_PULL:-0}" != "1" ]; then
+    docker pull -q "$IMAGE:latest" > /dev/null || die "Pull failed (docker login ghcr.io?) — nothing was changed."
+  fi
+  NEW=$(docker image inspect -f '{{ index .Config.Labels "org.opencontainers.image.version" }}' "$IMAGE:latest" 2>/dev/null || true)
+  [[ "$NEW" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Cannot read the version of $IMAGE:latest (got '$NEW'). Run: sudo $SELF <version>"
+  if [ "$NEW" = "$OLD" ]; then
+    say "Already on the newest release ($OLD). Nothing to do."
+    exit 0
+  fi
+fi
+TARGET="$NEW"
 say "Version: $OLD → $TARGET"
 
 # 1. Backup (only once installed; required when a backup key is configured)
@@ -75,6 +93,13 @@ for _ in $(seq 1 60); do
   sleep 5
 done
 curl -fsS "$API/up" > /dev/null 2>&1 || die "App did not come up — see: docker compose logs app"
+
+# 5. Keep this script current: the image ships the matching update.sh.
+SCRIPT=$($DC exec -T app cat /usr/local/share/sitex/update.sh 2>/dev/null || true)
+if [ -n "$SCRIPT" ] && head -n 1 <<< "$SCRIPT" | grep -q '^#!/usr/bin/env bash' && [ "$SCRIPT" != "$(cat "$SELF")" ]; then
+  printf '%s\n' "$SCRIPT" > "$SELF.new" && chmod 0755 "$SELF.new" && mv "$SELF.new" "$SELF"
+  say "update.sh itself was updated to the version shipped with $TARGET"
+fi
 
 $DC ps
 say "Done: SiteX Post $TARGET is running. Previous version: $OLD (go back: sudo $SELF $OLD)"

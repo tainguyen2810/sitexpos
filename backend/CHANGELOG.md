@@ -4,6 +4,11 @@ Format: `## [version] - YYYY-MM-DD`, one bullet per change. The Upgrade Wizard
 shows the sections between the installed version and the deployed code.
 Bump `config/sitex.php` → `version` together with this file.
 
+## [1.0.2] - 2026-11-06
+- Docker: `update.sh` without a version upgrades to the newest release (reads the version of the `:latest` image and pins it; does nothing when already current).
+- Docker: the image ships `update.sh`; after a successful upgrade the script on the server replaces itself with the new one.
+- Releases are created automatically when a merge to `main` bumps this version (`.github/workflows/release.yml`).
+
 ## [1.0.1] - 2026-11-06
 - Docker: the API, customer app and admin domains are never indexed by search engines (`X-Robots-Tag: noindex, nofollow` and `robots.txt` → `Disallow: /`).
 - Backups: verification accepts dumps made by `mariadb-dump` (Docker image); `sitex:backup:run --verify` exits with an error when verification fails.
