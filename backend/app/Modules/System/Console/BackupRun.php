@@ -47,6 +47,15 @@ final class BackupRun extends Command
         if ($this->option('verify')) {
             $r = $manager->verify($backup);
             $this->line('Verify: '.($r['ok'] ? 'OK' : 'FAILED '.$r['error']));
+            if (! $r['ok']) {
+                foreach ($r['checks'] as $check => $passed) {
+                    if (! $passed) {
+                        $this->error('Failed check: '.$check);
+                    }
+                }
+
+                return self::FAILURE; // deploy scripts rely on the exit code
+            }
         }
 
         return self::SUCCESS;

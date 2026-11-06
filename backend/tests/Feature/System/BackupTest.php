@@ -57,6 +57,18 @@ it('creates an encrypted backup and verifies it', function () {
     expect((new PharData($this->bk.'/restore.tar'))->offsetExists('manifest.json'))->toBeTrue();
 });
 
+it('recognises mysqldump, mariadb-dump and SQLite dumps', function () {
+    expect(BackupManager::looksLikeDatabaseDump("-- MySQL dump 10.13  Distrib 8.4.3, for Linux (x86_64)\n"))->toBeTrue()
+        ->and(BackupManager::looksLikeDatabaseDump("/*M!999999\\- enable the sandbox mode */ \n-- MariaDB dump 10.19-11.8.9-MariaDB, for Linux (x86_64)\n"))->toBeTrue()
+        ->and(BackupManager::looksLikeDatabaseDump('SQLite format 3'))->toBeTrue()
+        ->and(BackupManager::looksLikeDatabaseDump('<html>not a dump'))->toBeFalse()
+        ->and(BackupManager::looksLikeDatabaseDump(''))->toBeFalse();
+});
+
+it('backup:run --verify reports OK and exits 0 for a good backup', function () {
+    $this->artisan('sitex:backup:run --verify')->expectsOutputToContain('Verify: OK')->assertExitCode(0);
+});
+
 it('fails verification when the file was altered', function () {
     $m = app(BackupManager::class);
     $b = $m->run($m->start('manual', null));
