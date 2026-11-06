@@ -9,7 +9,9 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use SiteXPost\Kernel\Http\ApiException;
+use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\Audit\Audit;
+use SiteXPost\Modules\Billing\Contracts\Entitlements;
 use SiteXPost\Modules\Publishing\Domain\PublishingJob;
 use SiteXPost\Modules\Publishing\Domain\PublishingSchedule;
 use SiteXPost\Modules\Publishing\Domain\WordPressPostMapping;
@@ -65,6 +67,14 @@ final class ManageJobs
             if ($scheduledAt === null) {
                 throw new ApiException(422, 'schedule_required', __('publishing.codes.schedule_required'));
             }
+        }
+
+        // Phase 7: plan status / features / monthly publishing jobs (backend-enforced).
+        $ws = app(TenantContext::class)->workspaceId();
+        $entitlements = app(Entitlements::class);
+        $entitlements->assertActive($ws, $mode === 'auto' ? 'auto_publish' : 'publishing');
+        if ($entitlements->limit($ws, 'publishing_jobs') !== null) {
+            $entitlements->assertWithin($ws, 'publishing_jobs', PublishingJob::query()->where('created_at', '>=', now()->startOfMonth())->where('status', '!=', S::CANCELLED)->count());
         }
 
         $job = new PublishingJob;

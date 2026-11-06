@@ -6,12 +6,21 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 use SiteXPost\Kernel\Security\SsrfGuard;
 use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\AiGateway\Domain\AiBudget;
 use SiteXPost\Modules\AiGateway\Domain\AiModel;
 use SiteXPost\Modules\AiGateway\Domain\AiTaskRoute;
 use SiteXPost\Modules\AiGateway\Registry\AiRegistry;
+use SiteXPost\Modules\Billing\Domain\CreditPolicy;
+use SiteXPost\Modules\Billing\Domain\PaymentProviderConfig;
+use SiteXPost\Modules\Billing\Domain\Plan;
+use SiteXPost\Modules\Billing\Domain\PlanEntitlement;
+use SiteXPost\Modules\Billing\Domain\PlanVersion;
+use SiteXPost\Modules\Billing\Payments\Adapters\SignedWebhookAdapter;
+use SiteXPost\Modules\Billing\Support\BillingSettings;
+use SiteXPost\Modules\Billing\Support\Catalog;
 use SiteXPost\Modules\Identity\Domain\User;
 use SiteXPost\Modules\Media\Domain\ImageGenerationJob;
 use SiteXPost\Modules\Media\Domain\MediaAsset;
@@ -415,4 +424,94 @@ function phase6Fixture(Workspace $workspace, Site $site, array $writer, string $
         return ['articleRef' => $writer['article'], 'asset' => $asset->id, 'imageJob' => $gen->id, 'auditRun' => $audit->id, 'suggestion' => $link->id,
             'publishingBatch' => $batch->id, 'mapping' => $mapping->id, 'publishingJob' => $job->id, 'conflict' => $conflict->id];
     });
+}
+
+/**
+ * Phase 7 (Billing) helpers ----------------------------------------------
+ */
+
+/**
+ * A published plan version with entitlements (test catalog — never a real price list).
+ *
+ * @param  array<string, int>  $limits
+ * @param  array<string, bool>  $features
+ */
+function billingPlan(string $code, int $monthly, ?int $yearly = null, int $includedMc = 0, array $limits = [], array $features = [], bool $free = false, int $trialDays = 0, int $trialMc = 0): PlanVersion
+{
+    $plan = new Plan;
+    $plan->forceFill(['code' => $code, 'name' => 'Test '.$code, 'status' => 'active', 'is_free' => $free])->save();
+    $v = new PlanVersion;
+    $v->forceFill([
+        'plan_id' => $plan->id, 'version' => 1, 'status' => 'published', 'currency' => 'VND',
+        'monthly_price_minor' => $monthly, 'yearly_price_minor' => $yearly, 'trial_days' => $trialDays, 'trial_credits_mc' => $trialMc,
+        'included_credits_mc' => $includedMc, 'feature_flags' => $features, 'published_at' => now(),
+    ])->save();
+    foreach ($limits as $resource => $limit) {
+        $e = new PlanEntitlement;
+        $e->forceFill(['plan_version_id' => $v->id, 'resource_key' => $resource, 'limit_value' => $limit,
+            'period' => Catalog::RESOURCES[$resource] ?? 'month'])->save();
+    }
+    $plan->forceFill(['current_version_id' => $v->id])->save();
+
+    return $v;
+}
+
+/** 1 credit covers 1000 µUSD of provider cost (+ markup), no minimum unless given. */
+function billingPolicy(int $microUsdPerCredit = 1000, int $markupBps = 0, int $minChargeMc = 0): CreditPolicy
+{
+    $p = new CreditPolicy;
+    $p->forceFill(['version' => (int) CreditPolicy::query()->max('version') + 1, 'micro_usd_per_credit' => $microUsdPerCredit,
+        'markup_bps' => $markupBps, 'min_charge_mc' => $minChargeMc, 'effective_from' => now()->subMinute()])->save();
+
+    return $p;
+}
+
+function billingProvider(string $code = 'bankfeed', string $secret = 'whsec_test_secret', string $adapter = 'signed_webhook'): PaymentProviderConfig
+{
+    $c = new PaymentProviderConfig;
+    $c->forceFill(['code' => $code, 'adapter' => $adapter, 'name' => 'Test bank', 'is_enabled' => true,
+        'settings' => ['bank_bin' => '970436', 'account_no' => '0123456789', 'account_name' => 'SITEX TEST']]);
+    if ($adapter === 'signed_webhook') {
+        $c->setCredentials(['webhook_secret' => $secret]);
+    }
+    $c->save();
+
+    return $c;
+}
+
+/**
+ * @param  array<string, mixed>  $values
+ */
+function billingSettings(array $values): void
+{
+    app(BillingSettings::class)->update($values, null);
+}
+
+/**
+ * POST a webhook signed like the authorized bank feed would.
+ *
+ * @param  array<string, mixed>  $body
+ */
+function signedWebhook(array $body, string $secret = 'whsec_test_secret', string $code = 'bankfeed', ?int $ts = null): TestResponse
+{
+    $ts ??= time();
+    $raw = (string) json_encode($body);
+
+    return test()->withHeaders([
+        'X-SiteX-Timestamp' => (string) $ts,
+        'X-SiteX-Signature' => SignedWebhookAdapter::sign($secret, $ts, $raw),
+    ])->postJson('/api/v1/billing/webhooks/'.$code, $body);
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function bankTx(string $id, int $amount, string $memo, string $currency = 'VND'): array
+{
+    return ['id' => $id, 'amount' => $amount, 'currency' => $currency, 'description' => $memo, 'occurred_at' => now()->toIso8601String(), 'direction' => 'in'];
+}
+
+function billingUrl(Workspace $workspace, string $path): string
+{
+    return '/api/v1/workspaces/'.$workspace->id.'/billing/'.ltrim($path, '/');
 }

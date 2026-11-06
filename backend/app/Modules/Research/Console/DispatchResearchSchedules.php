@@ -7,6 +7,7 @@ namespace SiteXPost\Modules\Research\Console;
 use Illuminate\Console\Command;
 use SiteXPost\Kernel\Http\ApiException;
 use SiteXPost\Kernel\Tenancy\TenantContext;
+use SiteXPost\Modules\Billing\Contracts\Entitlements;
 use SiteXPost\Modules\Research\Actions\StartResearch;
 use SiteXPost\Modules\Research\Domain\ResearchSchedule;
 use SiteXPost\Modules\Research\Domain\SeoCampaign;
@@ -53,6 +54,8 @@ final class DispatchResearchSchedules extends Command
                         continue;
                     }
                     try {
+                        // Phase 7: paid automation only while the plan allows it.
+                        app(Entitlements::class)->assertActive($campaign->workspace_id, 'automation');
                         [$run] = $start->handle($campaign, 'scheduled', null, 'schedule:'.$schedule->id.':'.$slot?->format('YmdH'));
                         $schedule->forceFill(['last_research_run_id' => $run->id])->save();
                         $started++;

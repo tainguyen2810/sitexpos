@@ -4,6 +4,21 @@ use SiteXPost\Kernel\Http\Requests\ApiRequest;
 use SiteXPost\Kernel\Support\JobRun;
 use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
 use SiteXPost\Modules\AiGateway\Domain\AiRequest;
+use SiteXPost\Modules\Billing\Domain\BillingDocument;
+use SiteXPost\Modules\Billing\Domain\BillingNotification;
+use SiteXPost\Modules\Billing\Domain\BillingProfile;
+use SiteXPost\Modules\Billing\Domain\CreditAdjustment;
+use SiteXPost\Modules\Billing\Domain\CreditGrant;
+use SiteXPost\Modules\Billing\Domain\CreditLedgerEntry;
+use SiteXPost\Modules\Billing\Domain\CreditReservation;
+use SiteXPost\Modules\Billing\Domain\CreditWallet;
+use SiteXPost\Modules\Billing\Domain\PaymentOrder;
+use SiteXPost\Modules\Billing\Domain\Refund;
+use SiteXPost\Modules\Billing\Domain\Subscription;
+use SiteXPost\Modules\Billing\Domain\SubscriptionChange;
+use SiteXPost\Modules\Billing\Domain\SubscriptionEvent;
+use SiteXPost\Modules\Billing\Domain\UsageEvent;
+use SiteXPost\Modules\Billing\Domain\UsageMeter;
 use SiteXPost\Modules\Research\Domain\CampaignSettings;
 use SiteXPost\Modules\Research\Domain\CompetitorFinding;
 use SiteXPost\Modules\Research\Domain\CompetitorWebsite;
@@ -150,3 +165,31 @@ arch('Phase 6 modules reach articles, sites and the planner only through contrac
 arch('only the Publishing module publishes to WordPress (Seo never does)')
     ->expect('SiteXPost\\Modules\\Seo')
     ->not->toUse(['SiteXPost\\Modules\\Sites\\Contracts\\WordPressGateway', 'SiteXPost\\Modules\\Publishing']);
+
+arch('billing tenant models use the fail-closed workspace scope')
+    ->expect([
+        Subscription::class,
+        SubscriptionEvent::class,
+        SubscriptionChange::class,
+        CreditWallet::class,
+        CreditGrant::class,
+        CreditReservation::class,
+        CreditLedgerEntry::class,
+        CreditAdjustment::class,
+        UsageMeter::class,
+        UsageEvent::class,
+        PaymentOrder::class,
+        Refund::class,
+        BillingProfile::class,
+        BillingDocument::class,
+        BillingNotification::class,
+    ])
+    ->toUseTrait(BelongsToWorkspace::class);
+
+arch('billing API requests extend the base ApiRequest (workspace_id is never accepted)')
+    ->expect('SiteXPost\Modules\Billing\Http\Requests')
+    ->toExtend(ApiRequest::class);
+
+arch('only the Billing module knows billing internals; others use its contracts')
+    ->expect(['SiteXPost\Modules\Billing\Credits', 'SiteXPost\Modules\Billing\Payments', 'SiteXPost\Modules\Billing\Subscriptions', 'SiteXPost\Modules\Billing\Entitlements'])
+    ->toOnlyBeUsedIn('SiteXPost\Modules\Billing');

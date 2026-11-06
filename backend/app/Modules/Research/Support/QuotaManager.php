@@ -7,6 +7,7 @@ namespace SiteXPost\Modules\Research\Support;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use SiteXPost\Kernel\Http\ApiException;
+use SiteXPost\Modules\Billing\Contracts\Entitlements;
 use SiteXPost\Modules\Research\Domain\ResearchRun;
 use SiteXPost\Modules\Research\Domain\ResearchUsageCounter;
 
@@ -36,6 +37,13 @@ final class QuotaManager
     public function reserveRun(string $workspaceId, callable $create): mixed
     {
         $limits = $this->settings->limitsFor($workspaceId);
+        // Phase 7: the plan (when billing applies) decides; interim limits otherwise.
+        $entitlements = app(Entitlements::class);
+        $entitlements->assertActive($workspaceId, 'research');
+        $planRuns = $entitlements->limit($workspaceId, 'research_runs');
+        if ($planRuns !== null) {
+            $limits['max_runs_per_month'] = $planRuns;
+        }
         $this->counter('runs', false); // make sure the row exists before locking
 
         return DB::transaction(function () use ($limits, $create): mixed {

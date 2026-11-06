@@ -3,6 +3,7 @@
 use SiteXPost\Kernel\KernelServiceProvider;
 use SiteXPost\Modules\AiGateway\AiGatewayServiceProvider;
 use SiteXPost\Modules\Audit\AuditServiceProvider;
+use SiteXPost\Modules\Billing\BillingServiceProvider;
 use SiteXPost\Modules\Identity\IdentityServiceProvider;
 use SiteXPost\Modules\Media\MediaServiceProvider;
 use SiteXPost\Modules\Platform\PlatformServiceProvider;
@@ -28,4 +29,5 @@ return [
     MediaServiceProvider::class,
     SeoServiceProvider::class,
     PublishingServiceProvider::class,
+    BillingServiceProvider::class,
 ];
