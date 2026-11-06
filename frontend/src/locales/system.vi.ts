@@ -50,7 +50,7 @@ export default {
       general: {
         brandName: 'Tên thương hiệu', supportEmail: 'Email hỗ trợ', locale: 'Ngôn ngữ mặc định', timezone: 'Múi giờ mặc định', companyName: 'Tên công ty',
         taxCode: 'Mã số thuế', address: 'Địa chỉ', phone: 'Số điện thoại liên hệ', contactEmail: 'Email liên hệ', logo: 'Logo (PNG, JPG hoặc WebP, tối đa 512 KB)',
-        uploadLogo: 'Tải logo lên', logoUploaded: 'Đã tải logo lên.', appUrl: 'Địa chỉ ứng dụng (APP_URL)',
+        uploadLogo: 'Tải logo lên', chooseLogo: 'Chọn tệp logo…', logoUploaded: 'Đã tải logo lên.', appUrl: 'Địa chỉ ứng dụng (APP_URL)',
       },
       ai: {
         intro: 'Khóa API được nhập ở trang Cấu hình AI và lưu mã hóa; không bao giờ hiển thị lại.',

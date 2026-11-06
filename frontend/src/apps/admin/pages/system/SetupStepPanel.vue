@@ -50,6 +50,7 @@ function saveGeneral() {
   }), t('sys.common.saved'))
 }
 const logoInput = ref<HTMLInputElement | null>(null)
+const logoName = ref('')
 function uploadLogo() {
   const f = logoInput.value?.files?.[0]
   if (f) void act(() => systemApi.uploadLogo(f), t('sys.setup.general.logoUploaded'))
@@ -113,8 +114,11 @@ const blocking = computed(() => (Array.isArray(d.value.blocking) ? (d.value.bloc
         <p class="text-sm font-medium">{{ t('sys.setup.general.logo') }}</p>
         <div class="flex flex-wrap items-center gap-3">
           <img v-if="d.logo_url" :src="str(d.logo_url)" alt="" class="h-10 w-auto rounded border border-line bg-white p-1" />
-          <input ref="logoInput" type="file" accept="image/png,image/jpeg,image/webp" class="text-sm" data-testid="logo-input" />
-          <AppButton size="sm" variant="secondary" :loading="busy" @click="uploadLogo">{{ t('sys.setup.general.uploadLogo') }}</AppButton>
+          <label class="cursor-pointer rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface-muted">
+            {{ logoName || t('sys.setup.general.chooseLogo') }}
+            <input ref="logoInput" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" data-testid="logo-input" @change="logoName = logoInput?.files?.[0]?.name ?? ''" />
+          </label>
+          <AppButton size="sm" variant="secondary" :loading="busy" :disabled="!logoName" @click="uploadLogo">{{ t('sys.setup.general.uploadLogo') }}</AppButton>
         </div>
         <p v-if="errors.logo" class="text-sm text-danger-600">{{ errors.logo }}</p>
       </div>

@@ -123,8 +123,8 @@ final class BillingReadinessReport implements BillingReadiness
 
     public function webhookHealth(DateTimeInterface $since): array
     {
-        $q = fn () => DB::table('payment_webhook_events')->where('created_at', '>=', $since);
-        $last = DB::table('payment_webhook_events')->max('created_at');
+        $q = fn () => DB::table('payment_webhook_events')->where('received_at', '>=', $since);
+        $last = DB::table('payment_webhook_events')->max('received_at');
 
         return [
             'received' => $q()->count(),

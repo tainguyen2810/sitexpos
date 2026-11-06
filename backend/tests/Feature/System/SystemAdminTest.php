@@ -2,18 +2,21 @@
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use SiteXPost\Modules\Audit\Domain\AuditLog;
+use SiteXPost\Modules\Billing\Contracts\BillingReadiness;
 use SiteXPost\Modules\Billing\Domain\Plan;
 use SiteXPost\Modules\Identity\Domain\User;
 use SiteXPost\Modules\Identity\Enums\PlatformRole;
 use SiteXPost\Modules\System\Domain\SystemAlert;
 use SiteXPost\Modules\System\Domain\SystemSetting;
 use SiteXPost\Modules\System\Domain\UpgradeRun;
+use SiteXPost\Modules\System\Health\HealthChecker;
 use SiteXPost\Modules\System\Jobs\RunUpgrade;
 use SiteXPost\Modules\System\Jobs\SendTestEmail;
 use SiteXPost\Modules\System\Support\RuntimeConfig;
@@ -268,4 +271,16 @@ it('queues test email as a job (never sends during the request)', function () {
     Bus::fake([SendTestEmail::class]);
     $this->actingAs(sysStaff())->postJson(SYS.'/settings/mail/test', ['to' => 'me@example.vn'])->assertStatus(202);
     Bus::assertDispatched(SendTestEmail::class, fn ($j) => $j->to === 'me@example.vn' && $j->queue === 'notifications');
+});
+
+it('counts payment webhooks by received_at (regression: SQLite hid a wrong column name)', function () {
+    DB::table('payment_webhook_events')->insert([
+        ['provider' => 'sepay', 'event_id' => 'e1', 'signature_valid' => true, 'payload_hash' => str_repeat('a', 64), 'status' => 'processed', 'received_at' => now()->subHour()],
+        ['provider' => 'sepay', 'event_id' => 'e2', 'signature_valid' => false, 'payload_hash' => str_repeat('b', 64), 'status' => 'rejected', 'received_at' => now()->subDays(3)],
+    ]);
+    $w = app(BillingReadiness::class)->webhookHealth(now()->subDay());
+    expect($w)->toMatchArray(['received' => 1, 'processed' => 1, 'rejected' => 0])->and($w['last_received_at'])->not->toBeNull();
+
+    $check = collect(app(HealthChecker::class)->run(['payments'])['checks'])->first();
+    expect($check['status'])->not->toBe('unknown');
 });

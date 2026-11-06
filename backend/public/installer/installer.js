@@ -470,12 +470,16 @@
       });
     }
     drawRun(state && state.run);
+    var navEl = nav(true, null);
     var runBtn = button(state && state.run && state.run.status === 'failed' ? 'Thử lại cài đặt' : 'Cài đặt ngay', { testid: 'run', disabled: missing.length > 0, onclick: function () {
       runBtn.disabled = true; runBtn.textContent = 'Đang cài đặt… (có thể mất vài phút)';
       clear(slot);
       api('POST', 'run').then(function (r) {
         drawRun(r);
         clear(slot);
+        // Installed: the wizard is locked, so hide the run button and the back navigation.
+        runBtn.style.display = 'none';
+        if (navEl && navEl.parentNode) navEl.parentNode.removeChild(navEl);
         slot.appendChild(alertBox('success', 'Cài đặt hoàn tất! Trình cài đặt đã bị khóa.'));
         slot.appendChild(el('div', { class: 'mt-4 space-y-2 text-sm text-slate-600' }, [
           el('p', { text: 'Bước tiếp theo:' }),
@@ -506,7 +510,7 @@
       progress,
       el('div', { class: 'mt-5' }, [runBtn]),
       el('div', { class: 'mt-4' }, [slot]),
-      nav(true, null),
+      navEl,
     ]);
   }
 

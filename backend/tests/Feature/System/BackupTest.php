@@ -6,6 +6,7 @@ use SiteXPost\Modules\System\Backup\BackupManager;
 use SiteXPost\Modules\System\Domain\SystemBackup;
 use SiteXPost\Modules\System\Health\HealthChecker;
 use SiteXPost\Modules\System\Support\MigrationStatus;
+use SiteXPost\Modules\System\Support\SystemSettings;
 
 beforeEach(function () {
     $this->bk = sys_get_temp_dir().'/sitex-backup-'.bin2hex(random_bytes(4));
@@ -113,4 +114,25 @@ it('prints a new backup key without writing .env', function () {
     $before = is_file($env) ? hash_file('sha256', $env) : null;
     $this->artisan('sitex:backup:key')->expectsOutputToContain('SITEX_BACKUP_ENCRYPTION_KEY=base64:')->assertSuccessful();
     expect(is_file($env) ? hash_file('sha256', $env) : null)->toBe($before);
+});
+
+it('reports upgrade pre-flight with exit codes for the deploy script', function () {
+    config(['sitex.installer.required_extensions' => array_values(array_filter((array) config('sitex.installer.required_extensions'), 'extension_loaded'))]);
+    // Fresh test database: no version recorded yet, so an upgrade is pending and allowed.
+    $this->artisan('sitex:upgrade:check')->assertExitCode(0);
+    app(SystemSettings::class)->set('system.version', (string) config('sitex.version'));
+    $this->artisan('sitex:upgrade:check')->assertExitCode(1);
+
+    $dir = $this->bk.'/mig';
+    File::ensureDirectoryExists($dir);
+    file_put_contents($dir.'/2099_01_01_000000_drop_things.php', "<?php return new class { public function up(): void { Schema::dropIfExists('users'); } };");
+    app('migrator')->path($dir);
+    $this->artisan('sitex:upgrade:check')->assertExitCode(2);
+});
+
+it('records the version after a CLI upgrade only when nothing is pending', function () {
+    config(['sitex.installer.required_extensions' => array_values(array_filter((array) config('sitex.installer.required_extensions'), 'extension_loaded'))]);
+    $this->artisan('sitex:upgrade:check --record')->assertExitCode(0);
+    expect(app(SystemSettings::class)->string('system.version'))->toBe(config('sitex.version'));
+    $this->assertDatabaseHas('audit_logs', ['action' => 'system.upgraded']);
 });
