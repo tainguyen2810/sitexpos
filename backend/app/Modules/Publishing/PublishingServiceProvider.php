@@ -10,11 +10,15 @@ use Illuminate\Support\Facades\RateLimiter;
 use SiteXPost\Kernel\Modules\ModuleServiceProvider;
 use SiteXPost\Modules\Publishing\Console\DispatchPublishing;
 use SiteXPost\Modules\Publishing\Console\RunAutoPublishing;
+use SiteXPost\Modules\Publishing\Contracts\PublicationDirectory;
+use SiteXPost\Modules\Publishing\Contracts\PublishRequests;
 use SiteXPost\Modules\Publishing\Domain\PublishingBatch;
 use SiteXPost\Modules\Publishing\Domain\PublishingConflict;
 use SiteXPost\Modules\Publishing\Domain\PublishingJob;
 use SiteXPost\Modules\Publishing\Domain\WordPressPostMapping;
 use SiteXPost\Modules\Publishing\Policies\PublishingPolicyGate;
+use SiteXPost\Modules\Publishing\Queries\PublicationDirectoryQuery;
+use SiteXPost\Modules\Publishing\Queries\PublishRequestService;
 
 /**
  * Phase 6 — WordPress Publisher (WORDPRESS-PUBLISHER.md, PUBLISHING-RECOVERY.md).
@@ -27,6 +31,12 @@ final class PublishingServiceProvider extends ModuleServiceProvider
         PublishingConflict::class => PublishingPolicyGate::class,
         WordPressPostMapping::class => PublishingPolicyGate::class,
     ];
+
+    public function register(): void
+    {
+        $this->app->bind(PublicationDirectory::class, PublicationDirectoryQuery::class);
+        $this->app->bind(PublishRequests::class, PublishRequestService::class);
+    }
 
     protected function bootModule(): void
     {

@@ -122,4 +122,27 @@ return [
         'backoff_minutes' => [1, 5, 15, 60, 180],
         'lock_seconds' => 300,
     ],
+
+    // Phase 8 — SEO Analytics (ANALYTICS-ARCHITECTURE.md, GSC-INTEGRATION.md)
+    'analytics' => [
+        'backfill_days' => (int) env('SITEX_ANALYTICS_BACKFILL_DAYS', 90),
+        'max_backfill_days' => 480, // Search Console keeps ~16 months
+        'lag_days' => 3,            // GSC data is final after 2–3 days
+        'max_days_per_run' => 31,
+        'page_size' => 25000,       // GSC rowLimit maximum
+        'max_pages_per_request' => 10,
+        'window_days' => 28,
+        'search_types' => ['web'],
+        'copilot_ai' => (bool) env('SITEX_COPILOT_AI', true),
+    ],
+
+    // Phase 8 — Autonomous SEO Agent (AUTONOMOUS-SEO-AGENT.md)
+    'agent' => [
+        'default_autonomy_level' => 1,
+        'max_tasks_per_run' => (int) env('SITEX_AGENT_MAX_TASKS_PER_RUN', 10),
+        'task_timeout_seconds' => 900,
+        'run_timeout_minutes' => 120,
+        'memory_retention_days' => 180,
+        'log_retention_days' => 365,
+    ],
 ];

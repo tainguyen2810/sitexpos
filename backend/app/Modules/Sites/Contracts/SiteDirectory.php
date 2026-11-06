@@ -17,6 +17,13 @@ interface SiteDirectory
     public function find(string $siteId): ?array;
 
     /**
+     * Every site of the current workspace (Phase 8 analytics site picker).
+     *
+     * @return list<array{id: string, name: string, url: string, status: string, paired: bool}>
+     */
+    public function all(): array;
+
+    /**
      * Published posts/pages/products of the site (synced index).
      *
      * @param  list<string>  $types

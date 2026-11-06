@@ -15,7 +15,8 @@ interface ArticleCatalog
      * @return array{id: string, site_id: string, campaign_id: string|null, content_idea_id: string|null, title: string, status: string,
      *     primary_keyword: string, secondary_keywords: list<string>, search_intent: string, content_type: string, language: string,
      *     current_version_id: string|null, approved_version_id: string|null, approved_at: string|null, approved_by: string|null,
-     *     unresolved_critical: int, unresolved_high: int, quality_score: int|null, is_demo: bool, updated_at: string|null}|null
+     *     unresolved_critical: int, unresolved_high: int, quality_score: int|null, is_demo: bool, updated_at: string|null,
+     *     spent_micro_usd: int, created_at: string|null}|null
      */
     public function find(string $articleId): ?array;
 

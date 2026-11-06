@@ -99,6 +99,8 @@ final class ArticleCatalogQuery implements ArticleCatalog
             'approved_at' => $a->approved_at?->toIso8601ZuluString(), 'approved_by' => $a->approved_by,
             'unresolved_critical' => (int) $a->unresolved_critical, 'unresolved_high' => (int) $a->unresolved_high,
             'quality_score' => $a->quality_score, 'is_demo' => (bool) $a->is_demo, 'updated_at' => $a->updated_at?->toIso8601ZuluString(),
+            // Phase 8 (article performance): AI spend and creation date.
+            'spent_micro_usd' => (int) $a->spent_micro_usd, 'created_at' => $a->created_at?->toIso8601ZuluString(),
         ];
     }
 }
