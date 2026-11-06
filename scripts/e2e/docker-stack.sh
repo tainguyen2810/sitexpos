@@ -20,6 +20,12 @@ curl -fsS "$API/up" > /dev/null || fail "API /up"
 curl -fsS "$API/install" | grep -q 'data-deployment="docker"' || fail "installer page"
 curl -fsS "http://127.0.0.1:${SITEX_PORT_APP:-8081}/config.js" | grep -q '"apiBaseUrl":"http' || fail "config.js"
 curl -fsS "http://127.0.0.1:${SITEX_PORT_ADMIN:-8082}/deep/link" | grep -q '<div id="app">' || fail "SPA fallback"
+for port in "${SITEX_PORT_API:-8080}" "${SITEX_PORT_APP:-8081}" "${SITEX_PORT_ADMIN:-8082}"; do
+  for path in / /up /config.js /assets/x.js; do
+    curl -sS -o /dev/null -D - "http://127.0.0.1:$port$path" | grep -qi '^x-robots-tag: noindex, nofollow' || fail "noindex header on :$port$path"
+  done
+  curl -fsS "http://127.0.0.1:$port/robots.txt" | grep -q '^Disallow: /$' || fail "robots.txt on :$port"
+done
 
 step "Installer (via its API, as the wizard does)"
 TOKEN=$($DC exec -T app artisan sitex:install:token | grep -oE '^[A-Za-z0-9_-]{24,}$' | tail -1)

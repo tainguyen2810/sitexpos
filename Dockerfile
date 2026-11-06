@@ -42,6 +42,7 @@ COPY --from=vendor /var/www/html/backend /var/www/html/backend
 COPY --from=frontend /src/frontend/dist /var/www/html/frontend/dist
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/nginx-spa.conf /etc/nginx/sitex-spa.conf
+COPY docker/nginx-noindex.conf /etc/nginx/sitex-noindex.conf
 COPY docker/php-fpm.conf /usr/local/etc/php-fpm.d/zz-sitex.conf
 COPY docker/php.ini /usr/local/etc/php/conf.d/zz-sitex.ini
 COPY docker/supervisord.conf /etc/supervisord.conf
