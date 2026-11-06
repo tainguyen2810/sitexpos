@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminApi } from '@/shared/api/admin'
 import { ApiError } from '@/shared/api/client'
+import { customerAppUrl } from '@/shared/config/runtime'
 import { useAsync } from '@/shared/composables/useAsync'
 import { useToast } from '@/shared/composables/useToast'
 import { useSessionStore } from '@/shared/stores/session'
@@ -46,7 +47,7 @@ async function confirm(reason: string) {
     if (action.value === 'impersonate') {
       const s = await adminApi.startImpersonation(ws.value.id, reason)
       toast.success(t('admin.impersonateStarted'))
-      const base = (import.meta.env.VITE_CUSTOMER_APP_URL ?? '').replace(/\/$/, '')
+      const base = customerAppUrl()
       window.open(`${base}/w/${encodeURIComponent(s.workspace_id)}/dashboard`, '_blank')
     } else {
       await (action.value === 'suspend' ? adminApi.suspendWorkspace : adminApi.unsuspendWorkspace)(ws.value.id, reason)

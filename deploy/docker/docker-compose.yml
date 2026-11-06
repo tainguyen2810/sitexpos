@@ -1,0 +1,91 @@
+# SiteX Post Cloud — docker compose stack (docs/DOCKER.md).
+# Copy this file and env.example (as .env) to the server, fill .env, then:
+#   docker compose up -d
+# Only 127.0.0.1 ports are published: put the host's Nginx (aaPanel reverse proxy,
+# with SSL) in front of them. MySQL and Redis are not reachable from outside.
+name: sitexpost
+
+x-app: &app
+  image: ${SITEX_IMAGE:-ghcr.io/tainguyen2810/sitexpos}:${SITEX_VERSION:-latest}
+  restart: unless-stopped
+  environment:
+    SITEX_PUBLIC_API_URL: ${SITEX_PUBLIC_API_URL:?set SITEX_PUBLIC_API_URL in .env}
+    SITEX_PUBLIC_APP_URL: ${SITEX_PUBLIC_APP_URL:?set SITEX_PUBLIC_APP_URL in .env}
+    SITEX_PUBLIC_ADMIN_URL: ${SITEX_PUBLIC_ADMIN_URL:?set SITEX_PUBLIC_ADMIN_URL in .env}
+    # Requests reach PHP through the host proxy and Docker's bridge network.
+    SITEX_TRUSTED_PROXIES: ${SITEX_TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8,192.168.0.0/16}
+    # Installer form hints only (the password is still typed in the wizard).
+    SITEX_INSTALLER_DB_HOST: mysql
+    SITEX_INSTALLER_DB_PORT: "3306"
+    SITEX_INSTALLER_DB_DATABASE: ${MYSQL_DATABASE:-sitexpost}
+    SITEX_INSTALLER_DB_USERNAME: ${MYSQL_USER:-sitexpost}
+    SITEX_INSTALLER_REDIS_HOST: redis
+    SITEX_INSTALLER_REDIS_PORT: "6379"
+  volumes:
+    - storage:/var/www/html/backend/storage
+    - config:/var/www/config
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  app:
+    <<: *app
+    command: ["web"]
+    ports:
+      - "127.0.0.1:${SITEX_PORT_API:-8080}:8080"
+      - "127.0.0.1:${SITEX_PORT_APP:-8081}:8081"
+      - "127.0.0.1:${SITEX_PORT_ADMIN:-8082}:8082"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/up"]
+      interval: 30s
+      timeout: 5s
+      start_period: 120s
+      retries: 3
+
+  horizon:
+    <<: *app
+    command: ["horizon"]
+    stop_grace_period: 90s
+
+  scheduler:
+    <<: *app
+    command: ["scheduler"]
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-sitexpost}
+      MYSQL_USER: ${MYSQL_USER:-sitexpost}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+    volumes:
+      - mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  storage:   # uploads, logs, installer state, encrypted backups
+  config:    # .env written by the installer (APP_KEY lives here — back it up!)
+  mysql:
+  redis:

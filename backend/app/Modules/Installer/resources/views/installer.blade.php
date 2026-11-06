@@ -28,7 +28,7 @@
             <nav aria-label="Các bước cài đặt" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <ol id="steps" class="space-y-1 text-sm"></ol>
             </nav>
-            <main id="app" class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8" aria-live="polite" data-token-file="{{ $tokenFile }}">
+            <main id="app" class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8" aria-live="polite" data-token-file="{{ $tokenFile }}" data-deployment="{{ $deployment }}">
                 <p class="text-slate-500">Đang tải trình cài đặt… (cần bật JavaScript)</p>
             </main>
         </div>

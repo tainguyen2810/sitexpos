@@ -1,6 +1,6 @@
 # SiteX Post — Triển khai & vận hành
 
-Môi trường mục tiêu: **Ubuntu 22.04/24.04 LTS + aaPanel**, Nginx, PHP-FPM, MySQL 8.4, Redis 7, Supervisor. Docker **không bắt buộc**. Production bắt buộc HTTPS.
+Môi trường mục tiêu: **Ubuntu 22.04/24.04 LTS + aaPanel**, Nginx, PHP-FPM, MySQL 8.4, Redis 7, Supervisor. Docker **không bắt buộc**; nếu máy chủ dùng chung với site khác (MariaDB, PHP khác) thì dùng bản Docker: [DOCKER.md](DOCKER.md). Production bắt buộc HTTPS.
 
 > ⚠️ Claude không tự deploy production. Mọi bước dưới đây do người vận hành thực hiện hoặc phê duyệt.
 

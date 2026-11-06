@@ -15,6 +15,7 @@
   // Works whether the page is /install or /install/ (or under a sub-path).
   var API = window.location.pathname.replace(/\/install\/?$/, '') + '/install/api/';
   var tokenFile = app.getAttribute('data-token-file') || 'storage/app/installer/setup-token.txt';
+  var docker = app.getAttribute('data-deployment') === 'docker';
   var token = null;
   var state = null;
   var current = 0;
@@ -169,6 +170,9 @@
     if (slot) { clear(slot); slot.appendChild(alertBox('error', e.message)); }
   }
 
+  // Pre-filled hints from the server (Docker image). Saved values always win.
+  function dflt(key, fallback) { var d = (state && state.defaults) || {}; return d[key] !== undefined && d[key] !== '' ? d[key] : fallback; }
+
   function done(key) { return !!(state && state.steps && state.steps[key]); }
 
   function renderSteps() {
@@ -225,7 +229,9 @@
       token = tokenInput.value.trim();
       api('GET', 'state').then(function (s) { state = s; current = 1; render(); }, function (e) { token = null; onApiError(e, null, slot); });
     } }, [
-      field('Mã cài đặt (setup token)', tokenInput, 'Mã nằm trong file ' + tokenFile + ' (mở bằng aaPanel → Files), hoặc tạo mã mới: php artisan sitex:install:token'),
+      field('Mã cài đặt (setup token)', tokenInput, docker
+        ? 'Lấy mã bằng SSH, trong thư mục cài đặt: docker compose exec app php artisan sitex:install:token'
+        : 'Mã nằm trong file ' + tokenFile + ' (mở bằng aaPanel → Files), hoặc tạo mã mới: php artisan sitex:install:token'),
       slot,
       button('Bắt đầu cài đặt →', { type: 'submit', testid: 'start' }),
     ]);
@@ -233,7 +239,9 @@
     return el('div', {}, [
       heading('Chào mừng đến với SiteX Post', 'Trình cài đặt sẽ kiểm tra máy chủ, kết nối database, cấu hình ứng dụng và tạo tài khoản Super Admin.'),
       el('div', { class: 'mb-6 grid gap-3 sm:grid-cols-2' }, [
-        infoCard('Bạn cần chuẩn bị', ['Database MySQL 8 trống (aaPanel → Databases → Add)', 'Redis (aaPanel → App Store → Redis) — khuyến nghị', 'Domain API đã trỏ vào backend/public, có SSL', 'Email và mật khẩu mạnh cho Super Admin']),
+        infoCard('Bạn cần chuẩn bị', docker
+          ? ['MySQL 8.4 và Redis đã chạy sẵn trong docker compose', 'Mật khẩu database (MYSQL_PASSWORD trong file .env của docker compose)', 'Domain API đã reverse proxy vào container, có SSL', 'Email và mật khẩu mạnh cho Super Admin']
+          : ['Database MySQL 8 trống (aaPanel → Databases → Add)', 'Redis (aaPanel → App Store → Redis) — khuyến nghị', 'Domain API đã trỏ vào backend/public, có SSL', 'Email và mật khẩu mạnh cho Super Admin']),
         infoCard('An toàn', ['Chỉ người có quyền truy cập file máy chủ mới đọc được mã cài đặt', 'Mật khẩu chỉ lưu phía máy chủ, không lưu trong trình duyệt', 'Không ghi đè database đang có dữ liệu', 'Sau khi cài xong, trình cài đặt tự khóa']),
       ]),
       form,
@@ -285,10 +293,10 @@
     var saved = (state && state.config && state.config.database) || {};
     var slot = el('div');
     var form = el('form', { class: 'grid gap-4 sm:grid-cols-2', autocomplete: 'off' }, [
-      field('Máy chủ (host)', input('host', { value: saved.host || '127.0.0.1', required: true })),
-      field('Cổng (port)', input('port', { type: 'number', value: saved.port || 3306, min: 1, max: 65535, required: true })),
-      field('Tên database', input('database', { value: saved.database || '', required: true, placeholder: 'sitexpost' }), 'Database phải trống. Trình cài đặt không ghi đè dữ liệu có sẵn.'),
-      field('Tên đăng nhập', input('username', { value: saved.username || '', required: true, autocomplete: 'off' })),
+      field('Máy chủ (host)', input('host', { value: saved.host || dflt('db_host', '127.0.0.1'), required: true })),
+      field('Cổng (port)', input('port', { type: 'number', value: saved.port || dflt('db_port', 3306), min: 1, max: 65535, required: true })),
+      field('Tên database', input('database', { value: saved.database || dflt('db_database', ''), required: true, placeholder: 'sitexpost' }), 'Database phải trống. Trình cài đặt không ghi đè dữ liệu có sẵn.'),
+      field('Tên đăng nhập', input('username', { value: saved.username || dflt('db_username', ''), required: true, autocomplete: 'off' })),
       field('Mật khẩu', input('password', { type: 'password', autocomplete: 'new-password', placeholder: saved.password_set ? '•••••• (đã lưu — để trống để giữ nguyên)' : '' })),
     ]);
     function payload() {
@@ -314,7 +322,7 @@
       api('PUT', 'database', payload()).then(function () { return refreshState(); }).then(function () { current++; render(); }, function (e) { onApiError(e, form, slot); });
     } });
     return el('div', {}, [
-      heading('Cơ sở dữ liệu MySQL', 'Tạo database và user trong aaPanel → Databases → Add database, rồi nhập thông tin bên dưới.'),
+      heading('Cơ sở dữ liệu MySQL', docker ? 'Database và user đã được container mysql tạo sẵn. Nhập mật khẩu MYSQL_PASSWORD từ file .env của docker compose.' : 'Tạo database và user trong aaPanel → Databases → Add database, rồi nhập thông tin bên dưới.'),
       form,
       el('div', { class: 'mt-4 flex flex-wrap gap-3' }, [testBtn]),
       el('div', { class: 'mt-4' }, [slot]),
@@ -344,9 +352,9 @@
     var form = el('form', { class: 'space-y-6', autocomplete: 'off' }, [
       el('div', { class: 'grid gap-4 sm:grid-cols-2' }, [
         field('Tên ứng dụng', input('app_name', { value: a.app_name || 'SiteX Post', required: true })),
-        field('URL API (domain hiện tại)', input('app_url', { type: 'url', value: a.app_url || origin, required: true }), 'Domain trỏ vào backend/public, ví dụ https://api.tenmien.vn'),
-        field('URL ứng dụng khách hàng', input('frontend_url', { type: 'url', value: a.frontend_url || guess('app'), required: true }), 'Ví dụ https://app.tenmien.vn'),
-        field('URL trang quản trị', input('admin_url', { type: 'url', value: a.admin_url || guess('admin'), required: true }), 'Ví dụ https://admin.tenmien.vn'),
+        field('URL API (domain hiện tại)', input('app_url', { type: 'url', value: a.app_url || dflt('app_url', origin), required: true }), 'Domain trỏ vào backend/public, ví dụ https://api.tenmien.vn'),
+        field('URL ứng dụng khách hàng', input('frontend_url', { type: 'url', value: a.frontend_url || dflt('frontend_url', guess('app')), required: true }), 'Ví dụ https://app.tenmien.vn'),
+        field('URL trang quản trị', input('admin_url', { type: 'url', value: a.admin_url || dflt('admin_url', guess('admin')), required: true }), 'Ví dụ https://admin.tenmien.vn'),
         field('Ngôn ngữ mặc định', select('locale', [['vi', 'Tiếng Việt'], ['en', 'English']], a.locale || 'vi')),
         field('Múi giờ hiển thị mặc định', tz, 'Dữ liệu luôn lưu theo UTC; đây là múi giờ hiển thị mặc định cho người dùng.'),
       ]),
@@ -384,8 +392,8 @@
     var slot = el('div');
     var driver = select('driver', [['redis', 'Redis + Horizon (khuyến nghị)'], ['database', 'Database (không cần Redis, hiệu năng thấp hơn)']], q.driver || 'redis');
     var redisBox = el('div', { class: 'grid gap-4 sm:grid-cols-3' }, [
-      field('Redis host', input('redis_host', { value: q.redis_host || '127.0.0.1' })),
-      field('Redis port', input('redis_port', { type: 'number', value: q.redis_port || 6379 })),
+      field('Redis host', input('redis_host', { value: q.redis_host || dflt('redis_host', '127.0.0.1') })),
+      field('Redis port', input('redis_port', { type: 'number', value: q.redis_port || dflt('redis_port', 6379) })),
       field('Redis password', input('redis_password', { type: 'password', autocomplete: 'new-password', placeholder: q.redis_password_set ? '•••••• (đã lưu)' : 'Để trống nếu không đặt' })),
     ]);
     function toggle() { redisBox.classList.toggle('hidden', driver.value !== 'redis'); }
@@ -403,7 +411,10 @@
         clear(slot); slot.appendChild(r.connected ? alertBox('success', 'Kết nối Redis thành công' + (r.version ? ' · phiên bản ' + r.version : '') + '.') : alertBox('error', 'Không kết nối được Redis (' + r.error_code + ').'));
       }, function (e) { onApiError(e, form, slot); });
     } });
-    var templates = el('div', { class: 'mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4' }, [
+    var templates = docker ? el('div', { class: 'mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4' }, [
+      el('p', { class: 'text-sm font-semibold', text: 'Worker & Scheduler (Docker)' }),
+      el('p', { class: 'mt-1 text-sm text-slate-600', text: 'Bản Docker đã có sẵn container horizon và scheduler. Chúng tự bắt đầu chạy khoảng 30 giây sau khi cài đặt xong, không cần cấu hình Supervisor hay Cron.' }),
+    ]) : el('div', { class: 'mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4' }, [
       el('p', { class: 'text-sm font-semibold', text: 'Worker & Scheduler (bạn tự cấu hình trong aaPanel)' }),
       el('p', { class: 'mt-1 text-sm text-slate-600', text: 'Trình cài đặt không chạy lệnh root. Tải mẫu cấu hình đã điền sẵn đường dẫn của máy chủ này rồi dán vào aaPanel → Supervisor và aaPanel → Cron (chạy mỗi phút).' }),
       el('div', { class: 'mt-3 flex flex-wrap gap-2' }, [
@@ -483,7 +494,10 @@
         slot.appendChild(alertBox('success', 'Cài đặt hoàn tất! Trình cài đặt đã bị khóa.'));
         slot.appendChild(el('div', { class: 'mt-4 space-y-2 text-sm text-slate-600' }, [
           el('p', { text: 'Bước tiếp theo:' }),
-          el('ol', { class: 'list-decimal space-y-1 pl-5' }, [
+          el('ol', { class: 'list-decimal space-y-1 pl-5' }, docker ? [
+            el('li', { text: 'Container horizon và scheduler tự chạy trong khoảng 30 giây (kiểm tra: docker compose ps).' }),
+            el('li', { text: 'Đăng nhập trang quản trị, bật 2FA, rồi hoàn tất Setup Wizard.' }),
+          ] : [
             el('li', { text: 'Cấu hình Supervisor (Horizon) và Cron trong aaPanel bằng các mẫu đã tải.' }),
             el('li', { text: 'Build và triển khai frontend (dist/customer, dist/admin) theo AAPANEL-QUICK-INSTALL.md.' }),
             el('li', { text: 'Đăng nhập trang quản trị, bật 2FA, rồi hoàn tất Setup Wizard.' }),

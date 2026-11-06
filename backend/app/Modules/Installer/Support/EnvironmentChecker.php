@@ -65,8 +65,8 @@ final class EnvironmentChecker
         }
         $add('files', 'writable_installer', $this->storage->writable() ? 'PASS' : 'FAIL', $this->relative($this->storage->dir()), __('installer.fix.writable', ['path' => $this->relative($this->storage->dir())]));
 
-        $env = base_path('.env');
-        $envOk = is_file($env) ? is_writable($env) : is_writable(base_path());
+        $env = app()->environmentFilePath();
+        $envOk = is_file($env) ? is_writable($env) : is_writable(dirname($env));
         $add('files', 'env_writable', $envOk ? 'PASS' : 'FAIL', '.env', __('installer.fix.env_writable'));
 
         $cached = is_file(base_path('bootstrap/cache/config.php'));

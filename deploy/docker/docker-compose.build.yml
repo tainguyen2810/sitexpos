@@ -1,0 +1,14 @@
+# Build the image from this git checkout instead of pulling it:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  app:
+    build: &build
+      context: ../..
+      dockerfile: Dockerfile
+    image: sitexpost:local
+  horizon:
+    build: *build
+    image: sitexpost:local
+  scheduler:
+    build: *build
+    image: sitexpost:local

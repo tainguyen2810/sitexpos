@@ -1,6 +1,6 @@
 # Cài nhanh trên aaPanel (Ubuntu) — Phase 9
 
-Hướng dẫn ngắn để chạy SiteX Post Cloud trên một máy chủ Ubuntu có aaPanel. Chi tiết vận hành: [DEPLOYMENT.md](DEPLOYMENT.md). Trình cài đặt web: [INSTALLATION-WIZARD.md](INSTALLATION-WIZARD.md).
+Hướng dẫn ngắn để chạy SiteX Post Cloud trên một máy chủ Ubuntu có aaPanel. Máy chủ đang chạy site khác bằng MariaDB hoặc PHP khác: dùng bản Docker ([DOCKER.md](DOCKER.md)), không cần gỡ gì. Chi tiết vận hành: [DEPLOYMENT.md](DEPLOYMENT.md). Trình cài đặt web: [INSTALLATION-WIZARD.md](INSTALLATION-WIZARD.md).
 
 > Các lệnh SSH bên dưới chạy bằng user web `www` (`sudo -u www …`), **không** chạy bằng root, trừ khi ghi rõ.
 

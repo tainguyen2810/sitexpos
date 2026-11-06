@@ -14,7 +14,7 @@ use SiteXPost\Modules\Identity\Http\Middleware\EnsureEmailIsVerified;
 use SiteXPost\Modules\Identity\Http\Middleware\EnsureUserIsActive;
 use SiteXPost\Modules\Platform\Http\Middleware\EnsurePlatformStaff;
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
@@ -42,6 +42,14 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Pure JSON API: never redirect guests to a login page.
         $middleware->redirectGuestsTo(fn (Request $request) => null);
+
+        // Behind a reverse proxy (Docker image: aaPanel Nginx → container), trust the
+        // proxy's X-Forwarded-* headers so client IPs (rate limits, audit) and HTTPS are
+        // seen correctly. Real environment variable only (docs/DOCKER.md); unset = trust none.
+        $proxies = getenv('SITEX_TRUSTED_PROXIES');
+        if (is_string($proxies) && trim($proxies) !== '') {
+            $middleware->trustProxies(at: trim($proxies) === '*' ? '*' : array_values(array_filter(array_map('trim', explode(',', $proxies)))));
+        }
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
@@ -49,3 +57,12 @@ return Application::configure(basePath: dirname(__DIR__))
         );
         $exceptions->render(fn (Throwable $e, Request $request) => ApiExceptionRenderer::render($e, $request));
     })->create();
+
+// Docker image: the .env written by the installer lives on a persistent volume
+// instead of inside the (replaceable) image. Real environment variable only.
+$envDir = getenv('SITEX_ENV_DIR');
+if (is_string($envDir) && $envDir !== '') {
+    $app->useEnvironmentPath($envDir);
+}
+
+return $app;

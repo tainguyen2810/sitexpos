@@ -50,6 +50,7 @@ final class InstallerController
             'version' => (string) config('sitex.version'),
             'adminUrl' => (string) config('sitex.admin_url'),
             'tokenFile' => 'backend/storage/app/installer/'.SetupToken::FILE_PLAIN,
+            'deployment' => (string) config('sitex.deployment'),
         ], $installed ? 403 : 200)->header('Cache-Control', 'no-store')
             ->header('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'self'");
     }
@@ -64,7 +65,9 @@ final class InstallerController
             'steps' => $progress['steps'] ?? [],
             'config' => $this->pending->publicView(),
             'run' => $this->publicRun($progress['run'] ?? null),
-            'templates' => DeploymentTemplates::NAMES,
+            'templates' => config('sitex.deployment') === 'docker' ? [] : DeploymentTemplates::NAMES,
+            'deployment' => config('sitex.deployment'),
+            'defaults' => array_filter((array) config('sitex.installer.defaults'), static fn ($v): bool => is_scalar($v) && (string) $v !== ''),
         ]]);
     }
 
@@ -175,7 +178,7 @@ final class InstallerController
         return new JsonResponse(['data' => [
             'redis' => $redis,
             'horizon_possible' => $data['driver'] === 'redis' && extension_loaded('pcntl') && extension_loaded('redis'),
-            'templates' => DeploymentTemplates::NAMES,
+            'templates' => config('sitex.deployment') === 'docker' ? [] : DeploymentTemplates::NAMES,
         ]]);
     }
 

@@ -2,6 +2,7 @@
 import { computed, ref, shallowRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { analyticsApi, num, signedPct, type Report, type ReportPayload } from '@/shared/api/analytics'
+import { apiUrl } from '@/shared/api/client'
 import { workspaceApi } from '@/shared/api/workspaces'
 import type { Member } from '@/shared/api/types'
 import { useAsync } from '@/shared/composables/useAsync'
@@ -36,7 +37,7 @@ const emailOpen = ref(false)
 const recipients = ref<string[]>([])
 const sending = ref(false)
 const payload = computed(() => (selected.value?.payload ?? {}) as ReportPayload)
-const csvHref = (id: string) => `${(import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')}${analyticsApi.csvUrl(workspaceId.value, id)}`
+const csvHref = (id: string) => apiUrl(analyticsApi.csvUrl(workspaceId.value, id))
 
 async function create() {
   creating.value = true
