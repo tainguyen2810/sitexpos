@@ -47,7 +47,7 @@ final class SyncSearchConsole
             return $run;
         }
         $run->forceFill(['status' => 'running', 'started_at' => $run->started_at ?? now(), 'attempts' => $run->attempts + 1, 'error_code' => null, 'error_message' => null])->save();
-        $property = AnalyticsProperty::query()->firstOrNew(['site_id' => $run->site_id, 'provider' => 'gsc']);
+        $property = (AnalyticsProperty::query()->where(['site_id' => $run->site_id, 'provider' => 'gsc'])->first() ?? (new AnalyticsProperty)->forceFill(['site_id' => $run->site_id, 'provider' => 'gsc']));
         if (! $property->exists) {
             $property->forceFill(['site_id' => $run->site_id, 'provider' => 'gsc', 'status' => 'pending'])->save();
         }

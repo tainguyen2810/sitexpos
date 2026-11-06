@@ -61,6 +61,10 @@ final class ContentRefresh
             return $existing;
         }
         $article = $this->articles->find($articleId) ?? throw ApiException::notFound();
+        // An open refresh moves the article out of APPROVED; report the real reason.
+        if (ContentRefreshJob::query()->where('active_key', $articleId)->exists()) {
+            throw ApiException::conflict('refresh_in_progress', __('analytics.errors.refresh_in_progress'));
+        }
         if ($article['status'] !== 'APPROVED') {
             throw ApiException::conflict('refresh_requires_approved_article', __('analytics.errors.refresh_requires_approved'));
         }

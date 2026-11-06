@@ -72,7 +72,7 @@ final class TrackExperiments
             if ($date === $changeDay) {
                 continue; // the change day itself is mixed
             }
-            $o = ExperimentObservation::query()->firstOrNew(['experiment_id' => $e->id, 'date' => $date]);
+            $o = (ExperimentObservation::query()->where(['experiment_id' => $e->id, 'date' => $date])->first() ?? (new ExperimentObservation)->forceFill(['experiment_id' => $e->id, 'date' => $date]));
             $o->forceFill(['experiment_id' => $e->id, 'date' => $date, 'phase' => $date < $changeDay ? 'baseline' : 'observation',
                 'clicks' => $r->clicks, 'impressions' => $r->impressions, 'position' => $r->position, 'is_demo' => $e->is_demo])->save();
         }

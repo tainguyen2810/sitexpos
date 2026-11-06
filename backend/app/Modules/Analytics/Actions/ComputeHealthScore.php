@@ -106,7 +106,7 @@ final class ComputeHealthScore
 
         $weights = AnalyticsConfig::weights($this->context->workspaceId());
         $res = HealthScorer::score($components, $weights);
-        $row = SeoHealthScore::query()->firstOrNew(['site_id' => $siteId, 'date' => $date->toDateString()]);
+        $row = (SeoHealthScore::query()->where(['site_id' => $siteId, 'date' => $date->toDateString()])->first() ?? (new SeoHealthScore)->forceFill(['site_id' => $siteId, 'date' => $date->toDateString()]));
         $row->forceFill(['site_id' => $siteId, 'date' => $date->toDateString(), 'score' => $res['score'], 'components' => $res['components'], 'weights' => $weights])->save();
 
         return $row;

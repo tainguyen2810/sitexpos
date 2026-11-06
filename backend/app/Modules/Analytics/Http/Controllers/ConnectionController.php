@@ -95,7 +95,7 @@ final class ConnectionController
         $siteId = $this->dash->site($site);
         $url = (string) $request->validated('property_url');
         $this->call(fn () => $this->gsc->selectProperty($siteId, $url, (string) $request->user()?->getAuthIdentifier()));
-        $p = AnalyticsProperty::query()->firstOrNew(['site_id' => $siteId, 'provider' => 'gsc']);
+        $p = (AnalyticsProperty::query()->where(['site_id' => $siteId, 'provider' => 'gsc'])->first() ?? (new AnalyticsProperty)->forceFill(['site_id' => $siteId, 'provider' => 'gsc']));
         $changed = $p->exists && $p->property_ref !== $url;
         $p->forceFill(['site_id' => $siteId, 'provider' => 'gsc', 'property_ref' => $url, 'status' => 'active', 'last_error_code' => null]
             + ($changed ? ['last_complete_date' => null, 'first_date' => null] : []))->save();

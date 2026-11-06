@@ -111,7 +111,7 @@ final class AnalyzeSite
             $baseMean = $baseline !== [] ? array_sum($baseline) / count($baseline) : null;
             $res = TrendClassifier::classify(['clicks' => $w['recent']['clicks'], 'impressions' => $w['recent']['impressions'], 'position' => $w['recent']['position'], 'days_with_data' => $w['recent']['days']],
                 $w['previous'], $t, $baseMean, $medians[Metrics::positionBand($w['recent']['position'])] ?? null, $age, $sinceUpdate);
-            $snap = ContentPerformanceSnapshot::query()->firstOrNew(['site_id' => $siteId, 'page_hash' => $hash, 'period_end' => $end->toDateString(), 'window_days' => $days]);
+            $snap = (ContentPerformanceSnapshot::query()->where(['site_id' => $siteId, 'page_hash' => $hash, 'period_end' => $end->toDateString(), 'window_days' => $days])->first() ?? (new ContentPerformanceSnapshot)->forceFill(['site_id' => $siteId, 'page_hash' => $hash, 'period_end' => $end->toDateString(), 'window_days' => $days]));
             $snap->forceFill([
                 'site_id' => $siteId, 'page_hash' => $hash, 'page_url' => (string) $p['page_url'], 'article_id' => $p['article_id'], 'period_end' => $end->toDateString(), 'window_days' => $days,
                 'clicks' => $w['recent']['clicks'], 'impressions' => $w['recent']['impressions'], 'position' => $w['recent']['position'],
