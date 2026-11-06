@@ -165,7 +165,7 @@ async function act(action: 'pause' | 'resume' | 'cancel' | 'retry') {
     </AppCard>
 
     <AppModal :open="open" :title="t('writer.bulk.new')" width="lg" @close="open = false">
-      <div class="grid gap-4 sm:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <p v-if="formError" class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600 sm:col-span-2" role="alert">{{ formError }}</p>
         <AppSelect v-model="form.campaign_id" class="sm:col-span-2" :label="t('writer.bulk.campaign')" :options="campaignOptions" :error="errors.campaign_id" />
         <div class="sm:col-span-2">

@@ -72,7 +72,7 @@ const changeOptions = computed(() => CHANGE_TYPES.map((c) => ({ value: c, label:
     <LoadingState v-if="loading && !data" />
     <ErrorState v-else-if="error" :error="error" @retry="run" />
     <EmptyState v-else-if="!data?.data.length" icon="activity" :title="t('an.experiments.empty')" />
-    <div v-else class="grid gap-4 lg:grid-cols-2">
+    <div v-else class="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <AppCard v-for="e in data.data" :key="e.id" :title="t(`an.experiments.change.${e.change_type}`)" :subtitle="e.page_url">
         <div class="mb-3 flex flex-wrap items-center gap-2 text-xs">
           <AppBadge :tone="e.status === 'observing' ? 'brand' : 'neutral'">{{ t(`an.experiments.status.${e.status}`) }}</AppBadge>
@@ -83,20 +83,22 @@ const changeOptions = computed(() => CHANGE_TYPES.map((c) => ({ value: c, label:
         <p class="mb-2 text-xs text-ink-muted">
           {{ t('an.experiments.baseline') }}: {{ formatDate(e.baseline_start) }} – {{ formatDate(e.baseline_end) }} · {{ t('an.experiments.observation') }}: {{ e.observation_days }} {{ t('an.common.days') }} ({{ t('an.common.until') }} {{ formatDate(e.observation_end) }})
         </p>
-        <table class="min-w-full text-sm">
-          <thead class="text-left text-xs uppercase text-ink-muted">
-            <tr><th /><th class="text-right">{{ t('an.experiments.before') }}</th><th class="text-right">{{ t('an.experiments.after') }}</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="k in ['clicks', 'impressions', 'ctr', 'position']" :key="k">
-              <td class="py-1 text-ink-muted">{{ t(`an.metrics.${k}`) }}</td>
-              <td class="text-right tabular-nums">{{ e.baseline ? fmt(k, e.baseline[k]) : '—' }}</td>
-              <td class="text-right tabular-nums">{{ e.observed ? fmt(k, e.observed[k]) : '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="text-left text-xs uppercase text-ink-muted">
+              <tr><th /><th class="text-right">{{ t('an.experiments.before') }}</th><th class="text-right">{{ t('an.experiments.after') }}</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="k in ['clicks', 'impressions', 'ctr', 'position']" :key="k">
+                <td class="py-1 text-ink-muted">{{ t(`an.metrics.${k}`) }}</td>
+                <td class="text-right tabular-nums">{{ e.baseline ? fmt(k, e.baseline[k]) : '—' }}</td>
+                <td class="text-right tabular-nums">{{ e.observed ? fmt(k, e.observed[k]) : '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <p v-if="e.outcome_note" class="mt-2 text-xs">{{ e.outcome_note }}</p>
-        <p v-if="e.external_factors?.length" class="mt-2 text-xs text-ink-muted">{{ t('an.experiments.factors') }}: {{ e.external_factors.join(', ') }}</p>
+        <p v-if="e.external_factors" class="mt-2 text-xs text-ink-muted">{{ t('an.experiments.factors') }}: {{ e.external_factors }}</p>
         <AppButton v-if="canEdit && e.status === 'observing'" size="sm" variant="ghost" class="mt-3" @click="cancel(e)">{{ t('an.experiments.cancel') }}</AppButton>
       </AppCard>
     </div>

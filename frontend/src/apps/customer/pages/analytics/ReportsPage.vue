@@ -107,30 +107,32 @@ async function send() {
       <LoadingState v-if="loading && !data" />
       <ErrorState v-else-if="error" :error="error" @retry="run" />
       <EmptyState v-else-if="!data?.data.length" icon="file" :title="t('an.reports.empty')" />
-      <table v-else class="min-w-full text-sm">
-        <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
-          <tr>
-            <th class="px-4 py-2">{{ t('an.reports.period') }}</th>
-            <th class="px-4 py-2">{{ t('an.common.status') }}</th>
-            <th class="px-4 py-2">{{ t('an.reports.emailed') }}</th>
-            <th class="px-4 py-2" />
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-line">
-          <tr v-for="r in data.data" :key="r.id">
-            <td class="px-4 py-2">
-              {{ t(`an.reports.periods.${r.period_type}`) }}: {{ formatDate(r.period_start) }} – {{ formatDate(r.period_end) }}
-              <AppBadge v-if="r.is_demo" class="ml-1">DEMO</AppBadge>
-            </td>
-            <td class="px-4 py-2"><AppBadge :tone="r.status === 'ready' ? 'success' : r.status === 'failed' ? 'danger' : 'brand'">{{ t(`an.reports.status.${r.status}`, r.status) }}</AppBadge></td>
-            <td class="px-4 py-2">{{ r.emailed_at ? `${formatDateTime(r.emailed_at)} (${r.recipients_count})` : '—' }}</td>
-            <td class="px-4 py-2 text-right">
-              <AppButton size="sm" variant="ghost" :disabled="r.status !== 'ready'" @click="open(r)">{{ t('an.reports.view') }}</AppButton>
-              <a v-if="r.status === 'ready'" :href="csvHref(r.id)" class="ml-2 text-sm text-brand-700 hover:underline" download>CSV</a>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
+            <tr>
+              <th class="px-4 py-2">{{ t('an.reports.period') }}</th>
+              <th class="px-4 py-2">{{ t('an.common.status') }}</th>
+              <th class="px-4 py-2">{{ t('an.reports.emailed') }}</th>
+              <th class="px-4 py-2" />
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            <tr v-for="r in data.data" :key="r.id">
+              <td class="px-4 py-2">
+                {{ t(`an.reports.periods.${r.period_type}`) }}: {{ formatDate(r.period_start) }} – {{ formatDate(r.period_end) }}
+                <AppBadge v-if="r.is_demo" class="ml-1">DEMO</AppBadge>
+              </td>
+              <td class="px-4 py-2"><AppBadge :tone="r.status === 'ready' ? 'success' : r.status === 'failed' ? 'danger' : 'brand'">{{ t(`an.reports.status.${r.status}`, r.status) }}</AppBadge></td>
+              <td class="px-4 py-2">{{ r.emailed_at ? `${formatDateTime(r.emailed_at)} (${r.recipients_count})` : '—' }}</td>
+              <td class="px-4 py-2 text-right">
+                <AppButton size="sm" variant="ghost" :disabled="r.status !== 'ready'" @click="open(r)">{{ t('an.reports.view') }}</AppButton>
+                <a v-if="r.status === 'ready'" :href="csvHref(r.id)" class="ml-2 text-sm text-brand-700 hover:underline" download>CSV</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </AppCard>
 
     <Drawer :open="!!selected" :title="t('an.reports.report')" :subtitle="selected ? `${formatDate(selected.period_start)} – ${formatDate(selected.period_end)}` : ''" @close="selected = null">

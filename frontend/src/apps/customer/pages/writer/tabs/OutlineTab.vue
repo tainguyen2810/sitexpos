@@ -82,7 +82,7 @@ async function approve() {
             <AppButton size="sm" variant="ghost" :aria-label="t('writer.outline.remove')" @click="sections.splice(i, 1)">✕</AppButton>
           </template>
         </div>
-        <div class="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+        <div class="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
           <AppInput v-if="editable" v-model="s.purpose" :label="t('writer.outline.purpose')" />
           <p v-else-if="s.purpose" class="text-ink-muted">{{ s.purpose }}</p>
           <div class="flex items-end gap-2">

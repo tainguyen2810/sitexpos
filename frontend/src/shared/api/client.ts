@@ -58,6 +58,11 @@ export function configureApi(partial: Partial<Config>): void {
   Object.assign(config, partial)
 }
 
+/** Absolute URL of an API path (for plain links such as authenticated file downloads). */
+export function apiUrl(path: string): string {
+  return `${config.baseUrl}${path}`
+}
+
 export function readCookie(name: string): string | null {
   const match = document.cookie.split('; ').find((c) => c.startsWith(`${name}=`))
   return match ? decodeURIComponent(match.slice(name.length + 1)) : null

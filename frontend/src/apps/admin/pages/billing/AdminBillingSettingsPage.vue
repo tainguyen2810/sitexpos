@@ -97,7 +97,7 @@ async function saveProvider() {
     <div v-else-if="settings.data.value" class="space-y-6">
       <p v-if="!settings.data.value.credit_policy_configured" class="rounded-lg bg-warning-50 px-4 py-2 text-sm text-warning-600">{{ t('billAdmin.settings.policyMissing') }}</p>
       <AppCard :title="t('billAdmin.settings.general')">
-        <form class="grid gap-6 md:grid-cols-2" @submit.prevent="save">
+        <form class="grid grid-cols-1 gap-6 md:grid-cols-2" @submit.prevent="save">
           <div class="space-y-1">
             <Toggle v-model="form.enforcement" :label="t('billAdmin.settings.enforcement')" :description="t('billAdmin.settings.enforcementHint')" data-testid="enforcement" />
             <Toggle v-model="form.trial_enabled" :label="t('billAdmin.settings.trialEnabled')" />
@@ -105,7 +105,7 @@ async function saveProvider() {
             <Toggle v-model="form.proration_enabled" :label="t('billAdmin.settings.proration')" />
             <AppSelect v-model="form.overpayment_policy" :label="t('billAdmin.settings.overpayment')" :options="['manual_review', 'accept_and_credit_difference'].map((x) => ({ value: x, label: t(`billAdmin.settings.overpaymentPolicies.${x}`) }))" />
           </div>
-          <div class="grid grid-cols-2 gap-3">
+          <div class="">
             <AppInput v-model="form.default_plan_code" :label="t('billAdmin.settings.defaultPlan')" class="col-span-2" />
             <AppInput v-model="form.currency" :label="t('billAdmin.settings.currency')" />
             <AppInput v-model="form.grace_days" type="number" :label="t('billAdmin.settings.graceDays')" />
@@ -116,7 +116,7 @@ async function saveProvider() {
           </div>
           <div class="md:col-span-2">
             <p class="mb-2 text-sm font-medium">{{ t('billAdmin.settings.seller') }}</p>
-            <div class="grid gap-3 md:grid-cols-3">
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
               <AppInput v-model="form.seller_name" :label="t('billAdmin.settings.sellerName')" />
               <AppInput v-model="form.seller_tax_code" :label="t('billAdmin.settings.sellerTax')" />
               <AppInput v-model="form.seller_address" :label="t('billAdmin.settings.sellerAddress')" />

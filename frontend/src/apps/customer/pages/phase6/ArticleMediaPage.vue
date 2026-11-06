@@ -123,7 +123,7 @@ const statusTone = (s: string) => (s === 'accepted' ? 'success' : s === 'rejecte
           <AppButton v-if="canEdit" size="sm" :loading="saving" data-testid="save-placements" @click="save">{{ t('common.save') }}</AppButton>
         </div>
       </div>
-      <div class="grid gap-6 lg:grid-cols-3">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <AppCard :title="t('p6.media.art.structure')" :padded="false">
           <ul class="divide-y divide-line text-sm">
             <li class="flex items-center justify-between px-5 py-2"><span>{{ t('p6.media.slot.featured') }}</span><AppButton v-if="canEdit" size="sm" variant="ghost" @click="add('featured')">+</AppButton></li>
@@ -167,7 +167,7 @@ const statusTone = (s: string) => (s === 'accepted' ? 'success' : s === 'rejecte
 
     <AppModal :open="!!picking" :title="t('p6.media.art.chooseImage')" width="xl" @close="picking = null">
       <EmptyState v-if="!library.length" icon="image" :title="t('p6.media.lib.empty')" />
-      <ul v-else class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <ul v-else class=" ">
         <li v-for="a in library" :key="a.id">
           <button type="button" class="block w-full text-left disabled:opacity-40" :disabled="!!picking && !placementAllowsAsset(picking.slot, a)" @click="choose(a)">
             <img :src="a.thumbnail_url ?? ''" :alt="a.alt_text ?? ''" class="h-24 w-full rounded object-cover" />

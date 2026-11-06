@@ -58,7 +58,7 @@ const sevTone = (s: string) => (s === 'error' ? 'danger' : s === 'warning' ? 'wa
     </AppCard>
 
     <EmptyState v-if="!report" icon="chart" :title="t('writer.quality.empty')" />
-    <div v-else class="grid gap-4 lg:grid-cols-2">
+    <div v-else class="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <AppCard>
         <h3 class="mb-3 text-sm font-semibold">{{ t('writer.quality.criteria') }}</h3>
         <ul class="space-y-3">

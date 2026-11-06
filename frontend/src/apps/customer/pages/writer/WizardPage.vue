@@ -205,7 +205,7 @@ const fieldErr = (k: string) => errors[k] ?? Object.entries(errors).find(([key, 
       <RouterLink :to="{ name: 'sites', params: { workspaceId: id } }" class="text-sm font-medium text-brand-600 underline">{{ t('nav.sites') }}</RouterLink>
     </EmptyState>
 
-    <div v-else class="grid gap-6 lg:grid-cols-[14rem_1fr]">
+    <div v-else class="grid grid-cols-1 gap-6 lg:grid-cols-[14rem_1fr]">
       <ol class="flex gap-2 overflow-x-auto lg:block lg:space-y-1" :aria-label="t('writer.wizard.title')">
         <li v-for="(g, i) in GROUPS" :key="g">
           <button
@@ -229,7 +229,7 @@ const fieldErr = (k: string) => errors[k] ?? Object.entries(errors).find(([key, 
         <ProgressBar class="mb-5" :value="step + 1" :max="GROUPS.length" />
         <p v-if="formError" class="mb-4 rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">{{ formError }}</p>
 
-        <form id="wizard" class="grid gap-4 sm:grid-cols-2" novalidate @submit.prevent="step < GROUPS.length - 1 ? step++ : create()">
+        <form id="wizard" class="grid grid-cols-1 gap-4 sm:grid-cols-2" novalidate @submit.prevent="step < GROUPS.length - 1 ? step++ : create()">
           <!-- 1–3 -->
           <template v-if="group === 'source'">
             <AppSelect v-model="f.site_id" :label="t('writer.wizard.steps.site')" :options="siteOptions" :error="fieldErr('site_id')" />
@@ -313,7 +313,7 @@ v-model="f.budget_usd" type="number" :label="t('writer.wizard.budget')" :error="
 
           <!-- 17 -->
           <template v-if="group === 'confirm'">
-            <dl class="grid gap-x-6 gap-y-2 text-sm sm:col-span-2 sm:grid-cols-2" data-testid="wizard-summary">
+            <dl class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:col-span-2 sm:grid-cols-2" data-testid="wizard-summary">
               <div><dt class="text-ink-muted">{{ t('writer.wizard.steps.site') }}</dt><dd>{{ siteOptions.find((s) => s.value === f.site_id)?.label }}</dd></div>
               <div><dt class="text-ink-muted">{{ t('writer.wizard.steps.idea') }}</dt><dd>{{ idea?.title ?? f.topic }}</dd></div>
               <div><dt class="text-ink-muted">{{ t('writer.wizard.steps.primary') }}</dt><dd>{{ f.primary_keyword || idea?.primary_keyword || '—' }}</dd></div>

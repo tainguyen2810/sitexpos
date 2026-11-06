@@ -86,7 +86,7 @@ const coverageTotal = (c: Cluster) => (c.coverage.covered ?? 0) + (c.coverage.pa
 </script>
 
 <template>
-  <div class="grid gap-6 lg:grid-cols-3">
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
     <AppCard :title="t('research.tabs.clusters')" :padded="false">
       <LoadingState v-if="clusters.loading.value" class="p-5" />
       <ErrorState v-else-if="clusters.error.value" :error="clusters.error.value" class="p-5" @retry="clusters.run" />
@@ -120,7 +120,7 @@ const coverageTotal = (c: Cluster) => (c.coverage.covered ?? 0) + (c.coverage.pa
         <LoadingState v-if="loadingCluster" :rows="3" />
         <template v-else-if="cluster">
           <p v-if="cluster.pillar_keyword" class="mb-3 text-sm"><span class="text-ink-muted">{{ t('research.clusters.pillar') }}:</span> <strong>{{ cluster.pillar_keyword.keyword }}</strong></p>
-          <div class="grid gap-4 md:grid-cols-2">
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <p class="mb-1 text-xs font-semibold uppercase text-ink-muted">{{ t('research.tabs.keywords') }}</p>
               <ul class="max-h-72 space-y-1 overflow-y-auto text-sm">

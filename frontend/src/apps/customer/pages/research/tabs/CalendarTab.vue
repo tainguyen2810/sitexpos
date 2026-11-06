@@ -165,7 +165,7 @@ const inMonth = (day: string) => view.value === 'week' || day.slice(0, 7) === an
 </script>
 
 <template>
-  <div class="grid gap-6 xl:grid-cols-4">
+  <div class="grid grid-cols-1 gap-6 xl:grid-cols-4">
     <AppCard class="xl:col-span-3" :padded="false">
       <div class="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
         <AppButton size="sm" variant="ghost" :aria-label="t('common.previous')" @click="shift(-1)">‹</AppButton>
@@ -183,10 +183,10 @@ const inMonth = (day: string) => view.value === 'week' || day.slice(0, 7) === an
       <ErrorState v-else-if="error" :error="error" class="p-5" @retry="load" />
       <div v-else class="overflow-x-auto">
         <div class="min-w-[720px]">
-          <div class="grid grid-cols-7 border-b border-line bg-surface-muted text-center text-xs font-medium text-ink-muted">
+          <div class="">
             <div v-for="w in weekdays" :key="w" class="py-2">{{ w }}</div>
           </div>
-          <div v-for="(week, wi) in weeks" :key="wi" class="grid grid-cols-7 border-b border-line last:border-b-0">
+          <div v-for="(week, wi) in weeks" :key="wi" class="">
             <div
               v-for="day in week"
               :key="day"

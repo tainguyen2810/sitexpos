@@ -27,21 +27,23 @@ const monthly = computed(() => RESOURCES.filter((r) => data.value?.entitlements[
     <BillingNav active="usage" />
     <LoadingState v-if="loading && !data" />
     <ErrorState v-else-if="error" :error="error" @retry="run" />
-    <div v-else-if="data" class="grid gap-6 lg:grid-cols-2">
+    <div v-else-if="data" class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <AppCard :title="t('bill.usage.byCategory')" :subtitle="formatDate(data.period_start)" :padded="false">
         <EmptyState v-if="!data.by_category.length" icon="sparkles" :title="t('bill.usage.empty')" />
-        <table v-else class="min-w-full text-sm">
-          <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
-            <tr><th class="px-4 py-2" /><th class="px-4 py-2 text-right">{{ t('bill.usage.calls') }}</th><th class="px-4 py-2 text-right">{{ t('bill.usage.charged') }}</th></tr>
-          </thead>
-          <tbody class="divide-y divide-line">
-            <tr v-for="c in data.by_category" :key="c.category">
-              <td class="px-4 py-2">{{ t(`bill.usage.categories.${c.category}`) }}</td>
-              <td class="px-4 py-2 text-right tabular-nums">{{ c.calls }}</td>
-              <td class="px-4 py-2 text-right tabular-nums">{{ formatCredits(c.charged_mc) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-else class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
+              <tr><th class="px-4 py-2" /><th class="px-4 py-2 text-right">{{ t('bill.usage.calls') }}</th><th class="px-4 py-2 text-right">{{ t('bill.usage.charged') }}</th></tr>
+            </thead>
+            <tbody class="divide-y divide-line">
+              <tr v-for="c in data.by_category" :key="c.category">
+                <td class="px-4 py-2">{{ t(`bill.usage.categories.${c.category}`) }}</td>
+                <td class="px-4 py-2 text-right tabular-nums">{{ c.calls }}</td>
+                <td class="px-4 py-2 text-right tabular-nums">{{ formatCredits(c.charged_mc) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <p v-if="uncertain" class="border-t border-line px-4 py-3 text-xs text-warning-600">{{ t('bill.usage.uncertain') }}: {{ uncertain }} — {{ t('bill.usage.uncertainHint') }}</p>
       </AppCard>
 

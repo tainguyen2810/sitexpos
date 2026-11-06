@@ -114,10 +114,10 @@ function toggleList(list: 'allowed_actions' | 'forbidden_actions', tool: ToolNam
         <AppButton v-if="canEdit && !config.emergency_stop" class="ml-auto" size="sm" variant="danger" data-testid="emergency-stop" @click="stopOpen = true">{{ t('ag.config.emergencyStop') }}</AppButton>
       </div>
 
-      <form class="grid gap-6 lg:grid-cols-3" @submit.prevent="save()">
+      <form class="grid grid-cols-1 gap-6 lg:grid-cols-3" @submit.prevent="save()">
         <AppCard :title="t('ag.config.autonomy')" class="lg:col-span-2">
           <Toggle v-model="form.enabled" :label="t('ag.config.enabled')" :description="t('ag.config.enabledHint')" :disabled="!canConfigure" />
-          <fieldset class="mt-4 grid gap-3 sm:grid-cols-2" :disabled="!canConfigure">
+          <fieldset class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2" :disabled="!canConfigure">
             <legend class="sr-only">{{ t('ag.config.autonomy') }}</legend>
             <label v-for="l in LEVELS" :key="l" class="flex cursor-pointer gap-3 rounded-lg border p-3 text-sm" :class="form.autonomy_level === l ? 'border-brand-500 bg-brand-50' : 'border-line'">
               <input v-model="form.autonomy_level" type="radio" :value="l" class="mt-1" :data-testid="`level-${l}`" />
@@ -134,7 +134,7 @@ function toggleList(list: 'allowed_actions' | 'forbidden_actions', tool: ToolNam
             <label class="flex flex-col gap-1"><span class="text-xs text-ink-muted">{{ t('ag.config.maxDaily') }}</span><input v-model="form.max_daily_tasks" type="number" min="0" max="200" :disabled="!canConfigure" class="rounded-lg border border-line bg-surface px-2 py-1.5" /></label>
             <label class="flex flex-col gap-1"><span class="text-xs text-ink-muted">{{ t('ag.config.maxSpend') }}</span><input v-model="spendUsd" type="number" min="0" step="0.01" :disabled="!canConfigure" class="rounded-lg border border-line bg-surface px-2 py-1.5" /></label>
             <label class="flex flex-col gap-1"><span class="text-xs text-ink-muted">{{ t('ag.config.maxRefreshes') }}</span><input v-model="form.max_monthly_refreshes" type="number" min="0" max="200" :disabled="!canConfigure" class="rounded-lg border border-line bg-surface px-2 py-1.5" /></label>
-            <div class="grid grid-cols-2 gap-2">
+            <div class="">
               <label class="flex flex-col gap-1"><span class="text-xs text-ink-muted">{{ t('ag.config.windowStart') }}</span><input v-model="form.publish_window_start" type="number" min="0" max="23" :disabled="!canConfigure" class="rounded-lg border border-line bg-surface px-2 py-1.5" /></label>
               <label class="flex flex-col gap-1"><span class="text-xs text-ink-muted">{{ t('ag.config.windowEnd') }}</span><input v-model="form.publish_window_end" type="number" min="0" max="24" :disabled="!canConfigure" class="rounded-lg border border-line bg-surface px-2 py-1.5" /></label>
             </div>

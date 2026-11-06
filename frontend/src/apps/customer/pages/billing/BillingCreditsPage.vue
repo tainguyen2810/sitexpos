@@ -45,7 +45,7 @@ async function buy(code: string) {
     <LoadingState v-if="loading && !data" />
     <ErrorState v-else-if="error" :error="error" @retry="run" />
     <div v-else-if="data" class="space-y-6">
-      <div class="grid gap-4 sm:grid-cols-3">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard :label="t('bill.credits.available')" :value="formatCredits(data.wallet.available_mc)" icon="coins" data-testid="available" />
         <StatCard :label="t('bill.credits.balance')" :value="formatCredits(data.wallet.balance_mc)" icon="layers" />
         <StatCard :label="t('bill.credits.held')" :value="formatCredits(data.wallet.held_mc)" icon="clock" />
@@ -54,7 +54,7 @@ async function buy(code: string) {
       <AppCard :title="t('bill.credits.buy')">
         <p v-if="!canManage" class="text-sm text-ink-muted">{{ t('bill.common.ownerOnly') }}</p>
         <EmptyState v-else-if="!data.packages.length" icon="coins" :title="t('bill.credits.noPackages')" />
-        <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div v-for="p in data.packages" :key="p.id" class="rounded-lg border border-line p-4" :data-testid="`package-${p.code}`">
             <div class="flex items-start justify-between gap-2">
               <p class="font-semibold">{{ p.name }}</p>

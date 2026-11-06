@@ -52,6 +52,9 @@ function totp(secret) {
   step('admin dashboard with real counts')
 
   await page.getByRole('link', { name: 'Workspace' }).first().click()
+  // many demo workspaces: search instead of relying on the first page
+  await page.getByRole('textbox').first().fill('Cửa hàng A')
+  await page.getByRole('button', { name: 'Tìm kiếm' }).click()
   await page.getByRole('link', { name: 'Cửa hàng A' }).click()
   await page.getByText('owner@demo.sitexpost.test').waitFor()
   await page.screenshot({ path: `${shots}/12-admin-workspace.png` })

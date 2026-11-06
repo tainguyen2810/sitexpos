@@ -62,7 +62,7 @@ function schedule(id: string, n: number) {
   <div>
     <PageHeader :title="t('an.title')" :description="t('an.copilot.subtitle')" />
     <AnalyticsNav active="copilot" all-sites />
-    <div class="grid gap-6 lg:grid-cols-3">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div class="space-y-4 lg:col-span-2">
         <AppCard>
           <form class="flex flex-col gap-3" @submit.prevent="ask()">

@@ -193,19 +193,21 @@ function lim(n: number | undefined) {
       <LoadingState v-if="packages.loading.value && !packages.data.value" />
       <ErrorState v-else-if="packages.error.value" :error="packages.error.value" @retry="packages.run" />
       <EmptyState v-else-if="!packages.data.value?.length" icon="coins" :title="t('billAdmin.common.empty')" />
-      <table v-else class="min-w-full text-sm">
-        <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('billAdmin.plans.packages.code') }}</th><th class="px-4 py-2">{{ t('billAdmin.plans.packages.name') }}</th><th class="px-4 py-2 text-right">Credits</th><th class="px-4 py-2 text-right">{{ t('billAdmin.plans.packages.price') }}</th><th class="px-4 py-2">{{ t('billAdmin.plans.packages.status') }}</th><th /></tr></thead>
-        <tbody class="divide-y divide-line">
-          <tr v-for="p in packages.data.value" :key="p.id">
-            <td class="px-4 py-2 font-mono">{{ p.code }}</td>
-            <td class="px-4 py-2">{{ p.name }} <AppBadge v-if="p.is_demo" tone="warning">{{ t('billAdmin.common.demo') }}</AppBadge></td>
-            <td class="px-4 py-2 text-right tabular-nums">{{ formatCredits(p.credits_mc) }}<span v-if="p.bonus_credits_mc" class="text-success-600"> +{{ formatCredits(p.bonus_credits_mc) }}</span></td>
-            <td class="px-4 py-2 text-right tabular-nums">{{ formatMoney(p.price_minor, p.currency) }}</td>
-            <td class="px-4 py-2">{{ t(`billAdmin.plans.packages.statuses.${p.status ?? 'active'}`) }}</td>
-            <td class="px-4 py-2 text-right"><AppButton size="sm" variant="ghost" @click="openPackage(p)">{{ t('common.edit') }}</AppButton></td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('billAdmin.plans.packages.code') }}</th><th class="px-4 py-2">{{ t('billAdmin.plans.packages.name') }}</th><th class="px-4 py-2 text-right">Credits</th><th class="px-4 py-2 text-right">{{ t('billAdmin.plans.packages.price') }}</th><th class="px-4 py-2">{{ t('billAdmin.plans.packages.status') }}</th><th /></tr></thead>
+          <tbody class="divide-y divide-line">
+            <tr v-for="p in packages.data.value" :key="p.id">
+              <td class="px-4 py-2 font-mono">{{ p.code }}</td>
+              <td class="px-4 py-2">{{ p.name }} <AppBadge v-if="p.is_demo" tone="warning">{{ t('billAdmin.common.demo') }}</AppBadge></td>
+              <td class="px-4 py-2 text-right tabular-nums">{{ formatCredits(p.credits_mc) }}<span v-if="p.bonus_credits_mc" class="text-success-600"> +{{ formatCredits(p.bonus_credits_mc) }}</span></td>
+              <td class="px-4 py-2 text-right tabular-nums">{{ formatMoney(p.price_minor, p.currency) }}</td>
+              <td class="px-4 py-2">{{ t(`billAdmin.plans.packages.statuses.${p.status ?? 'active'}`) }}</td>
+              <td class="px-4 py-2 text-right"><AppButton size="sm" variant="ghost" @click="openPackage(p)">{{ t('common.edit') }}</AppButton></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </AppCard>
 
     <AppCard v-else :title="t('billAdmin.plans.tabPolicies')" :subtitle="t('billAdmin.plans.policies.subtitle')" :padded="false">
@@ -213,18 +215,20 @@ function lim(n: number | undefined) {
       <LoadingState v-if="policies.loading.value && !policies.data.value" />
       <ErrorState v-else-if="policies.error.value" :error="policies.error.value" @retry="policies.run" />
       <p v-else-if="!policies.data.value?.length" class="px-4 py-6 text-sm text-warning-600">{{ t('billAdmin.plans.policies.none') }}</p>
-      <table v-else class="min-w-full text-sm">
-        <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('billAdmin.plans.policies.version') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.plans.policies.perCredit') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.plans.policies.markup') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.plans.policies.min') }}</th><th class="px-4 py-2">{{ t('billAdmin.plans.policies.effective') }}</th></tr></thead>
-        <tbody class="divide-y divide-line">
-          <tr v-for="p in policies.data.value" :key="p.id">
-            <td class="px-4 py-2">{{ p.version }} <AppBadge v-if="policyActive(p, policies.data.value!)" tone="success">✓</AppBadge></td>
-            <td class="px-4 py-2 text-right tabular-nums">{{ p.micro_usd_per_credit }}</td>
-            <td class="px-4 py-2 text-right tabular-nums">{{ p.markup_bps }}</td>
-            <td class="px-4 py-2 text-right tabular-nums">{{ p.min_charge_mc }}</td>
-            <td class="px-4 py-2">{{ formatDateTime(p.effective_from) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('billAdmin.plans.policies.version') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.plans.policies.perCredit') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.plans.policies.markup') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.plans.policies.min') }}</th><th class="px-4 py-2">{{ t('billAdmin.plans.policies.effective') }}</th></tr></thead>
+          <tbody class="divide-y divide-line">
+            <tr v-for="p in policies.data.value" :key="p.id">
+              <td class="px-4 py-2">{{ p.version }} <AppBadge v-if="policyActive(p, policies.data.value!)" tone="success">✓</AppBadge></td>
+              <td class="px-4 py-2 text-right tabular-nums">{{ p.micro_usd_per_credit }}</td>
+              <td class="px-4 py-2 text-right tabular-nums">{{ p.markup_bps }}</td>
+              <td class="px-4 py-2 text-right tabular-nums">{{ p.min_charge_mc }}</td>
+              <td class="px-4 py-2">{{ formatDateTime(p.effective_from) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </AppCard>
 
     <AppModal :open="planForm.open" :title="t('billAdmin.plans.newPlan')" width="md" @close="planForm.open = false">
@@ -239,7 +243,7 @@ function lim(n: number | undefined) {
     </AppModal>
 
     <AppModal :open="ver.open" :title="ver.versionId ? t('billAdmin.plans.editVersion') : t('billAdmin.plans.newVersion')" width="xl" @close="ver.open = false">
-      <form id="version-form" class="grid gap-4 md:grid-cols-2" @submit.prevent="saveVersion">
+      <form id="version-form" class="grid grid-cols-1 gap-4 md:grid-cols-2" @submit.prevent="saveVersion">
         <div class="space-y-3">
           <AppInput v-model="ver.currency" :label="t('billAdmin.plans.currency')" required />
           <AppInput v-model="ver.monthly" type="number" :label="t('billAdmin.plans.monthly')" />
@@ -252,7 +256,7 @@ function lim(n: number | undefined) {
         </div>
         <div class="space-y-3">
           <p class="text-sm font-medium">{{ t('billAdmin.plans.limits') }}</p>
-          <div class="grid grid-cols-2 gap-2">
+          <div class="">
             <AppInput v-for="r in RESOURCES" :key="r" v-model="ver.limits[r]" type="number" :label="t(`bill.resources.${r}`)" />
           </div>
           <p class="text-sm font-medium">{{ t('billAdmin.plans.features') }}</p>

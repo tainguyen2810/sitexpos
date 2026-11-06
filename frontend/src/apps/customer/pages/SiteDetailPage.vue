@@ -199,9 +199,9 @@ const featureList = computed(() => {
         <li v-for="issue in site.data.value.issues" :key="issue">⚠ {{ $t(`sites.issues.${issue}`) }}</li>
       </ul>
 
-      <div class="grid gap-4 lg:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <AppCard :title="$t('sites.info.title')">
-          <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+          <dl class="">
             <dt class="text-ink-muted">WordPress</dt><dd>{{ site.data.value.versions.wordpress ?? '—' }}</dd>
             <dt class="text-ink-muted">PHP</dt><dd>{{ site.data.value.versions.php ?? '—' }}</dd>
             <dt class="text-ink-muted">{{ $t('sites.info.plugin') }}</dt><dd>{{ site.data.value.versions.plugin ?? '—' }}</dd>
@@ -213,7 +213,7 @@ const featureList = computed(() => {
           </dl>
         </AppCard>
         <AppCard :title="$t('sites.info.features')">
-          <ul class="grid grid-cols-2 gap-2 text-sm">
+          <ul class="">
             <li v-for="f in featureList" :key="f.key" class="flex items-center gap-2">
               <span :class="f.on ? 'text-success-600' : 'text-ink-subtle'">{{ f.on ? '●' : '○' }}</span>{{ $t(`sites.features.${f.key}`) }}
             </li>
@@ -266,7 +266,7 @@ const featureList = computed(() => {
           <LoadingState v-if="taxonomies.loading.value" />
           <ErrorState v-else-if="taxonomies.error.value" :error="taxonomies.error.value" @retry="taxonomies.run" />
           <EmptyState v-else-if="!taxonomies.data.value?.length" icon="list" :title="$t('sites.taxonomies.empty')" />
-          <div v-else class="grid gap-6 md:grid-cols-2">
+          <div v-else class="grid grid-cols-1 gap-6 md:grid-cols-2">
             <section v-for="(terms, taxonomy) in groupedTerms" :key="taxonomy">
               <h3 class="mb-2 text-sm font-semibold">{{ $t(`sites.taxonomies.${taxonomy}`) }} ({{ terms.length }})</h3>
               <ul class="flex flex-wrap gap-2">

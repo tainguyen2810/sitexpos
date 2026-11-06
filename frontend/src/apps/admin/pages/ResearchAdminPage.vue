@@ -167,7 +167,7 @@ watch(tab, (v) => {
       <div v-if="tab === 'sources'">
         <LoadingState v-if="sources.loading.value && !sources.data.value" :rows="4" />
         <AppCard v-else-if="sources.error.value"><ErrorState :error="sources.error.value" @retry="sources.run" /></AppCard>
-        <div v-else class="grid gap-4 lg:grid-cols-2">
+        <div v-else class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <AppCard v-for="s in sources.data.value ?? []" :key="s.source" :title="s.label" :subtitle="s.source">
             <template #actions>
               <AppBadge v-if="s.failure_count" tone="danger">{{ t('researchAdmin.failures', { n: s.failure_count }) }}</AppBadge>
@@ -183,7 +183,7 @@ watch(tab, (v) => {
                   <AppButton v-if="s.has_secret" size="sm" variant="ghost" @click="clearing = s">{{ t('researchAdmin.clearSecret') }}</AppButton>
                 </template>
               </div>
-              <div v-if="sourceDraft[s.source]" class="grid gap-3 sm:grid-cols-3">
+              <div v-if="sourceDraft[s.source]" class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <AppInput v-model="sourceDraft[s.source]!.rate" type="number" :label="t('researchAdmin.rate')" />
                 <AppInput v-model="sourceDraft[s.source]!.timeout" type="number" :label="t('researchAdmin.timeout')" />
                 <AppInput v-if="s.source === 'dataforseo'" v-model="sourceDraft[s.source]!.location" type="number" label="location_code" />
@@ -202,7 +202,7 @@ watch(tab, (v) => {
       <AppCard v-else-if="tab === 'settings'">
         <LoadingState v-if="globals.loading.value && !globals.data.value" :rows="4" />
         <ErrorState v-else-if="globals.error.value" :error="globals.error.value" @retry="globals.run" />
-        <form v-else class="grid gap-4 md:grid-cols-2" @submit.prevent="saveGlobals">
+        <form v-else class="grid grid-cols-1 gap-4 md:grid-cols-2" @submit.prevent="saveGlobals">
           <template v-for="k in GLOBAL_KEYS" :key="k">
             <Toggle v-if="isBool(k)" :model-value="Boolean(globalDraft[k])" :label="t(`researchAdmin.setting.${k}`)" @update:model-value="(v: boolean) => (globalDraft[k] = v)" />
             <AppInput v-else :model-value="String(globalDraft[k] ?? '')" :type="k === 'user_agent' ? 'text' : 'number'" :label="t(`researchAdmin.setting.${k}`)" :error="globalForm.errors[k]" @update:model-value="(v: string) => (globalDraft[k] = v)" />
@@ -212,7 +212,7 @@ watch(tab, (v) => {
       </AppCard>
 
       <!-- tenant limits -->
-      <div v-else-if="tab === 'limits'" class="grid gap-6 lg:grid-cols-3">
+      <div v-else-if="tab === 'limits'" class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <AppCard class="lg:col-span-2" :padded="false">
           <LoadingState v-if="limits.loading.value && !limits.data.value" class="p-5" />
           <ErrorState v-else-if="limits.error.value" :error="limits.error.value" class="p-5" @retry="limits.run" />
@@ -285,23 +285,25 @@ watch(tab, (v) => {
         <LoadingState v-if="costs.loading.value && !costs.data.value" :rows="3" />
         <AppCard v-else-if="costs.error.value"><ErrorState :error="costs.error.value" @retry="costs.run" /></AppCard>
         <template v-else-if="costs.data.value">
-          <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div class=" ">
             <AppCard><p class="text-sm text-ink-muted">{{ t('researchAdmin.runs') }}</p><p class="text-2xl font-semibold tabular-nums">{{ costs.data.value.runs }}</p></AppCard>
             <AppCard><p class="text-sm text-ink-muted">{{ t('researchAdmin.total') }}</p><p class="text-2xl font-semibold tabular-nums">{{ formatUsd(costs.data.value.total_micro_usd) }}</p></AppCard>
             <AppCard><p class="text-sm text-ink-muted">{{ t('researchAdmin.avg') }}</p><p class="text-2xl font-semibold tabular-nums">{{ formatUsd(costs.data.value.avg_micro_usd_per_run) }}</p></AppCard>
             <AppCard><p class="text-sm text-ink-muted">{{ t('researchAdmin.max') }}</p><p class="text-2xl font-semibold tabular-nums">{{ formatUsd(costs.data.value.max_micro_usd_per_run) }}</p></AppCard>
           </div>
           <AppCard :title="t('researchAdmin.byWorkspace')" :padded="false">
-            <table class="w-full text-sm">
-              <tbody class="divide-y divide-line">
-                <tr v-for="w in costs.data.value.by_workspace" :key="w.workspace.id">
-                  <td class="px-5 py-2">{{ w.workspace.name ?? w.workspace.id }}</td>
-                  <td class="px-3 py-2 text-right tabular-nums">{{ w.runs }}</td>
-                  <td class="px-3 py-2 text-right tabular-nums">{{ formatUsd(w.total_micro_usd) }}</td>
-                  <td class="px-5 py-2 text-right tabular-nums text-ink-muted">{{ formatUsd(w.avg_micro_usd_per_run) }}</td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <tbody class="divide-y divide-line">
+                  <tr v-for="w in costs.data.value.by_workspace" :key="w.workspace.id">
+                    <td class="px-5 py-2">{{ w.workspace.name ?? w.workspace.id }}</td>
+                    <td class="px-3 py-2 text-right tabular-nums">{{ w.runs }}</td>
+                    <td class="px-3 py-2 text-right tabular-nums">{{ formatUsd(w.total_micro_usd) }}</td>
+                    <td class="px-5 py-2 text-right tabular-nums text-ink-muted">{{ formatUsd(w.avg_micro_usd_per_run) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </AppCard>
         </template>
       </div>
@@ -333,19 +335,21 @@ watch(tab, (v) => {
         <LoadingState v-if="usage.loading.value && !usage.data.value" class="p-5" />
         <ErrorState v-else-if="usage.error.value" :error="usage.error.value" class="p-5" @retry="usage.run" />
         <p v-else-if="!usage.data.value?.workspaces.length" class="p-5 text-sm text-ink-muted">{{ t('research.noData') }}</p>
-        <table v-else class="w-full text-sm">
-          <thead class="bg-surface-muted text-left text-xs text-ink-muted">
-            <tr><th class="px-5 py-2">{{ t('researchAdmin.workspace') }}</th><th class="px-3 py-2 text-right">{{ t('researchAdmin.limit.max_runs_per_month') }}</th><th class="px-3 py-2 text-right">{{ t('research.overview.ideas') }}</th><th class="px-5 py-2 text-right">{{ t('research.overview.aiCost') }}</th></tr>
-          </thead>
-          <tbody class="divide-y divide-line">
-            <tr v-for="w in usage.data.value?.workspaces ?? []" :key="w.workspace.id">
-              <td class="px-5 py-2">{{ w.workspace.name ?? w.workspace.id }}</td>
-              <td class="px-3 py-2 text-right tabular-nums">{{ w.metrics.runs?.used ?? 0 }}/{{ w.limits.max_runs_per_month }}</td>
-              <td class="px-3 py-2 text-right tabular-nums">{{ w.metrics.ideas?.used ?? 0 }}</td>
-              <td class="px-5 py-2 text-right tabular-nums">{{ formatUsd(w.metrics.ai_cost_micro_usd?.used ?? 0) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-surface-muted text-left text-xs text-ink-muted">
+              <tr><th class="px-5 py-2">{{ t('researchAdmin.workspace') }}</th><th class="px-3 py-2 text-right">{{ t('researchAdmin.limit.max_runs_per_month') }}</th><th class="px-3 py-2 text-right">{{ t('research.overview.ideas') }}</th><th class="px-5 py-2 text-right">{{ t('research.overview.aiCost') }}</th></tr>
+            </thead>
+            <tbody class="divide-y divide-line">
+              <tr v-for="w in usage.data.value?.workspaces ?? []" :key="w.workspace.id">
+                <td class="px-5 py-2">{{ w.workspace.name ?? w.workspace.id }}</td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ w.metrics.runs?.used ?? 0 }}/{{ w.limits.max_runs_per_month }}</td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ w.metrics.ideas?.used ?? 0 }}</td>
+                <td class="px-5 py-2 text-right tabular-nums">{{ formatUsd(w.metrics.ai_cost_micro_usd?.used ?? 0) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </AppCard>
     </template>
 

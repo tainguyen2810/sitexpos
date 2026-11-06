@@ -81,6 +81,26 @@ it('retries a rate limit with backoff, then falls back to the next model', funct
     Sleep::assertSleptTimes(1);
 });
 
+it('charges the reservation estimate when a provider answers without usage (never free)', function () {
+    config(['sitex.ai.providers.openai.api_key' => 'sk-test-openai-000000000000']);
+    Http::fake(['api.openai.com/*' => Http::response(['id' => 'resp_1', 'status' => 'completed', 'output' => [
+        ['type' => 'message', 'content' => [['type' => 'output_text', 'text' => 'Xin chào']]],
+    ]])]); // no "usage" block
+    routeTask('system.test', ['openai/gpt-6-luna']);
+
+    $result = runAi($this->ws, aiCall('hello without usage'));
+
+    $row = aiRows($this->ws)->sole();
+    $reservation = AiBudgetReservation::query()->sole();
+    expect($result->text)->toBe('Xin chào')
+        ->and($row->status)->toBe('succeeded')
+        ->and($row->estimated_cost_micro_usd)->toBeGreaterThan(0)
+        ->and($row->cost_micro_usd)->toBe($row->estimated_cost_micro_usd)
+        ->and($row->billing_uncertain)->toBeTrue()
+        ->and($result->costMicroUsd)->toBe($row->estimated_cost_micro_usd)
+        ->and($reservation->status)->toBe('uncertain');
+});
+
 it('never retries a billing-uncertain timeout automatically', function () {
     config(['sitex.ai.providers.openai.api_key' => 'sk-test-openai-000000000000']);
     Http::fake(fn () => throw new ConnectionException('cURL error 28: Operation timed out after 30000 ms'));

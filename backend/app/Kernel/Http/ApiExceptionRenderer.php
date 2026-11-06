@@ -33,7 +33,7 @@ final class ApiExceptionRenderer
 
     public static function shouldRender(Request $request): bool
     {
-        return $request->is('api/*') || $request->is('connector/*') || $request->expectsJson();
+        return $request->is('api/*') || $request->is('connector/*') || $request->is('install/api/*') || $request->expectsJson();
     }
 
     public static function render(Throwable $e, Request $request): ?JsonResponse

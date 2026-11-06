@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SiteXPost\Modules\Media\Queries;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\URL;
 use SiteXPost\Modules\Media\Contracts\MediaLibrary;
 use SiteXPost\Modules\Media\Domain\ImagePlacement;
@@ -13,6 +14,8 @@ use SiteXPost\Modules\Media\Support\MediaPipeline;
 
 final class MediaLibraryQuery implements MediaLibrary
 {
+    private const VARIANT_KINDS = ['webp', 'optimized', 'original'];
+
     public function __construct(private readonly MediaPipeline $pipeline) {}
 
     public function placements(string $articleId, bool $acceptedOnly = true): array
@@ -57,11 +60,27 @@ final class MediaLibraryQuery implements MediaLibrary
     }
 
     /**
+     * Adds a `has_variant` column (null when the asset has no processed file) so
+     * that present() needs no extra query per row.
+     *
+     * @param  Builder<MediaAsset>  $query
+     * @return Builder<MediaAsset>
+     */
+    public static function withVariantFlag(Builder $query): Builder
+    {
+        return $query->select('media_assets.*')->addSelect(['has_variant' => MediaVersion::query()->select('media_versions.id')
+            ->whereColumn('media_versions.media_asset_id', 'media_assets.id')->whereIn('kind', self::VARIANT_KINDS)->limit(1)]);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public static function present(MediaAsset $a): array
     {
-        $variant = MediaVersion::query()->where('media_asset_id', $a->id)->whereIn('kind', ['webp', 'optimized', 'original'])->exists();
+        // Lists preload `has_variant` (withVariantFlag) to avoid one query per asset.
+        $variant = array_key_exists('has_variant', $a->getAttributes())
+            ? $a->getAttribute('has_variant') !== null
+            : MediaVersion::query()->where('media_asset_id', $a->id)->whereIn('kind', self::VARIANT_KINDS)->exists();
 
         return [
             'id' => $a->id, 'site_id' => $a->site_id, 'source_type' => $a->source_type, 'status' => $a->status, 'mime' => $a->mime,

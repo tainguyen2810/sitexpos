@@ -554,3 +554,48 @@ Idempotency: Cloud lưu `site_publications (site_id, idempotency_key) → wp_pos
 - Breaking change → `v2` song song; `v1` duy trì ≥ 6 tháng sau khi có `v2`.
 - Plugin gửi `plugin_version`; Cloud có bảng tương thích tối thiểu, thông báo cập nhật trong WP admin khi plugin quá cũ.
 - Type TypeScript cho response được viết tay trong `frontend/src/shared/api/types.ts` ở Phase 1; cân nhắc sinh từ OpenAPI (Scramble) ở phase sau.
+
+## 8. Phase 9 — Installer và System
+
+### 8.1 Trình cài đặt (`/install`, chỉ khi chưa cài)
+
+Trang `GET /install` (HTML, CSP chặt, không cookie). API dưới `/install/api`, **không** session/CSRF, mọi request cần header `X-Setup-Token: <token>` (lấy bằng `php artisan sitex:install:token` qua SSH; lưu dạng sha256, giới hạn tần suất theo IP). Khi đã cài (bất kỳ tín hiệu khóa nào), mọi route trả **403 `installer_locked`**.
+
+| Method | Path | Mô tả |
+|---|---|---|
+| GET | `/install/api/state` | Bước hiện tại, cờ `*_set` (không trả secret) |
+| GET | `/install/api/environment` | Kiểm tra PHP, extension, quyền thư mục, hàm bị tắt |
+| POST | `/install/api/database/test` | Kết nối thử, phiên bản MySQL, DB trống hay không |
+| PUT | `/install/api/database` | Lưu cấu hình DB (mật khẩu mã hóa phía máy chủ) |
+| PUT | `/install/api/application` | Tên ứng dụng, URL API/app/admin, ngôn ngữ, múi giờ |
+| POST | `/install/api/redis/test` · PUT `/install/api/queue` | Kiểm tra Redis; chọn driver queue `redis` hoặc `database` |
+| PUT | `/install/api/admin` | Super Admin: tên, email, mật khẩu ≥ 12 ký tự có hoa/thường/số/ký hiệu, không chứa email (giữ dạng mã hóa tạm đến khi cài) |
+| POST | `/install/api/run` | Ghi `.env`, `key:generate`, migrate, seed hệ thống, tạo Super Admin, khóa installer |
+| GET | `/install/api/templates/{supervisor-horizon\|supervisor-queue-work\|cron\|nginx-api}` | Mẫu cấu hình aaPanel theo đường dẫn thật |
+| GET | `/install/api/diagnostics` | Nhật ký cài đặt đã che secret |
+
+Mã lỗi: `invalid_setup_token` 401, `installer_locked` 403, `rate_limited` 429, `database_not_empty` 409, `database_version` 422, `database_<lý do>` 422 (`auth_failed`, `host_unreachable`…), `redis_<lý do>` 422, `installation_in_progress` 409. Chi tiết: INSTALLATION-WIZARD.md, INSTALLER-SECURITY.md.
+
+### 8.2 System (Super Admin) — `/api/admin/v1/system`
+
+Middleware `auth:sanctum`, staff + 2FA (`EnsurePlatformStaff`). `platform.system.view`: `GET health`, `GET alerts`. Còn lại cần `platform.system.manage` (chỉ SUPER_ADMIN).
+
+| Method | Path | Mô tả |
+|---|---|---|
+| GET | `/health` | 16 mục: `{key, status: ok\|warning\|critical\|unknown, summary, details, fix}` + trạng thái tổng; không có secret |
+| GET | `/alerts` | Lịch sử cảnh báo (kênh nào gửi được) |
+| GET | `/setup` | 12 bước Setup Wizard, trạng thái do máy chủ tính: `NOT_STARTED\|IN_PROGRESS\|COMPLETE\|WARNING\|BLOCKED`; tổng `READY\|READY_WITH_WARNINGS\|NOT_READY` |
+| PUT | `/settings/{general\|mail\|google\|alerts\|backup}` | Lưu cấu hình (secret chỉ ghi; response trả `<field>_configured`) |
+| POST | `/settings/logo` | PNG/JPG/WebP ≤ 512 KB (không SVG) |
+| POST | `/settings/{mail\|google\|alerts}/test` | 202, chạy trong queue, 6/phút |
+| POST | `/setup/plans/draft` · `/setup/acknowledge` · `/setup/complete` | Gói nháp không giá; xác nhận bước; hoàn tất (`setup_not_ready` 422) |
+| GET | `/plugin/download` | Chỉ phục vụ `sitex-post-X.Y.Z.zip` trong thư mục cấu hình |
+| GET · POST | `/upgrade` | Trạng thái nâng cấp; bắt đầu (`password`, `backup_first`) → 202 |
+| GET · POST | `/backups` | Danh sách; tạo bản mới (`password`) → 202 |
+| POST | `/backups/{backup}/verify` | Kiểm tra một bản → 202 |
+
+Mã lỗi: `nothing_to_upgrade` 422, `destructive_migrations` 409, `requirements_not_met` 409, `backup_required` 409, `backup_not_configured` 409, `upgrade_in_progress` 409, `backup_in_progress` 409, sai mật khẩu 422, `two_factor_required` 403.
+
+### 8.3 Lệnh CLI Phase 9
+
+`sitex:install:token`, `sitex:install:status`, `sitex:system:heartbeat`, `sitex:system:monitor`, `sitex:backup:{key,run,verify,decrypt,prune}`, `sitex:upgrade:check [--json] [--record]` (mã thoát 0 = sẵn sàng, 1 = không có gì, 2 = bị chặn).

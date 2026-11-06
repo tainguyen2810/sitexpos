@@ -53,7 +53,8 @@ final class SsrfGuard
     {
         $allow = app()->isProduction() ? [] : (array) config('sitex.ssrf.allow_hosts', []);
 
-        return new self(array_values(array_map('strval', $allow)), (bool) config('sitex.ssrf.allow_http', false));
+        // Plain http and private-host exceptions are development aids only: ignored in production.
+        return new self(array_values(array_map('strval', $allow)), ! app()->isProduction() && (bool) config('sitex.ssrf.allow_http', false));
     }
 
     /**

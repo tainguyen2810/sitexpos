@@ -31,6 +31,8 @@ Các domain cùng domain gốc để Sanctum cookie hoạt động (`SESSION_DOM
 
 ## 3. Cài đặt lần đầu
 
+> **Phase 9:** cách khuyến nghị là trình cài đặt web `/install` — xem [AAPANEL-QUICK-INSTALL.md](AAPANEL-QUICK-INSTALL.md) và [INSTALLATION-WIZARD.md](INSTALLATION-WIZARD.md). Các lệnh thủ công dưới đây vẫn dùng được cho người vận hành quen CLI; sau đó chạy `php artisan sitex:install:status` để kiểm tra trạng thái khóa trình cài đặt.
+
 ```bash
 # 1. Mã nguồn (user web của aaPanel là www)
 cd <PARENT_DIR> && git clone <repo-url> sitexpost && cd sitexpost
@@ -41,7 +43,7 @@ cd "$APP_DIR/backend"
 composer install --no-dev --optimize-autoloader
 cp .env.example .env            # điền giá trị thật, xem §4
 php artisan key:generate
-php artisan sitex:keys:generate # sinh SITEX_MASTER_KEY (Phase 2+)
+php artisan sitex:backup:key     # in SITEX_BACKUP_ENCRYPTION_KEY — tự dán vào .env và lưu một bản ngoài máy chủ (Phase 9)
 php artisan migrate --force
 php artisan storage:link
 php artisan config:cache && php artisan route:cache && php artisan event:cache && php artisan view:cache
@@ -105,7 +107,9 @@ MAIL_PASSWORD=
 MAIL_FROM_ADDRESS=no-reply@<domain>
 MAIL_FROM_NAME="SiteX Post"
 
-SITEX_MASTER_KEY=               # Phase 2+, envelope encryption
+SITEX_BACKUP_ENCRYPTION_KEY=    # Phase 9: khóa mã hóa bản sao lưu (sitex:backup:key), KHÁC APP_KEY
+# Secret trong DB (khóa HMAC site, token GSC, mật khẩu SMTP lưu ở admin) mã hóa bằng Crypt/APP_KEY.
+# Envelope encryption với SITEX_MASTER_KEY chỉ là thiết kế đích, CHƯA triển khai (SECURITY §5).
 # Phase 3: AI Gateway — khóa CHỈ đặt ở đây (không có ô nhập trong giao diện). Để trống = provider đó không dùng được.
 OPENAI_API_KEY=
 GEMINI_API_KEY=
@@ -192,6 +196,8 @@ Dashboard Horizon tại `https://api.<domain>/horizon`, chỉ SUPER_ADMIN truy c
 
 ## 7. Nâng cấp (zero-downtime cơ bản)
 
+> **Phase 9:** dùng `scripts/deploy/upgrade.sh <tag>` (sao lưu có kiểm tra → bảo trì → checkout → `sitex:upgrade:check` chặn migration phá dữ liệu → migrate → ghi phiên bản) hoặc Upgrade Wizard — xem [UPGRADE-GUIDE.md](UPGRADE-GUIDE.md). Quay lại: [ROLLBACK-PLAN.md](ROLLBACK-PLAN.md). Các bước tay dưới đây là phương án dự phòng.
+
 ```bash
 cd <APP_DIR>
 php backend/artisan down --render="errors::503" --retry=60   # chỉ khi migration nặng
@@ -219,10 +225,13 @@ Rollback: checkout tag cũ, `composer install`, chỉ `migrate:rollback --step=N
 
 - DB: `mysqldump --single-transaction --routines --triggers` hằng ngày, mã hóa (`gpg`/`age`), lưu ngoài server ≥ 30 ngày. aaPanel có backup tự động — bật kèm đích lưu từ xa.
 - Storage: đồng bộ S3 có versioning, hoặc rsync thư mục `storage/app` nếu dùng local.
-- `.env` và `SITEX_MASTER_KEY`: lưu riêng trong password manager. **Mất master key = mất toàn bộ secret kết nối site**.
+- `.env` (đặc biệt `APP_KEY`) và `SITEX_BACKUP_ENCRYPTION_KEY`: lưu riêng trong password manager. **Mất `APP_KEY` = mất mọi secret mã hóa trong DB** (khóa site, token GSC, mật khẩu SMTP); mất khóa sao lưu = không mở được bản sao lưu.
+- Phase 9: sao lưu tích hợp có mã hóa, kiểm tra và diễn tập khôi phục — xem [BACKUP-RESTORE.md](BACKUP-RESTORE.md). Mục `mysqldump` ở trên vẫn dùng được như lớp dự phòng.
 - Diễn tập khôi phục mỗi quý trên staging.
 
 ## 10. Giám sát
+
+> **Phase 9:** System Health (16 mục), `sitex:system:monitor` mỗi 5 phút, cảnh báo email/Telegram có cooldown — xem [MONITORING-RUNBOOK.md](MONITORING-RUNBOOK.md).
 
 - `https://api.<domain>/up` cho uptime monitor.
 - Horizon: failed jobs, thời gian chờ queue (cấu hình `waits` cảnh báo).

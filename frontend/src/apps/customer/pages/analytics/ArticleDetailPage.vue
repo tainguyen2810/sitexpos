@@ -68,13 +68,13 @@ async function startRefresh() {
         <li>• {{ r }}</li>
       </ul>
 
-      <div class="my-6 grid gap-4 sm:grid-cols-4">
+      <div class="my-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
         <StatCard :label="t('an.metrics.clicks')" :value="num(data.data.totals.clicks)" icon="activity" />
         <StatCard :label="t('an.metrics.impressions')" :value="num(data.data.totals.impressions)" icon="eye" />
         <StatCard :label="t('an.metrics.ctr')" :value="pct(data.data.totals.ctr)" icon="target" />
         <StatCard :label="t('an.metrics.position')" :value="num(data.data.totals.position, 1)" icon="trending" />
       </div>
-      <div class="grid gap-6 lg:grid-cols-3">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <AppCard :title="t('an.article.trend')" class="lg:col-span-2">
           <EmptyState v-if="!data.data.series.length" icon="chart" :title="t('an.common.noData')" />
           <TrendChart v-else :series="data.data.series" />
@@ -90,26 +90,28 @@ async function startRefresh() {
         </AppCard>
         <AppCard :title="t('an.article.queries')" :subtitle="data.data.queries_period_end ? `${t('an.common.until')} ${formatDate(data.data.queries_period_end)}` : undefined" :padded="false" class="lg:col-span-2">
           <EmptyState v-if="!data.data.queries.length" icon="search" :title="t('an.common.noData')" />
-          <table v-else class="min-w-full text-sm">
-            <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
-              <tr>
-                <th class="px-4 py-2">{{ t('an.metrics.query') }}</th>
-                <th class="px-4 py-2 text-right">{{ t('an.metrics.clicks') }}</th>
-                <th class="px-4 py-2 text-right">{{ t('an.metrics.impressions') }}</th>
-                <th class="px-4 py-2 text-right">{{ t('an.metrics.ctr') }}</th>
-                <th class="px-4 py-2 text-right">{{ t('an.metrics.position') }}</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-line">
-              <tr v-for="q in data.data.queries" :key="q.query">
-                <td class="px-4 py-2">{{ q.query }}</td>
-                <td class="px-4 py-2 text-right tabular-nums">{{ num(q.clicks) }}</td>
-                <td class="px-4 py-2 text-right tabular-nums">{{ num(q.impressions) }}</td>
-                <td class="px-4 py-2 text-right tabular-nums">{{ pct(q.ctr) }}</td>
-                <td class="px-4 py-2 text-right tabular-nums">{{ num(q.position, 1) }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <div v-else class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
+                <tr>
+                  <th class="px-4 py-2">{{ t('an.metrics.query') }}</th>
+                  <th class="px-4 py-2 text-right">{{ t('an.metrics.clicks') }}</th>
+                  <th class="px-4 py-2 text-right">{{ t('an.metrics.impressions') }}</th>
+                  <th class="px-4 py-2 text-right">{{ t('an.metrics.ctr') }}</th>
+                  <th class="px-4 py-2 text-right">{{ t('an.metrics.position') }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+                <tr v-for="q in data.data.queries" :key="q.query">
+                  <td class="px-4 py-2">{{ q.query }}</td>
+                  <td class="px-4 py-2 text-right tabular-nums">{{ num(q.clicks) }}</td>
+                  <td class="px-4 py-2 text-right tabular-nums">{{ num(q.impressions) }}</td>
+                  <td class="px-4 py-2 text-right tabular-nums">{{ pct(q.ctr) }}</td>
+                  <td class="px-4 py-2 text-right tabular-nums">{{ num(q.position, 1) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </AppCard>
         <div class="space-y-6">
           <AppCard :title="t('an.nav.opportunities')">

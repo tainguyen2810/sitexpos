@@ -69,7 +69,7 @@ const sourceTone = (s: MediaSourceRow) => (!s.available ? 'neutral' : s.status =
     <LoadingState v-if="loading && !usage" />
     <ErrorState v-else-if="error" :error="error" @retry="load" />
     <template v-else-if="usage">
-      <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard :label="t('p6.media.studio.assets')" :value="usage.assets" icon="image" />
         <StatCard :label="t('p6.media.studio.storage')" :value="formatBytes(usage.stored_bytes)" icon="server" :hint="t('p6.media.studio.ofLimit', { limit: formatBytes(usage.limits.max_storage_bytes) })" />
         <StatCard :label="t('p6.media.studio.aiToday')" :value="`${usage.ai_images_today} / ${usage.limits.max_ai_images_per_day}`" icon="sparkles" />

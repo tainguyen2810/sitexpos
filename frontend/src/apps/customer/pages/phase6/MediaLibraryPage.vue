@@ -131,7 +131,7 @@ async function remove() {
       <LoadingState v-if="list.loading.value && !list.loaded.value" />
       <ErrorState v-else-if="list.error.value" :error="list.error.value" @retry="list.reload" />
       <EmptyState v-else-if="!list.items.value.length" icon="image" :title="t('p6.media.lib.empty')" :description="t('p6.media.lib.emptyHint')" />
-      <ul v-else class="grid grid-cols-2 gap-4 p-5 sm:grid-cols-3 lg:grid-cols-5" data-testid="media-grid">
+      <ul v-else class=" " data-testid="media-grid">
         <li v-for="a in list.items.value" :key="a.id">
           <button type="button" class="block w-full text-left" @click="open(a)">
             <div class="relative aspect-[4/3] overflow-hidden rounded-lg border border-line bg-surface-muted">
@@ -174,7 +174,7 @@ async function remove() {
         <img v-if="selected.preview_url && selected.status === 'ready'" :src="selected.preview_url" :alt="selected.alt_text ?? ''" class="w-full rounded-lg border border-line" />
         <p v-if="selected.is_ai_generated" class="rounded bg-warning-50 px-3 py-2 text-xs text-amber-900">{{ t('p6.media.lib.aiNotice') }}</p>
         <p v-if="selected.error_code" class="rounded bg-danger-50 px-3 py-2 text-xs text-danger-600">{{ t('p6.media.lib.rejected') }}: {{ selected.error_code }}</p>
-        <dl class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+        <dl class="">
           <dt class="text-ink-muted">{{ t('p6.media.sourceLabel') }}</dt><dd>{{ t(`p6.media.source.${selected.source_type}`) }}</dd>
           <dt class="text-ink-muted">{{ t('p6.media.lib.license') }}</dt><dd>{{ t(`p6.media.license.${selected.license}`) }}</dd>
           <dt class="text-ink-muted">{{ t('p6.media.lib.size') }}</dt><dd>{{ selected.width ?? '?' }}×{{ selected.height ?? '?' }} · {{ formatBytes(selected.bytes) }}</dd>

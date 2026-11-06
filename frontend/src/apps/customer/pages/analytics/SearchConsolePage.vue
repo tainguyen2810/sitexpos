@@ -117,9 +117,9 @@ function runTone(s: SyncRun['status']): 'success' | 'warning' | 'danger' | 'bran
     <EmptyState v-else-if="!sites.length" icon="globe" :title="t('an.connections.noSites')">
       <RouterLink :to="{ name: 'sites', params: { workspaceId } }" class="text-sm font-medium text-brand-700 hover:underline">{{ t('an.connections.addSite') }}</RouterLink>
     </EmptyState>
-    <div v-else class="grid gap-4 lg:grid-cols-2">
+    <div v-else class="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <AppCard v-for="s in sites" :key="s.id" :title="s.name" :subtitle="s.url" :data-testid="`gsc-site-${s.id}`">
-        <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+        <dl class="">
           <dt class="text-ink-muted">{{ t('an.connections.gsc') }}</dt>
           <dd><AppBadge :tone="statusTone(s.search_console.status)">{{ t(`an.connections.status.${s.search_console.status}`, s.search_console.status) }}</AppBadge></dd>
           <dt class="text-ink-muted">{{ t('an.connections.account') }}</dt>

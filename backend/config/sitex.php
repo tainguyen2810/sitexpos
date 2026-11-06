@@ -145,4 +145,52 @@ return [
         'memory_retention_days' => 180,
         'log_retention_days' => 365,
     ],
+
+    // Phase 9 — release version of this code (compared with the version recorded in the
+    // database to detect a pending upgrade). Bump together with CHANGELOG.md.
+    'version' => '1.0.0',
+
+    // Phase 9 — web installer (INSTALLATION-WIZARD.md, INSTALLER-SECURITY.md)
+    'installer' => [
+        // Turn the /install wizard off entirely (e.g. servers set up via CLI).
+        'enabled' => (bool) env('SITEX_INSTALLER_ENABLED', true),
+        // Written by the installer as its last step. One of several "installed" signals.
+        'installed' => (bool) env('SITEX_INSTALLED', false),
+        // Private directory for the setup token, progress state and lock (never web-served).
+        'state_path' => env('SITEX_INSTALLER_STATE_PATH', storage_path('app/installer')),
+        'token_ttl_hours' => (int) env('SITEX_INSTALLER_TOKEN_TTL_HOURS', 24),
+        // The installer must not depend on the database or Redis for rate limiting.
+        'cache_store' => env('SITEX_INSTALLER_CACHE_STORE', 'file'),
+        // .env written by the installer (override only for tests).
+        'env_path' => env('SITEX_INSTALLER_ENV_PATH'),
+        'min_php' => '8.3.0',
+        'required_extensions' => ['pdo', 'pdo_mysql', 'mbstring', 'openssl', 'tokenizer', 'xml', 'ctype', 'json', 'bcmath', 'fileinfo', 'curl', 'gd', 'intl'],
+        'min_free_disk_mb' => 1024,
+    ],
+
+    // Phase 9 — operations (SYSTEM HEALTH, BACKUP-RESTORE.md, MONITORING-RUNBOOK.md)
+    'system' => [
+        // Scheduler heartbeat older than this = scheduler not running.
+        'heartbeat_stale_seconds' => 180,
+        'queue_backlog_warning' => (int) env('SITEX_QUEUE_BACKLOG_WARNING', 500),
+        'failed_jobs_warning' => (int) env('SITEX_FAILED_JOBS_WARNING', 10),
+        'disk_warning_percent' => (int) env('SITEX_DISK_WARNING_PERCENT', 85),
+        'disk_critical_percent' => (int) env('SITEX_DISK_CRITICAL_PERCENT', 95),
+        'ssl_warning_days' => (int) env('SITEX_SSL_WARNING_DAYS', 14),
+        'backup_max_age_hours' => (int) env('SITEX_BACKUP_MAX_AGE_HOURS', 26),
+        'alert_cooldown_minutes' => (int) env('SITEX_ALERT_COOLDOWN_MINUTES', 60),
+        'backup' => [
+            // Local staging directory. Must be outside the web root; copy offsite with `disk`.
+            'path' => env('SITEX_BACKUP_PATH', storage_path('app/backups')),
+            // Filesystem disk (config/filesystems.php) that receives an offsite copy, e.g. "s3" or "sftp".
+            'disk' => env('SITEX_BACKUP_DISK'),
+            // Separate from APP_KEY: base64 32-byte key. Store a copy OUTSIDE the server.
+            'encryption_key' => env('SITEX_BACKUP_ENCRYPTION_KEY'),
+            'retention_days' => (int) env('SITEX_BACKUP_RETENTION_DAYS', 14),
+            'mysqldump' => env('SITEX_MYSQLDUMP_PATH', 'mysqldump'),
+            'mysql' => env('SITEX_MYSQL_PATH', 'mysql'),
+            'timeout_seconds' => (int) env('SITEX_BACKUP_TIMEOUT', 3600),
+        ],
+        'plugin_zip_dir' => env('SITEX_PLUGIN_ZIP_DIR', base_path('../wordpress-plugin/dist')),
+    ],
 ];

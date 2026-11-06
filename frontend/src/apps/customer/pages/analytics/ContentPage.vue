@@ -38,7 +38,7 @@ function change(cur: number, prev: number | null): number | null {
   <div>
     <PageHeader :title="t('an.title')" :description="t('an.content.subtitle')" />
     <AnalyticsNav active="content" />
-    <div class="mb-6 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       <button
         v-for="c in CLASSES"
         :key="c"
@@ -53,7 +53,7 @@ function change(cur: number, prev: number | null): number | null {
         <p class="text-xs text-ink-muted">{{ t(`an.classHint.${c}`) }}</p>
       </button>
     </div>
-    <div class="grid gap-6 lg:grid-cols-3">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <AppCard :title="t('an.content.pages')" :subtitle="content.data.value?.meta.period_end ? `${t('an.common.until')} ${formatDate(content.data.value.meta.period_end)}` : undefined" :padded="false" class="lg:col-span-2">
         <LoadingState v-if="content.loading.value && !content.data.value" />
         <ErrorState v-else-if="content.error.value" :error="content.error.value" @retry="content.run" />
@@ -81,18 +81,20 @@ function change(cur: number, prev: number | null): number | null {
         <LoadingState v-if="clusters.loading.value && !clusters.data.value" />
         <ErrorState v-else-if="clusters.error.value" :error="clusters.error.value" @retry="clusters.run" />
         <EmptyState v-else-if="!clusters.data.value?.data.length" icon="target" :title="t('an.content.noClusters')" />
-        <table v-else class="min-w-full text-sm">
-          <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
-            <tr><th class="px-4 py-2">{{ t('an.content.cluster') }}</th><th class="px-4 py-2 text-right">{{ t('an.content.ideas') }}</th><th class="px-4 py-2 text-right">{{ t('an.content.published') }}</th></tr>
-          </thead>
-          <tbody class="divide-y divide-line">
-            <tr v-for="c in clusters.data.value.data" :key="c.name">
-              <td class="px-4 py-2">{{ c.name }}</td>
-              <td class="px-4 py-2 text-right tabular-nums">{{ c.ideas }}</td>
-              <td class="px-4 py-2 text-right tabular-nums" :class="c.published === 0 ? 'text-warning-600' : ''">{{ c.published }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-else class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
+              <tr><th class="px-4 py-2">{{ t('an.content.cluster') }}</th><th class="px-4 py-2 text-right">{{ t('an.content.ideas') }}</th><th class="px-4 py-2 text-right">{{ t('an.content.published') }}</th></tr>
+            </thead>
+            <tbody class="divide-y divide-line">
+              <tr v-for="c in clusters.data.value.data" :key="c.name">
+                <td class="px-4 py-2">{{ c.name }}</td>
+                <td class="px-4 py-2 text-right tabular-nums">{{ c.ideas }}</td>
+                <td class="px-4 py-2 text-right tabular-nums" :class="c.published === 0 ? 'text-warning-600' : ''">{{ c.published }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </AppCard>
     </div>
   </div>

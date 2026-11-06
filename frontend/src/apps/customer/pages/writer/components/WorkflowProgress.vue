@@ -25,7 +25,7 @@ const tone = (s: string) => (s === 'succeeded' ? 'success' : s === 'failed' ? 'd
     <p v-if="workflow.error" class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">
       {{ workflow.error.message || workflow.error.code }}
     </p>
-    <ol v-if="!compact" class="grid gap-1 text-sm sm:grid-cols-2">
+    <ol v-if="!compact" class="grid grid-cols-1 gap-1 text-sm sm:grid-cols-2">
       <li v-for="s in workflow.steps" :key="s.key" class="flex items-center gap-2">
         <AppIcon
 :name="s.status === 'succeeded' ? 'check' : s.status === 'failed' ? 'alert' : s.status === 'running' ? 'refresh' : 'clock'" :size="14"

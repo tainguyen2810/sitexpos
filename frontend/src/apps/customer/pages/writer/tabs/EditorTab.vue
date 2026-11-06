@@ -218,7 +218,7 @@ const cite = (c: EditorState['citations'][number]) => editor.value?.insertCitati
   <LoadingState v-if="loading && !state" />
   <ErrorState v-else-if="loadError" :error="loadError" @retry="load" />
   <EmptyState v-else-if="!version" icon="pen" :title="t('writer.editor.empty')" :description="t('writer.editor.emptyBody')" />
-  <div v-else class="grid gap-4 xl:grid-cols-[1fr_22rem]">
+  <div v-else class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_22rem]">
     <div class="min-w-0 space-y-3">
       <p v-if="conflict" class="flex flex-wrap items-center gap-2 rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">
         {{ t('writer.editor.conflict') }} <AppButton size="sm" variant="secondary" @click="load">{{ t('writer.editor.reload') }}</AppButton>

@@ -39,7 +39,8 @@ watch(() => route.fullPath, () => (mobileOpen.value = false))
             v-if="item.to && !item.soon"
             :to="item.to"
             class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:bg-surface-muted hover:text-ink"
-            active-class="!bg-brand-50 !text-brand-700"
+            :active-class="item.to === '/' ? '' : '!bg-brand-50 !text-brand-700'"
+            :exact-active-class="item.to === '/' ? '!bg-brand-50 !text-brand-700' : ''"
           >
             <AppIcon :name="item.icon" />
             {{ item.label }}

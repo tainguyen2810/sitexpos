@@ -73,7 +73,7 @@ const showErrors = ref(true)
   <LoadingState v-if="brief.loading.value && !brief.data.value" />
   <ErrorState v-else-if="brief.error.value" :error="brief.error.value" @retry="brief.run" />
   <EmptyState v-else-if="!current" icon="file" :title="t('writer.brief.empty')" :description="t('writer.brief.emptyBody')" />
-  <div v-else class="grid gap-4 lg:grid-cols-[1fr_16rem]">
+  <div v-else class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_16rem]">
     <AppCard>
       <div class="mb-4 flex flex-wrap items-center gap-2">
         <h3 class="text-sm font-semibold">{{ t('writer.brief.version', { n: current.version }) }}</h3>
@@ -85,7 +85,7 @@ const showErrors = ref(true)
       <ul v-if="showErrors && Object.values(errors).some(Boolean)" class="mb-4 rounded-lg bg-danger-50 px-3 py-2 text-xs text-danger-600">
         <li v-for="(m, k) in errors" v-show="m" :key="k">{{ k }}: {{ m }}</li>
       </ul>
-      <fieldset :disabled="!editable" class="grid gap-4 sm:grid-cols-2">
+      <fieldset :disabled="!editable" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <WTextarea v-model="form.titles" class="sm:col-span-2" :label="t('writer.brief.titles')" />
         <AppInput v-model="form.audience" :label="t('writer.brief.audience')" />
         <AppInput v-model="form.main_question" :label="t('writer.brief.mainQuestion')" />
@@ -94,7 +94,7 @@ const showErrors = ref(true)
         <WTextarea v-model="form.differentiation" :label="t('writer.brief.differentiation')" />
         <div class="sm:col-span-2">
           <p class="mb-2 text-sm font-medium">{{ t('writer.brief.structure') }}</p>
-          <div v-for="(s, i) in form.structure" :key="i" class="mb-2 grid gap-2 sm:grid-cols-[1fr_5rem_1fr]">
+          <div v-for="(s, i) in form.structure" :key="i" class="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_5rem_1fr]">
             <AppInput v-model="s.heading" :placeholder="t('writer.outline.heading')" />
             <select v-model.number="s.level" class="rounded-lg border border-line bg-surface px-2 text-sm" :aria-label="t('writer.outline.heading')"><option :value="2">H2</option><option :value="3">H3</option></select>
             <AppInput v-model="s.purpose" :placeholder="t('writer.outline.purpose')" />
@@ -104,7 +104,7 @@ const showErrors = ref(true)
         <div class="sm:col-span-2">
           <p class="text-sm font-medium">{{ t('writer.brief.keyFacts') }}</p>
           <p class="mb-2 text-xs text-ink-muted">{{ t('writer.brief.keyFactsHint') }}</p>
-          <div v-for="(f, i) in form.facts" :key="i" class="mb-2 grid gap-2 sm:grid-cols-[1fr_8rem]">
+          <div v-for="(f, i) in form.facts" :key="i" class="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_8rem]">
             <AppInput v-model="f.fact" :placeholder="t('writer.brief.keyFacts')" />
             <AppInput v-model="f.refs" :placeholder="t('writer.brief.refs')" />
           </div>

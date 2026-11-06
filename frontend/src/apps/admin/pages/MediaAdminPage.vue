@@ -50,13 +50,13 @@ async function save() {
     <LoadingState v-if="overview.loading.value && !overview.data.value" />
     <ErrorState v-else-if="overview.error.value" :error="overview.error.value" @retry="overview.run" />
     <template v-else-if="overview.data.value">
-      <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard :label="t('p6.admin.media.jobs')" :value="overview.data.value.generation.jobs" icon="sparkles" />
         <StatCard :label="t('p6.admin.media.images')" :value="overview.data.value.generation.images" icon="image" />
         <StatCard :label="t('p6.admin.media.cost')" :value="microUsd(overview.data.value.generation.cost_micro_usd)" icon="coins" />
         <StatCard :label="t('p6.admin.media.storage')" :value="formatBytes(overview.data.value.storage.bytes)" icon="server" :hint="`${overview.data.value.storage.assets} assets`" />
       </div>
-      <div class="mb-6 grid gap-6 lg:grid-cols-2">
+      <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <AppCard :title="t('p6.admin.media.route')" :subtitle="t('p6.admin.media.routeHint')">
           <AppBadge :tone="overview.data.value.route.enabled ? 'success' : 'danger'">{{ overview.data.value.route.enabled ? t('p6.pub.settings.enabled') : t('p6.pub.settings.disabled') }}</AppBadge>
           <EmptyState v-if="!overview.data.value.route.models.length" icon="cpu" :title="t('p6.admin.media.noModels')" />
@@ -86,7 +86,7 @@ async function save() {
           <AppButton size="sm" variant="ghost" class="ml-auto" @click="edit(r)">{{ t('common.edit') }}</AppButton>
         </li>
       </ul>
-      <form class="grid gap-3 md:grid-cols-3" @submit.prevent="save">
+      <form class="grid grid-cols-1 gap-3 md:grid-cols-3" @submit.prevent="save">
         <AppInput v-model="form.scope_key" :label="t('p6.admin.scope')" :error="isValidScope(form.scope_key) ? undefined : t('p6.admin.scopeInvalid')" />
         <AppInput v-model="form.max_storage_bytes" type="number" :label="t('p6.admin.media.maxStorage')" />
         <AppInput v-model="form.max_uploads_per_day" type="number" :label="t('p6.admin.media.maxUploads')" />

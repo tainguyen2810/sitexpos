@@ -35,7 +35,7 @@ const stats = computed(() => {
     </div>
     <LoadingState v-if="loading" :rows="3" />
     <ErrorState v-else-if="error" :error="error" @retry="run" />
-    <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <AppCard v-for="s in stats" :key="s.label">
         <p class="text-sm text-ink-muted">{{ s.label }}</p>
         <p class="mt-1 text-3xl font-bold">{{ s.value }}</p>

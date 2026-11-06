@@ -53,7 +53,7 @@ const step = (m) => console.log('✓', m)
   await page.getByRole('button', { name: 'Mời thành viên' }).click()
   await page.getByRole('dialog').getByLabel('Email').fill('teammate@example.com')
   await page.getByRole('button', { name: 'Gửi lời mời' }).click()
-  await page.getByText('teammate@example.com').waitFor()
+  await page.getByText('teammate@example.com', { exact: true }).waitFor()
   step('invitation sent and listed')
   await page.screenshot({ path: `${shots}/04-members.png` })
 

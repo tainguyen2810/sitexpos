@@ -203,7 +203,7 @@ async function saveEdit() {
         <h3 class="mb-1 text-sm font-semibold">{{ t('research.ideas.why') }}</h3>
         <p class="text-sm">{{ detail.rationale }}</p>
       </section>
-      <dl class="mb-5 grid gap-2 text-sm">
+      <dl class=" ">
         <div v-if="detail.primary_keyword"><dt class="text-xs text-ink-muted">{{ t('research.ideas.primary') }}</dt><dd class="font-medium">{{ detail.primary_keyword.keyword }}</dd></div>
         <div v-if="detail.secondary_keywords.length"><dt class="text-xs text-ink-muted">{{ t('research.ideas.secondary') }}</dt><dd>{{ detail.secondary_keywords.map((k) => k.keyword).join(', ') }}</dd></div>
         <div v-if="detail.angle"><dt class="text-xs text-ink-muted">{{ t('research.ideas.angle') }}</dt><dd>{{ detail.angle }}</dd></div>
@@ -269,7 +269,7 @@ async function saveEdit() {
       <AppInput v-model="draft.title" :label="t('research.ideas.title')" required :error="editForm.errors.title" />
       <AppInput v-model="draft.angle" :label="t('research.ideas.angle')" :error="editForm.errors.angle" />
       <AppInput v-model="draft.audience" :label="t('research.ideas.audience')" :error="editForm.errors.audience" />
-      <div class="grid gap-4 sm:grid-cols-3">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <AppSelect v-model="draft.content_type" :label="t('research.keywords.type')" :options="opts.type.slice(1)" :error="editForm.errors.content_type" />
         <AppSelect v-model="draft.search_intent" :label="t('research.keywords.intent')" :options="opts.intent.slice(1)" :error="editForm.errors.search_intent" />
         <AppSelect v-model="draft.priority" :label="t('research.ideas.priorityLabel')" :options="opts.priority.slice(1)" :error="editForm.errors.priority" />

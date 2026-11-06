@@ -137,7 +137,7 @@ const maxDay = computed(() => Math.max(1, ...(costs.data.value?.by_day ?? []).ma
         <div v-else-if="settings.data.value" class="space-y-4">
           <AppCard v-for="(keys, group) in WRITER_SETTING_GROUPS" :key="group">
             <h3 class="mb-3 text-sm font-semibold">{{ t(`writerAdmin.groups.${group}`) }}</h3>
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <template v-for="k in keys" :key="k">
                 <Toggle v-if="isBoolKey(k)" v-model="draft[k] as boolean" :label="label(k)" />
                 <AppInput
@@ -161,7 +161,7 @@ v-else v-model="draft[k] as string" type="number" :label="label(k) + (isMoneyKey
           <ErrorState v-else-if="wsData.error.value" :error="wsData.error.value" class="mt-4" @retry="wsData.run" />
           <template v-else-if="wsData.data.value">
             <p class="mt-4 text-sm font-medium">{{ wsData.data.value.workspace.name }}</p>
-            <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <template v-for="k in wsData.data.value.workspace_keys" :key="k">
                 <Toggle v-if="isBoolKey(k)" v-model="wsDraft[k] as boolean" :label="label(k)" />
                 <AppInput
@@ -202,7 +202,7 @@ v-else v-model="wsDraft[k] as string" type="number" :label="label(k) + (isMoneyK
         <LoadingState v-if="costs.loading.value && !costs.data.value" />
         <ErrorState v-else-if="costs.error.value" :error="costs.error.value" @retry="costs.run" />
         <div v-else-if="costs.data.value" class="space-y-4">
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div class=" ">
             <StatCard :label="t('writerAdmin.totalCost')" :value="formatUsd(costs.data.value.total_cost_micro_usd)" icon="coins" />
             <StatCard :label="t('writerAdmin.articles')" :value="costs.data.value.articles" icon="file" />
             <StatCard :label="t('writerAdmin.avgPerArticle')" :value="formatUsd(costs.data.value.avg_cost_per_article_micro_usd)" icon="chart" />
@@ -214,7 +214,7 @@ v-else v-model="wsDraft[k] as string" type="number" :label="label(k) + (isMoneyK
               <div v-for="d in costs.data.value.by_day" :key="d.day" class="min-w-1 flex-1 rounded-t bg-brand-500" :style="{ height: `${Math.max(2, (d.cost_micro_usd / maxDay) * 100)}%` }" :title="`${d.day}: ${formatUsd(d.cost_micro_usd)} · ${d.articles}`" />
             </div>
           </AppCard>
-          <div class="grid gap-4 lg:grid-cols-3">
+          <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <AppCard>
               <h3 class="mb-2 text-sm font-semibold">{{ t('writerAdmin.byTask') }}</h3>
               <ul class="space-y-1 text-xs"><li v-for="r in costs.data.value.by_task" :key="r.task_key" class="flex justify-between gap-2"><span class="truncate font-mono">{{ r.task_key }}</span><span class="tabular-nums">{{ r.calls }} · {{ formatUsd(r.cost_micro_usd) }}</span></li></ul>
@@ -263,7 +263,7 @@ v-else v-model="wsDraft[k] as string" type="number" :label="label(k) + (isMoneyK
       <template v-else-if="tab === 'failures'">
         <LoadingState v-if="failures.loading.value && !failures.data.value" />
         <ErrorState v-else-if="failures.error.value" :error="failures.error.value" @retry="failures.run" />
-        <div v-else-if="failures.data.value" class="grid gap-4 lg:grid-cols-2">
+        <div v-else-if="failures.data.value" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <AppCard>
             <h3 class="mb-2 text-sm font-semibold">{{ t('writerAdmin.workflowErrors') }}</h3>
             <p v-if="!failures.data.value.workflow_errors.length" class="text-sm text-ink-muted">{{ t('common.noData') }}</p>

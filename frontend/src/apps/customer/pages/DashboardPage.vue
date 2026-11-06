@@ -24,7 +24,7 @@ const { data, loading, error, run } = useAsync(() => workspaceApi.dashboard(ws.c
     <LoadingState v-if="loading" :rows="3" />
     <ErrorState v-else-if="error" :error="error" @retry="run" />
     <template v-else-if="data">
-      <div class="grid gap-4 sm:grid-cols-3">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <AppCard>
           <p class="text-sm text-ink-muted">{{ $t('dashboard.sites') }}</p>
           <p class="mt-1 text-3xl font-bold">{{ data.connected_sites_count }}<span class="text-base font-normal text-ink-muted"> / {{ data.sites_count }}</span></p>
@@ -40,11 +40,11 @@ const { data, loading, error, run } = useAsync(() => workspaceApi.dashboard(ws.c
         </AppCard>
       </div>
 
-      <div class="grid gap-4 lg:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <AppCard :title="$t('dashboard.gettingStarted')">
           <ul class="space-y-3">
             <li v-for="step in data.onboarding" :key="step.key" class="flex items-center gap-3 text-sm">
-              <span class="grid h-6 w-6 place-items-center rounded-full" :class="step.done ? 'bg-success-50 text-success-600' : 'bg-surface-muted text-ink-subtle'">
+              <span class="" :class="step.done ? 'bg-success-50 text-success-600' : 'bg-surface-muted text-ink-subtle'">
                 <AppIcon :name="step.done ? 'check' : 'plus'" :size="14" />
               </span>
               <span :class="step.done ? 'text-ink-muted line-through' : 'text-ink'">{{ $t(`dashboard.steps.${step.key}`) }}</span>

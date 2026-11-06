@@ -76,7 +76,7 @@ async function save() {
 <template>
   <LoadingState v-if="intel.loading.value && !intel.data.value" :rows="4" />
   <AppCard v-else-if="intel.error.value"><ErrorState :error="intel.error.value" @retry="intel.run" /></AppCard>
-  <div v-else-if="intel.data.value" class="grid gap-6 lg:grid-cols-3">
+  <div v-else-if="intel.data.value" class="grid grid-cols-1 gap-6 lg:grid-cols-3">
     <AppCard :title="t('research.intel.profile')">
       <p v-if="!intel.data.value.profile" class="text-sm text-ink-muted">{{ t('research.intel.noProfile') }}</p>
       <template v-else>

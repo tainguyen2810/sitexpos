@@ -104,7 +104,7 @@ async function act(kind: 'approve' | 'publish' | 'cancel') {
       <p v-if="job.error_code" class="mb-4 rounded-lg bg-danger-50 p-3 text-sm text-danger-600" data-testid="refresh-error">{{ t(`an.errors.${job.error_code}`, job.error_message ?? job.error_code) }}</p>
       <p v-if="job.status === 'conflict'" class="mb-4 rounded-lg bg-warning-50 p-3 text-sm text-warning-700">{{ t('an.refresh.conflictHint') }}</p>
 
-      <div class="grid gap-6 lg:grid-cols-3">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <AppCard :title="t('an.refresh.brief')" class="lg:col-span-1">
           <EmptyState v-if="!job.brief" icon="file" :title="t('an.refresh.noBrief')" />
           <div v-else class="space-y-3 text-sm">
@@ -134,7 +134,7 @@ async function act(kind: 'approve' | 'publish' | 'cancel') {
           <div v-else class="divide-y divide-line" data-testid="refresh-diff">
             <section v-for="s in sections" :key="s.heading" class="p-4">
               <h3 class="mb-2 text-sm font-semibold">{{ s.heading }}<AppBadge v-if="s.changed" tone="warning" class="ml-2">{{ t('an.refresh.changed') }}</AppBadge></h3>
-              <div class="grid gap-3 md:grid-cols-2">
+              <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div><p class="mb-1 text-xs uppercase text-ink-muted">{{ t('an.refresh.before') }}</p><p class="whitespace-pre-line rounded bg-danger-50 p-2 text-xs">{{ s.before || '—' }}</p></div>
                 <div><p class="mb-1 text-xs uppercase text-ink-muted">{{ t('an.refresh.after') }}</p><p class="whitespace-pre-line rounded bg-success-50 p-2 text-xs">{{ s.after || '—' }}</p></div>
               </div>
@@ -142,7 +142,7 @@ async function act(kind: 'approve' | 'publish' | 'cancel') {
           </div>
         </AppCard>
         <AppCard :title="t('an.refresh.checks')" class="lg:col-span-3">
-          <dl class="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+          <dl class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
             <div>
               <dt class="text-ink-muted">{{ t('an.refresh.factCheck') }}</dt>
               <dd v-if="job.fact_check">{{ t('an.refresh.unresolved', { c: job.fact_check.unresolved_critical ?? 0, h: job.fact_check.unresolved_high ?? 0 }) }}</dd>

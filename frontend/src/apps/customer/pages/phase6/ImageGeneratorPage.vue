@@ -102,7 +102,7 @@ const tone = (s: string) => (s === 'succeeded' ? 'success' : s === 'failed' || s
     <PageHeader :title="t('p6.media.gen.title')" :description="t('p6.media.gen.subtitle')" />
     <SectionNav section="media" active="generator" />
     <p class="mb-4 rounded-lg bg-warning-50 px-4 py-3 text-sm text-amber-900" data-testid="ai-label-notice">{{ t('p6.media.gen.notice') }}</p>
-    <div class="grid gap-6 lg:grid-cols-5">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-5">
       <AppCard :title="t('p6.media.gen.form')" class="lg:col-span-2">
         <LoadingState v-if="sites.loading.value" />
         <ErrorState v-else-if="sites.error.value" :error="sites.error.value" @retry="sites.reload" />
@@ -111,7 +111,7 @@ const tone = (s: string) => (s === 'succeeded' ? 'success' : s === 'failed' || s
           <AppSelect v-model="sites.siteId.value" :label="t('p6.common.site')" :options="sites.options.value" />
           <ArticlePicker v-model="form.article_id" :articles="articles" :label="t('p6.media.gen.article')" />
           <AppSelect v-model="form.image_type" :label="t('p6.media.gen.type')" :options="opts(IMAGE_TYPES, 'p6.media.imageType')" />
-          <div class="grid grid-cols-2 gap-3">
+          <div class="">
             <AppSelect v-model="form.aspect_ratio" :label="t('p6.media.gen.ratio')" :options="ratioOpts" />
             <AppSelect v-model="form.style" :label="t('p6.media.gen.style')" :options="opts(IMAGE_STYLES, 'p6.media.style')" />
             <AppSelect v-model="form.quality" :label="t('p6.media.gen.quality')" :options="[{ value: 'standard', label: t('p6.media.quality.standard') }, { value: 'high', label: t('p6.media.quality.high') }]" />
