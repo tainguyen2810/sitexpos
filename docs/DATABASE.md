@@ -450,3 +450,14 @@ Chỉ tạo: `users` (+ cột platform_role, 2FA, locale, timezone, status), `se
 ## 6. Phạm vi migration của Phase 2
 
 Một migration của module Sites tạo 9 bảng ở §3.6. Không sửa bảng của Phase 1. Đã chạy được trên MySQL 8.0 (tên index ≤ 64 ký tự) và SQLite (test).
+
+## Phase 9 — System
+
+| Bảng | Mục đích |
+|---|---|
+| `system_settings` (+ cột `is_secret`) | Cấu hình toàn cục do Super Admin quản lý. `is_secret=1` (mật khẩu SMTP, Google client secret, Telegram token) → giá trị mã hóa bằng `Crypt`/APP_KEY, API chỉ trả `<field>_configured`. Khóa dùng trong Phase 9: `general.*`, `mail.*`, `google.*`, `alerts.*`, `backup.*`, `system.version`, `system.installed_at`, `system.heartbeat_at`, `system.ssl`, `monitor.state`, `setup.*` |
+| `system_backups` | Mỗi lần sao lưu: `status` (running/succeeded/failed), `trigger` (schedule/manual/pre_upgrade), file, kích thước, SHA-256, `offsite_status`, `verify_status`, lỗi (đã che secret) |
+| `system_alerts` | Cảnh báo đã gửi: `check_key`, `severity` (warning/critical/recovered), tóm tắt, kết quả từng kênh; dùng cho cooldown |
+| `system_upgrade_runs` | Mỗi lần nâng cấp từ web: phiên bản từ/đến, trạng thái, migration đã chạy, các bước, lỗi |
+
+Installer không có bảng riêng: trạng thái nằm ở `storage/app/installer/` (`installed.json` 0600, cấu hình tạm mã hóa bằng `pending.key` 0600, nhật ký đã che secret) và ở `system.installed_at`.

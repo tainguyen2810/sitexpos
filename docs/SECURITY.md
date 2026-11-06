@@ -222,3 +222,13 @@ Ghi cho: đăng nhập/đăng xuất/2FA, đổi mật khẩu, mời/xóa/đổi
 - PHPStan + rule cấm `DB::raw`/`v-html` tùy tiện; review bảo mật cho PR chạm Sites, Billing, Kernel/Tenancy.
 - Secret scanning trước khi push.
 - Sao lưu DB mã hóa; kiểm thử khôi phục định kỳ (DEPLOYMENT.md).
+
+## Phase 9 — Installer, vận hành và hardening
+
+- **Installer**: người đầu tiên mở domain không chiếm được Super Admin — mọi API cần setup token 192-bit chỉ lấy được qua SSH, lưu sha256, giới hạn tần suất; khóa nhiều tín hiệu (file `installed.json`, `SITEX_INSTALLED`, `system.installed_at`, đã có SUPER_ADMIN); không ghi đè DB có dữ liệu; không chạy lệnh root; secret tạm mã hóa và bị xóa sau khi cài. Chi tiết `INSTALLER-SECURITY.md`.
+- **Upgrade**: chỉ SUPER_ADMIN + nhập lại mật khẩu; từ chối migration phá dữ liệu; cần bản sao lưu gần đây; web không tải/ghi đè mã nguồn.
+- **Sao lưu**: AES-256-GCM theo khối, khóa `SITEX_BACKUP_ENCRYPTION_KEY` khác APP_KEY; không có khôi phục từ web; restore-test chỉ vào DB `*_restore_test`.
+- **SSRF**: `SITEX_SSRF_ALLOW_HTTP` và `SITEX_SSRF_ALLOW_HOSTS` bị bỏ qua khi `APP_ENV=production` (sửa Phase 9).
+- **AI billing**: provider trả kết quả mà không có `usage` → chốt theo ước tính đã giữ chỗ, `billing_uncertain=true` (sửa Phase 9, audit Phase 3 F15).
+- **Secret do Super Admin nhập** (SMTP, Google, Telegram): `system_settings.is_secret`, chỉ ghi, audit chỉ ghi tên trường.
+- Audit bảo mật đầy đủ và phát hiện còn mở: `SECURITY-AUDIT.md`.

@@ -289,6 +289,12 @@ Quy tắc cứng:
 - **Ranh giới** (`ArchitectureTest`): Analytics/Agent chỉ dùng contract của module khác; Agent không dùng nội bộ Analytics, không `Process`/shell; `ToolExecutor` chỉ dùng trong `Agent\Engine`.
 - **Queue** `analytics` (`supervisor-analytics`). **Scheduler**: `sitex:analytics:sync` (1h), `sitex:analytics:refresh-tick` (5'), `sitex:analytics:prune` (03:40), `sitex:agent:schedule` (1'), `sitex:agent:recover` (5').
 
+## 8g. Cài đặt, vận hành và nâng cấp (Phase 9 — `app/Modules/{Installer,System}`)
+- **Installer**: chạy được khi chưa có `.env`/DB. `InstallerGuard` (token `X-Setup-Token`, khóa nhiều tín hiệu, rate limit) → `InstallerController` → `RunInstallation` (ghi `.env` qua `EnvWriter`, migrate, seed hệ thống, tạo Super Admin, khóa). `Support/{EnvironmentChecker,DatabaseProbe,RedisProbe,PendingConfig,SetupToken,InstallationState,DeploymentTemplates}`. Giao diện là HTML + JS tĩnh (`public/installer/`), không phụ thuộc SPA.
+- **System**: `Health/HealthChecker` (16 mục), `Setup/SetupWizard` (12 bước, trạng thái tính từ cấu hình thật), `Upgrade/UpgradeInspector` + job `RunUpgrade`, `Backup/{BackupManager,BackupCrypto}` + job `RunBackup`/`VerifyBackup`, `Monitoring/{AlertDispatcher,SslProbe}` + lệnh `Monitor`/`Heartbeat`, `Support/{RuntimeConfig,SystemSettings}` (giá trị admin ghi đè `.env` lúc chạy).
+- **Ranh giới**: System đọc AI và Billing qua contract `AiGateway\Contracts\AiReadiness`, `Billing\Contracts\BillingReadiness`. Ngoại lệ có chủ đích: health đọc **đếm tổng hợp chỉ-đọc** trực tiếp từ `sites`, `publishing_jobs`, `search_console_connections` (toàn nền tảng, không ghi, không trả dữ liệu tenant) — nên chuyển thành contract khi các module đó có API readiness. Mọi thao tác ra mạng (gửi mail/Telegram thử, Google OAuth thử, sao lưu) chạy trong queue.
+- **Scheduler**: `sitex:system:heartbeat` (1'), `sitex:system:monitor` (5'), `sitex:backup:run --scheduled --verify` (15'), `sitex:backup:prune` (04:30).
+
 ## 9. Dịch vụ dữ liệu bên ngoài (adapter, cấu hình qua .env)
 
 | Nhu cầu | Adapter dự kiến | Ghi chú |
@@ -354,7 +360,7 @@ Bất biến thời gian: timeout job (300 s) < `retry_after` của Redis (330 s
 
 - Laravel Horizon (queue), log JSON theo ngày, `request_id` xuyên suốt (header `X-Request-Id`), endpoint `/up`.
 - Bảng `job_runs` cho tiến độ tác vụ hiển thị lên UI.
-- Cảnh báo: failed jobs tăng, queue backlog, chi phí AI vượt ngưỡng, site mất kết nối, webhook lỗi.
+- Cảnh báo (Phase 9): System Health 16 mục, `sitex:system:monitor` gửi email/Telegram khi trạng thái xấu đi/phục hồi, có cooldown — `MONITORING-RUNBOOK.md`.
 - Tùy chọn: Laravel Pulse; Sentry-compatible error tracking qua `.env` (không bắt buộc).
 
 ## 14. Cấu hình & môi trường
@@ -391,3 +397,6 @@ Bất biến thời gian: timeout job (300 s) < `retry_after` của Redis (330 s
 | ADR-022 | Phase 8 gồm Search Console Analytics + SEO Agent (trước đây dự kiến cho Phase 9) theo yêu cầu của chủ dự án; dùng lại kết nối OAuth GSC của Phase 4 qua contract `SearchConsoleAccess`, không tạo bảng GSC thứ hai | Tránh hai nguồn token/kết nối cho cùng một site. Đánh đổi: Research và Analytics cùng phụ thuộc bảng `search_console_connections`, mọi thay đổi OAuth phải giữ tương thích cả hai |
 | ADR-023 | SEO Agent là bộ điều phối có quy tắc: server dựng tác vụ từ dữ liệu tenant, AI chỉ được xếp hạng/bỏ bớt; policy engine phía server quyết định từng tác vụ; mức 3 không bao giờ tự bật | Chống prompt injection từ nội dung web, giữ mọi thay đổi website trong quy trình có kiểm soát (Writer → fact-check → SEO Audit → Publisher, ADR-019). Đánh đổi: Agent kém “linh hoạt” hơn một agent tự do, nhưng mọi hành động đều giải thích và kiểm toán được |
 | ADR-024 | Quy tắc liên kết (bài mồ côi, điểm liên kết nội bộ) chỉ kết luận khi SiteX giữ nội dung của ≥ 80% bài | Không có nội dung thì không biết bài nào liên kết tới đâu; trước đây mọi bài bị gắn “mồ côi”. Đánh đổi: website ít bài do SiteX viết sẽ không có kết luận về liên kết |
+| ADR-025 | Phase 9 Installer: web installer chỉ hoạt động với setup token lấy qua SSH và khóa vĩnh viễn bằng nhiều tín hiệu; không chạy lệnh root, không ghi đè DB có dữ liệu | Người đầu tiên truy cập domain không chiếm được Super Admin; xóa một file không mở lại installer. Đánh đổi: người cài phải có SSH một lần để lấy token |
+| ADR-026 | Nâng cấp tách hai phần: mã nguồn do người vận hành cập nhật (SSH/`upgrade.sh`), web chỉ chạy migration bổ sung đã kiểm tra; khôi phục sao lưu chỉ qua SSH | Web không trở thành công cụ chạy lệnh/ghi đè mã tùy ý; thao tác phá dữ liệu luôn có người làm. Đánh đổi: không có "nâng cấp một nút" |
+| ADR-027 | Sao lưu tích hợp mã hóa bằng khóa riêng `SITEX_BACKUP_ENCRYPTION_KEY` (không dùng APP_KEY), định dạng `SXPBK1` AES-256-GCM theo khối | Lộ file sao lưu không đủ để đọc; mất máy chủ không mất khóa nếu đã lưu riêng. Đánh đổi: thêm một khóa phải giữ cẩn thận |

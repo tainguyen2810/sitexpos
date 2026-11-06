@@ -219,8 +219,15 @@ Theo yêu cầu của chủ dự án, phần “Search Console & làm mới nộ
 
 **Nghiệm thu**: số liệu khớp GSC (đối chiếu mẫu với tài khoản thật — **chưa làm được**, cần credentials Google); cơ hội luôn có bằng chứng; Agent không thể tự đăng khi chưa bật mức 3; dừng khẩn cấp hủy run; scheduler chạy hai lần chỉ tạo một run; thu hồi kết nối Google xóa token; cross-tenant 404.
 
-## Phase 9
-Nội dung do chủ dự án xác định. **Không tự bắt đầu.**
+## Phase 9 — Hoàn thiện, hardening, cài đặt và vận hành ✦ (đã triển khai, chờ nghiệm thu — xem `PHASE9-FINAL-AUDIT.md`)
+- [x] Audit Phase 0–8 (`PHASE0-8-FINAL-AUDIT.md`), sửa P0/P1 còn mở (thiếu usage AI, SSRF production, trang Thử nghiệm sập).
+- [x] Hardening: audit bảo mật (`SECURITY-AUDIT.md`), kiểm thử 3 tenant, chạy toàn bộ test trên MySQL, đo hiệu năng thật (`PERFORMANCE-REPORT.md`), thiết kế load test (chưa chạy).
+- [x] Installation Wizard `/install` (token, khóa nhiều tín hiệu, mẫu aaPanel) + E2E thật.
+- [x] Setup Wizard 12 bước, Upgrade Wizard, System Health, sao lưu mã hóa + kiểm tra + restore-test, cảnh báo email/Telegram.
+- [x] E2E 14 luồng có trạng thái trung thực (`E2E-TEST-REPORT.md`); kiểm tra 79 màn hình trên trình duyệt thật.
+- [x] Tài liệu vận hành: AAPANEL-QUICK-INSTALL, INSTALLATION-WIZARD, INSTALLER-SECURITY, POST-INSTALL-SETUP, UPGRADE-GUIDE, BACKUP-RESTORE, MONITORING-RUNBOOK, RELEASE-CHECKLIST, ROLLBACK-PLAN, COMMERCIAL-LAUNCH-READINESS.
+
+**Chưa làm được trong môi trường này**: AI/WordPress/GSC/ngân hàng thật, load test trên staging, gửi email/Telegram thật, pentest độc lập.
 
 ## Phase 10 — Agency & sẵn sàng thương mại
 - Workspace agency, quyền theo site, white-label báo cáo, client portal duyệt bài.
