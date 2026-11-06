@@ -95,6 +95,8 @@ export interface AuditLogEntry {
 export interface WorkspaceDashboard {
   members_count: number
   pending_invitations_count: number
+  sites_count: number
+  connected_sites_count: number
   modules: Record<string, { available: boolean; phase: number }>
   onboarding: { key: string; done: boolean; available?: boolean }[]
 }

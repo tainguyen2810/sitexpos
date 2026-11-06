@@ -42,9 +42,17 @@ cd ..\frontend; npm install; copy .env.example .env; npm run dev
 Email ở dev ghi vào `backend/storage/logs/laravel-*.log` (`MAIL_MAILER=log`) — mở link xác minh/đặt lại mật khẩu/lời mời từ đó.
 Tạo Super Admin thật (không có tài khoản admin mặc định): `php artisan sitex:make-super-admin email@domain` — lần đầu vào app admin sẽ bị buộc bật 2FA.
 
+### Giao diện demo (không cần backend)
+```bash
+cd frontend
+npm run demo          # app khách hàng   http://localhost:5173
+npm run demo:admin    # app Super Admin  http://localhost:5174
+```
+Nguyên mẫu toàn bộ màn hình (18 trang khách hàng, 12 trang Super Admin) với dữ liệu mẫu trong trình duyệt. Chỉ chạy ở development, không gọi AI hay cổng thanh toán. Chi tiết: [docs/DEMO-UI.md](docs/DEMO-UI.md).
+
 ### Kiểm tra chất lượng
 ```bash
-scripts/check.sh          # Linux/macOS: Pint, Larastan, Pest, ESLint, vue-tsc, Vitest, build
+scripts/check.sh          # Linux/macOS: Pint, Larastan, Pest, ESLint, vue-tsc, Vitest, build, kiểm tra bản build không chứa demo
 scripts/check.ps1         # Windows
 ```
 Smoke test trình duyệt: [scripts/e2e/README.md](scripts/e2e/README.md).

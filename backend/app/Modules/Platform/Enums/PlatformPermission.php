@@ -17,4 +17,6 @@ enum PlatformPermission: string
     case AuditViewBilling = 'platform.audit.view_billing';
     case BillingManage = 'platform.billing.manage';
     case AiManage = 'platform.ai.manage';
+    case AiCostsView = 'platform.ai.view_costs';
+    case JobsManage = 'platform.jobs.manage';
 }

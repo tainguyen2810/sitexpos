@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use SiteXPost\Kernel\Support\JobRun;
 use SiteXPost\Modules\Identity\Domain\User;
+use SiteXPost\Modules\Sites\Domain\Site;
 use SiteXPost\Modules\Workspace\Enums\WorkspaceStatus;
 use SiteXPost\Modules\Workspace\Enums\WorkspaceType;
 
@@ -97,5 +98,15 @@ class Workspace extends Model
     public function jobRuns(): HasMany
     {
         return $this->hasMany(JobRun::class);
+    }
+
+    /**
+     * Read-only cross-module reference, needed for scoped route bindings.
+     *
+     * @return HasMany<Site, $this>
+     */
+    public function sites(): HasMany
+    {
+        return $this->hasMany(Site::class);
     }
 }

@@ -10,3 +10,17 @@ parameters:
         - routes
     tmpDir: storage/framework/cache/phpstan
     treatPhpDocTypesAsCertain: false
+    databaseMigrationsPath:
+        - app/Modules/AiGateway/Database/Migrations
+        - app/Modules/Audit/Database/Migrations
+        - app/Modules/Identity/Database/Migrations
+        - app/Modules/Media/Database/Migrations
+        - app/Modules/Platform/Database/Migrations
+        - app/Modules/Publishing/Database/Migrations
+        - app/Modules/Research/Database/Migrations
+        - app/Modules/Seo/Database/Migrations
+        - app/Modules/Sites/Database/Migrations
+        - app/Modules/Workflows/Database/Migrations
+        - app/Modules/Workspace/Database/Migrations
+        - app/Modules/Writer/Database/Migrations
+        - database/migrations

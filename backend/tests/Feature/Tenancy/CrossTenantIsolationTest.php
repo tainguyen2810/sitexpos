@@ -1,13 +1,19 @@
 <?php
 
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use SiteXPost\Kernel\Support\JobRun;
 use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\Audit\Audit;
 use SiteXPost\Modules\Identity\Domain\User;
+use SiteXPost\Modules\Sites\Domain\Site;
+use SiteXPost\Modules\Workflows\Domain\WorkflowRun;
+use SiteXPost\Modules\Workflows\Engine\WorkflowEngine;
 use SiteXPost\Modules\Workspace\Domain\WorkspaceInvitation;
 use SiteXPost\Modules\Workspace\Enums\WorkspaceRole;
+use Tests\Support\FakeWordPress;
 
 /**
  * Tenant A must never read or modify tenant B. This test enumerates EVERY
@@ -29,6 +35,7 @@ function tenantRoutes(): array
 function twoTenants(): array
 {
     Notification::fake();
+    seedAi();
     $a = workspaceWithRoles('Tenant A');
     $b = workspaceWithRoles('Tenant B');
     $ctx = app(TenantContext::class);
@@ -52,6 +59,19 @@ function twoTenants(): array
         return $job;
     });
 
+    $runB = $ctx->runAs($b['workspace'], null, function () {
+        Queue::fake();
+
+        return app(WorkflowEngine::class)
+            ->start('ai.test', ['task_key' => 'system.test', 'prompt' => 'secret B prompt', 'structured' => false, 'web_search' => false])[0];
+    });
+
+    $wpB = (new FakeWordPress)->install();
+    $siteB = connectedSite($b['workspace'], $wpB, 'Site B');
+    $researchB = researchFixture($b['workspace'], $siteB);
+    $writerB = writerFixture($b['workspace'], $siteB);
+    $phase6B = phase6Fixture($b['workspace'], $siteB, $writerB);
+
     return [
         'a' => $a,
         'b' => $b,
@@ -59,7 +79,11 @@ function twoTenants(): array
             'member' => memberOf($b['workspace'], $b['editor'])->id,
             'invitation' => $invB->id,
             'jobRun' => $jobB->id,
-        ],
+            'site' => $siteB->id,
+            'workflowRun' => $runB->id,
+        ] + $researchB + $writerB + $phase6B,
+        'siteB' => $siteB,
+        'wpB' => $wpB,
     ];
 }
 
@@ -73,8 +97,12 @@ function fillUri(string $uri, string $workspaceId, array $ids): string
     return '/'.$uri;
 }
 
+// The enumeration sends more requests than the per-user API limit allows
+// in one minute; throttling is covered by its own tests.
+beforeEach(fn () => $this->withoutMiddleware(ThrottleRequests::class));
+
 it('covers at least the known tenant routes', function () {
-    expect(count(tenantRoutes()))->toBeGreaterThanOrEqual(13);
+    expect(count(tenantRoutes()))->toBeGreaterThanOrEqual(19);
 });
 
 it('returns 404 when a tenant A owner targets tenant B workspace ids', function () {
@@ -97,7 +125,7 @@ it('returns 404 when tenant A uses its own workspace with tenant B child ids', f
     ['a' => $a, 'b' => $b, 'ids' => $ids] = twoTenants();
 
     foreach (tenantRoutes() as [$method, $uri]) {
-        if (! preg_match('/\{(member|invitation|jobRun)\}/', $uri)) {
+        if (! preg_match('/\{(member|invitation|jobRun|site|workflowRun|campaign|notification|article|preset|batch|articleRef|asset|imageJob|auditRun|suggestion|publishingBatch|mapping|publishingJob|conflict)\}/', $uri)) {
             continue;
         }
         $url = fillUri($uri, $a['workspace']->id, $ids);
@@ -106,7 +134,51 @@ it('returns 404 when tenant A uses its own workspace with tenant B child ids', f
         expect($res->status())->toBe(404, "{$method} {$url} returned {$res->status()}");
     }
 
-    expect(memberOf($b['workspace'], $b['editor'])->role->value)->toBe('EDITOR');
+    expect(memberOf($b['workspace'], $b['editor'])->role->value)->toBe('EDITOR')
+        ->and(app(TenantContext::class)->runAs($b['workspace'], null, fn () => WorkflowRun::query()->sole()->status->value))->toBe('pending');
+});
+
+it('never lets tenant A reach tenant B research rows through its own campaign', function () {
+    ['a' => $a, 'b' => $b, 'ids' => $ids] = twoTenants();
+    $siteA = connectedSite($a['workspace'], new FakeWordPress('https://a.example.com'), 'Site A');
+    $own = researchFixture($a['workspace'], $siteA, 'A');
+
+    $checked = 0;
+    foreach (tenantRoutes() as [$method, $uri]) {
+        if (! str_contains($uri, '{campaign}') || ! preg_match('/\{(knowledge|researchRun|keyword|idea|cluster|gap|competitor|calendarItem)\}/', $uri)) {
+            continue;
+        }
+        $url = fillUri($uri, $a['workspace']->id, ['campaign' => $own['campaign']] + $ids);
+        $res = $this->actingAs($a['owner'])->json($method, $url, ['status' => 'rejected', 'value' => 'hacked', 'name' => 'hacked']);
+        expect($res->status())->toBe(404, "{$method} {$url} returned {$res->status()}");
+        $checked++;
+    }
+    expect($checked)->toBeGreaterThanOrEqual(15);
+
+    $body = $this->actingAs($a['owner'])->getJson("/api/v1/workspaces/{$a['workspace']->id}/research/campaigns")->getContent()
+        .$this->actingAs($a['owner'])->getJson("/api/v1/workspaces/{$a['workspace']->id}/research/notifications")->getContent()
+        .$this->actingAs($a['owner'])->getJson("/api/v1/workspaces/{$a['workspace']->id}/research/calendar")->getContent()
+        .$this->actingAs($a['owner'])->getJson("/api/v1/workspaces/{$a['workspace']->id}/research/campaigns/{$own['campaign']}/keywords")->getContent();
+    expect($body)->not->toContain('Secret idea B')->not->toContain('secret keyword B')->not->toContain('Campaign B')->not->toContain('Secret note B');
+});
+
+it('never lets tenant A operate tenant B WordPress sites', function () {
+    ['a' => $a, 'b' => $b, 'ids' => $ids, 'wpB' => $wpB] = twoTenants();
+
+    foreach (tenantRoutes() as [$method, $uri]) {
+        if (! str_contains($uri, '{site}')) {
+            continue;
+        }
+        foreach ([$a['workspace']->id, $b['workspace']->id] as $wsId) {
+            $res = $this->actingAs($a['owner'])->json($method, fillUri($uri, $wsId, $ids), ['name' => 'hacked']);
+            expect($res->status())->toBe(404, "{$method} {$uri} returned {$res->status()}");
+        }
+    }
+
+    $sites = collect($this->actingAs($a['owner'])->getJson("/api/v1/workspaces/{$a['workspace']->id}/sites")->json('data'));
+    expect($sites)->toBeEmpty()
+        ->and($wpB->posts)->toBeEmpty()
+        ->and(app(TenantContext::class)->runAs($b['workspace'], null, fn () => Site::query()->sole()->status->value))->toBe('connected');
 });
 
 it('cannot transfer ownership to a member of another tenant', function () {
@@ -128,6 +200,10 @@ it('never leaks another tenant in listings or audit logs', function () {
 
     $invitations = $this->actingAs($a['owner'])->getJson("/api/v1/workspaces/{$a['workspace']->id}/invitations")->json('data');
     expect(collect($invitations)->pluck('email'))->not->toContain('pending-b@example.com');
+
+    $tasks = $this->actingAs($a['owner'])->getJson("/api/v1/workspaces/{$a['workspace']->id}/ai/tasks")->json('data');
+    expect($tasks)->toBeEmpty();
+    expect($this->actingAs($a['owner'])->getJson("/api/v1/workspaces/{$a['workspace']->id}/ai/usage")->json('data.totals.requests'))->toBe(0);
 
     $workspaces = collect($this->actingAs($a['owner'])->getJson('/api/v1/workspaces')->json('data'))->pluck('id');
     expect($workspaces->all())->toBe([$a['workspace']->id]);

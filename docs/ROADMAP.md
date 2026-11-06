@@ -100,37 +100,112 @@ Nguyên tắc: **chỉ làm phase được yêu cầu**, không tự chuyển ph
 
 **Ngoài phạm vi Phase 1**: sites/WordPress, billing/quota, AI, research, nội dung, GSC, deploy production.
 
+### Giao diện demo (05/11/2026)
+Nguyên mẫu UI cho mọi màn hình của các phase sau (18 trang khách hàng, 12 trang Super Admin), chạy bằng dữ liệu mẫu trong trình duyệt: `npm run demo` / `npm run demo:admin`. Chỉ dùng để duyệt giao diện và luồng; mỗi phase vẫn phải xây màn hình thật nối API. Xem [DEMO-UI.md](DEMO-UI.md).
+
 ---
 
-## Phase 2 — Kết nối WordPress
-- Plugin `sitex-post` (pairing, Ed25519, chống replay, trang admin WP, ngắt kết nối, uninstall sạch).
-- Module Sites: thêm site, mã ghép nối, health check định kỳ, đồng bộ taxonomy & index bài, xoay khóa, thu hồi.
-- SsrfGuard áp dụng cho mọi request tới site.
+## Phase 2 — Kết nối WordPress ✦ (đã triển khai, chờ nghiệm thu — xem `PHASE2-REPORT.md`)
+
+### 2A. Bảo mật kết nối
+- [x] Ghép nối bằng mã dùng một lần + quản trị WP xem trước và xác nhận (không hỏi mật khẩu WP).
+- [x] Khóa riêng từng site + HMAC-SHA256 `SITEX-HMAC-V1` hai chiều, ký cả response (thay Ed25519 — ADR-007 sửa đổi).
+- [x] Timestamp ±300 s, nonce dùng một lần (Cloud cache, plugin bảng riêng), xoay khóa có grace 10 phút, thu hồi từ cả hai phía.
+- [x] SsrfGuard + IP pinning cho mọi request tới site; giới hạn kích thước response; không theo redirect.
+- [x] Không gửi API key AI tới WordPress (arch test).
+
+### 2B. Module Sites (Cloud)
+- [x] Thêm/sửa/xóa site, mã ghép nối, health check (thủ công + định kỳ 30 phút), đồng bộ chuyên mục/thẻ/bài/trang/sản phẩm WooCommerce, chỉ mục nội dung + map ID bài WP.
+- [x] Tải ảnh (featured + inline), tạo/cập nhật bài idempotent, SEO metadata, đăng bài thử.
+- [x] Nhật ký kết nối, lịch sử kiểm tra, trạng thái lỗi; scheduler `sitex:sites:health`, `sitex:sites:prune`; queue `connector`.
+
+### 2C. Plugin `sitex-post`
+- [x] Wizard 3 bước, trang đã kết nối, nhật ký, chẩn đoán; ngắt kết nối; uninstall sạch.
+- [x] REST `sitex-post/v1` có chữ ký; fallback `?rest_route=`; sanitize HTML; kiểm tra MIME ảnh thật.
+- [x] Adapter SEO: Yoast, Rank Math, thẻ meta tích hợp.
+- [x] Bản dịch tiếng Việt, readme.txt, script build zip, kiểm tra cú pháp PHP 7.4.
+
+### 2D. Giao diện SaaS
+- [x] Danh sách website, thêm website (mã + hướng dẫn), chi tiết (trạng thái, phiên bản, tính năng, cảnh báo), kiểm tra kết nối, đồng bộ thủ công, đăng thử, đổi khóa, ngắt kết nối, xóa; tab nội dung/chuyên mục/nhật ký/lịch sử.
 
 **Nghiệm thu**: ghép nối thành công với WP 6.4 và bản mới nhất (PHP 7.4 và 8.3); request có chữ ký sai/timestamp lệch/nonce lặp đều bị từ chối (test cả hai phía); thu hồi từ Cloud hoặc WP làm request sau thất bại ngay; site trỏ tới IP private bị từ chối; plugin qua `WP_DEBUG` không notice, Plugin Check không lỗi bảo mật.
+Kết quả thực tế: xem `PHASE2-REPORT.md` (đã chạy trên WP 6.4.5 và 6.8.3 với PHP 8.3; **chưa** chạy trên PHP 7.4 thật và chưa chạy Plugin Check).
 
-## Phase 3 — Gói dịch vụ, quota, credit, thanh toán
-- Plans/prices/limits, subscription, trial, usage ledger + counters (reserve/commit/release), credit wallet.
+## Phase 3 — AI Gateway & Queue ✦ (đã triển khai, chờ nghiệm thu — xem `PHASE3-REPORT.md`)
+> Thứ tự phase đã đổi (ADR-012): AI Gateway & hàng đợi làm trước, gói dịch vụ/thanh toán chuyển sang Phase 4.
+
+### 3A. AI Gateway
+- [x] Adapter OpenAI (Responses API), Gemini (`generateContent`), Anthropic (Messages API) bằng HTTP thuần (ADR-011) + fake provider cho test/dev.
+- [x] Model registry + capabilities, bảng giá có version (micro-USD / 1M token, ADR-014), tính chi phí theo giá hiệu lực tại thời điểm gọi.
+- [x] Routing theo task type (`ai_task_routes`) + chuỗi fallback, chặn theo ngân sách.
+- [x] Đo usage: input/output/cached/reasoning token, ảnh, lượt tìm kiếm.
+- [x] Timeout, retry có kiểm soát, circuit breaker theo provider/model, fallback.
+- [x] Log request (`ai_requests`) không chứa secret/prompt thô (chỉ hash), `SecretRedactor` cho thông báo lỗi.
+- [x] Ngân sách theo workspace và toàn hệ thống: reserve → commit/release nguyên tử, cảnh báo ngưỡng, hành động `pause_all`/`block_paid`.
+- [x] Super Admin quản lý provider, model, giá, route, ngân sách.
+
+### 3B. Hàng đợi
+- [x] Redis + Horizon, các queue: `research`, `writing`, `factcheck`, `media`, `publishing`, `analytics`, `billing`, `notifications` (+ `critical`, `default`, `connector` có sẵn).
+- [x] Cấu hình Supervisor mẫu (`deploy/supervisor/`).
+
+### 3C. Workflow engine (ADR-013)
+- [x] State machine lưu DB (`workflow_runs/steps/events`), compare-and-set theo `version`.
+- [x] Idempotency key, exponential backoff, giới hạn đồng thời theo tenant.
+- [x] Hủy, khôi phục sau khi worker chết (lease + `workflows:recover` mỗi phút).
+- [x] Failed jobs, dead letter, retry thủ công.
+- [x] Không retry lời gọi tốn phí khi không chắc đã bị tính tiền (trừ khi route cho phép).
+
+### 3D. Giao diện
+- [x] Khách hàng: trang "Tác vụ AI" (gửi tác vụ thử, xem kết quả, chi phí, hủy/retry).
+- [x] Admin: dashboard sử dụng & chi phí AI, cấu hình AI (provider/model/giá/route/ngân sách), theo dõi job (queue, workflow, dead letter).
+
+**Nghiệm thu**: gửi được tác vụ AI thử; token và chi phí được ghi nhận; job nền không chặn HTTP; restart worker không mất workflow; có test đồng thời và test lỗi.
+Kết quả thực tế: xem `PHASE3-REPORT.md` (đã chạy với fake provider; **chưa** gọi API thật do chưa có khóa).
+
+### 3E. DeepSeek & quản lý model linh hoạt (bổ sung sau Phase 3, ADR-015)
+- [x] Provider DeepSeek (`deepseek-flash`, `deepseek-v4-pro`, kiểm theo api-docs.deepseek.com ngày 05/11/2026), seed ở trạng thái tắt.
+- [x] Provider tùy chỉnh theo chuẩn OpenAI-compatible (base URL qua SsrfGuard, chế độ JSON chọn được).
+- [x] API key nhập từ admin, mã hóa trong DB, ghi-một-chiều; `.env` vẫn dùng được.
+- [x] Sửa Model ID, xóa model/provider chưa dùng, mức suy luận (reasoning effort).
+- [x] Giá cao điểm/thấp điểm theo khung giờ UTC.
+- [x] Test Connection (danh sách model, miễn phí) và Test Model (lời gọi thật nhỏ, có tính phí).
+- [x] Fallback sang provider khác khi một provider lỗi (đã có từ 3A, có thêm test DeepSeek → model kế tiếp).
+
+**Nghiệm thu 3E**: gọi DeepSeek thật bằng khóa của chủ dự án; Test Connection báo đúng model; chi phí khớp bảng giá DeepSeek theo giờ. Kết quả thực tế: xem mục 3E trong `PHASE3-REPORT.md` (**chưa** gọi DeepSeek thật do chưa có khóa và mạng sandbox chặn).
+
+## Phase 4 — SEO Planner: AI Topic Discovery & SEO Planning ✦ (đã triển khai, chờ nghiệm thu — xem `PHASE4-REPORT.md`, ADR-016)
+- Website Intelligence (hồ sơ + nhận định sửa được), keyword discovery đa nguồn (WordPress, WooCommerce, website, đối thủ, Search Console, DataForSEO, AI gợi ý), phân tích intent/độ phủ/cụm/gap/liên kết nội bộ, điểm cơ hội minh bạch, ý tưởng 9 dạng nội dung, Content Brief, lịch nội dung (không tự tạo/đăng bài).
+- Tự động hóa trên queue Phase 3: lịch định kỳ, quota/đồng thời/ngân sách AI, retry/cancel/idempotency.
+- Super Admin: nguồn & nhà cung cấp (khóa ghi-một-chiều), cài đặt crawl, giới hạn tenant, giám sát run, chi phí, lỗi nguồn.
+
+**Nghiệm thu**: không có search volume/KD nào hiển thị mà không có provider + thời điểm thu thập ("Chưa có dữ liệu" nếu thiếu); mọi ý tưởng truy được bằng chứng; đối thủ tuân thủ robots, không lưu nội dung; chạy lại không tạo trùng; cách ly tenant. Checklist chi tiết: `PHASE4-REPORT.md` §7.
+
+## Phase tiếp theo — Gói dịch vụ, quota, credit, thanh toán (dời từ Phase 4 theo ADR-016)
+- Plans/prices/limits, subscription, trial, usage ledger + counters (reserve/commit/release), credit wallet — tái sử dụng cơ chế reservation của AI Gateway.
 - Adapter cổng thanh toán (chờ quyết định cổng), webhook an toàn, hóa đơn.
 - Admin: quản lý plan, credit pack, cấp credit, xem hóa đơn.
 
 **Nghiệm thu**: không thể vượt quota dưới tải đồng thời (test race); webhook lặp không kích hoạt hai lần; webhook sai chữ ký bị từ chối; hết hạn gói → chặn tác vụ tốn quota với 402.
 
-## Phase 4 — AI Gateway
-- Provider OpenAI/Gemini/Anthropic, task routing, structured output + JSON Schema, retry/fallback/circuit breaker, đo token & chi phí, ngân sách, prompt template có version.
-- Admin: cấu hình model/route/template/ngân sách, dashboard chi phí AI.
+## Phase 5 — AI Content Writer, Evidence Research & Fact-check ✦ (đã triển khai, chờ nghiệm thu)
+Nhánh `feature/phase5-ai-writer`. Gộp phần "Pipeline viết bài & kiểm chứng" trước đây dự kiến cho Phase 6. Xem `PHASE5-IMPLEMENTATION.md`, `PHASE5-TEST-REPORT.md`.
+- Wizard 17 bước / 10 loại nội dung, Writing Preset (brand voice có provenance), nghiên cứu dựa trên bằng chứng, brief, dàn ý, viết từng section qua AI Gateway.
+- Claim risk LOW/MEDIUM/HIGH/CRITICAL, verdict theo quy tắc, xác minh thủ công, kiểm tra nhất quán, sửa tự động có giới hạn, rubric chất lượng, kiểm tra trùng lặp.
+- Editor (autosave, phiên bản, diff, khôi phục, AI rewrite, trích dẫn), duyệt bài (CRITICAL chặn, sửa làm mất duyệt), bulk, chi phí/quota, Super Admin.
 
-**Nghiệm thu**: mọi lời gọi có bản ghi `ai_requests` với chi phí; vượt ngân sách → tạm dừng theo cấu hình; provider lỗi → fallback; test dùng fake provider (không gọi API thật trong CI).
+**Nghiệm thu**: không VERIFIED khi không có bằng chứng nguyên văn; "không tìm thấy" không thành CONTRADICTED; claim CRITICAL chưa xác minh chặn duyệt (UI + API); sửa nội dung làm mất phê duyệt; mọi citation trỏ bằng chứng đã tải; không model ID trong code; không đăng WordPress.
 
-## Phase 5 — Hồ sơ doanh nghiệp, Research, Keywords, Topic Cluster, Calendar
-- Business profile & offerings; research ngành/đối thủ với nguồn thật (provenance); keyword discovery với số liệu từ DataForSEO (hoặc "Chưa có dữ liệu"); topic cluster; content calendar.
+## Phase 6 — AI Image Engine, SEO Audit & WordPress Publisher ✦ (đã triển khai, chờ nghiệm thu)
+Nhánh `claude/project-thread-i3nn1q` (tách từ `feature/phase5-ai-writer`). Xem `PHASE6-IMPLEMENTATION.md`, `PHASE6-TEST-REPORT.md`, `MEDIA-ENGINE.md`, `SEO-AUDIT-RULES.md`, `WORDPRESS-PUBLISHER.md`, `PUBLISHING-RECOVERY.md`. Gộp "Media & SEO" và "Duyệt & xuất bản" của kế hoạch ban đầu (ADR-018).
+- [x] Media: nguồn WordPress/WooCommerce/upload, ảnh AI qua AI Gateway (capability `image_generation`, gắn nhãn), xử lý ảnh an toàn (MIME thật, re-encode, WebP/AVIF, chống trùng), infographic từ dữ liệu có nguồn, placement engine, alt text.
+- [x] SEO: metadata xác định, canonical/noindex cần chính sách, audit 19 quy tắc PASS/WARNING/ERROR/BLOCKED có giải thích, schema không trùng Yoast/Rank Math, link nội bộ chỉ tới URL thật.
+- [x] Publishing: state machine 9 trạng thái, 8 cổng không bỏ qua được, mode A–E (mặc định bản nháp), lịch theo múi giờ site + lỡ lịch, đăng idempotent + đối soát sau timeout, xung đột 5 cách giải quyết (sửa P0 Phase 2), retry có backoff, preview mô phỏng, bulk.
+- [x] 12 trang khách hàng, 2 trang Super Admin, dữ liệu demo chỉ ở development, plugin 1.1.0.
 
-**Nghiệm thu**: không có search volume nào hiển thị mà không có `provider` + `fetched_at`; mọi nhận định research liên kết nguồn đã tải; nội dung độc hại trong trang đối thủ (prompt injection test fixtures) không thay đổi hành vi hệ thống.
+**Nghiệm thu**: ảnh AI không thể gắn làm ảnh sản phẩm thật (API + UI); bài chưa duyệt / còn claim CRITICAL-HIGH / SEO BLOCKED không thể đăng (cả UI và API, kiểm tra lại ngay trước khi gửi); đăng lặp và timeout không tạo bài trùng; bài sửa tay trên WordPress không bao giờ bị ghi đè tự động; lỡ lịch không tự đăng muộn; nhãn "không bảo đảm thứ hạng" hiển thị.
 
-## Phase 6 — Pipeline viết bài & kiểm chứng
-- Brief → sourcing → drafting → verification; phiên bản nội dung; editor chỉnh sửa; diff/khôi phục phiên bản; kiểm tra trùng lặp với nguồn.
-
-**Nghiệm thu**: citation chỉ trỏ nguồn đã tải; claim severity cao không có evidence → `failed`; mỗi chỉnh sửa tạo phiên bản mới; job idempotent khi retry.
+## Phase 7 trở đi
+Nội dung Phase 7–9 do chủ dự án xác định. Các mục dưới là kế hoạch ban đầu, giữ để tham khảo (phần Media/SEO và Duyệt/xuất bản đã làm ở Phase 6).
 
 ## Phase 7 — Media & SEO
 - Ảnh stock (license), ảnh AI (gắn nhãn), infographic, alt text; metadata, schema, internal link, SEO checklist.
@@ -157,8 +232,8 @@ Nguyên tắc: **chỉ làm phase được yêu cầu**, không tự chuyển ph
 
 | # | Câu hỏi | Cần trước |
 |---|---|---|
-| Q1 | Cổng thanh toán: Stripe, PayOS, VNPay, MoMo? Có xuất hóa đơn VAT điện tử? | Phase 3 |
+| Q1 | Cổng thanh toán: Stripe, PayOS, VNPay, MoMo? Có xuất hóa đơn VAT điện tử? | Phase 4 |
 | Q2 | Domain chính thức (`app.`, `admin.`, `api.`)? | Deploy staging |
 | Q3 | Nhà cung cấp dữ liệu từ khóa/SERP (DataForSEO đề xuất) và tìm kiếm web (Brave/Tavily) | Phase 5 |
-| Q4 | Giá và giới hạn từng gói | Phase 3 |
+| Q4 | Giá và giới hạn từng gói | Phase 4 |
 | Q5 | Chính sách lưu giữ dữ liệu, xóa tài khoản | Phase 10 |

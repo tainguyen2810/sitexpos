@@ -29,6 +29,7 @@ enum PlatformRole: string
                 PlatformPermission::UsersSuspend,
                 PlatformPermission::Impersonate,
                 PlatformPermission::AuditView,
+                PlatformPermission::JobsManage,
             ],
             self::BillingAdmin => [
                 PlatformPermission::DashboardView,
@@ -36,6 +37,7 @@ enum PlatformRole: string
                 PlatformPermission::UsersView,
                 PlatformPermission::BillingManage,
                 PlatformPermission::AuditViewBilling,
+                PlatformPermission::AiCostsView,
             ],
         };
     }

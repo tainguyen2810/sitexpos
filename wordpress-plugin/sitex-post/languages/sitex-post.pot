@@ -1,0 +1,522 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: SiteX Post 1.0.0\n"
+"Report-Msgid-Bugs-To: https://sitexpost.com/support\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Domain: sitex-post\n"
+
+#: includes/Admin/AdminPage.php:40 includes/Admin/AdminPage.php:41 includes/Admin/AdminPage.php:219
+msgid "SiteX Post"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:65
+msgid "Settings"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:79
+msgid "SiteX Post is installed but not connected yet."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:81
+msgid "Connect to SiteX Post Cloud"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:175
+msgid "You are not allowed to manage SiteX Post."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:211
+msgid "Connection"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:212
+msgid "Logs"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:213
+msgid "Diagnostics"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:242
+msgid "Connected. SiteX Post Cloud can now publish to this site with the account you selected."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:243
+msgid "Disconnected. The connection key was deleted and SiteX Post Cloud was notified."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:244
+msgid "Disconnected locally. The key was deleted here, but SiteX Post Cloud could not be notified; it can no longer write to this site anyway."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:245
+msgid "SiteX Post Cloud answered: the connection works."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:246
+msgid "Logs cleared."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:249
+msgid "Enter the pairing code shown in SiteX Post Cloud (format XXXX-XXXX)."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:250
+msgid "The pairing session expired. Enter the code again."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:251
+msgid "Please tick the confirmation box to authorize the connection."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:252
+msgid "Choose an account that can publish posts and upload media."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:253
+msgid "This site is already connected. Disconnect first."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:261
+msgid "SiteX Post Cloud returned an error."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:284 includes/Admin/AdminPage.php:314
+msgid "Pairing code"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:285
+msgid "Review & confirm"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:286
+msgid "Connected"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:300
+msgid "Connect this site to SiteX Post Cloud"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:302
+msgid "In SiteX Post Cloud, open Websites → Add website and enter this site address."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:303
+msgid "Copy the one-time pairing code (valid 15 minutes) and paste it below."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:304
+msgid "Review who is asking and confirm. Nothing is granted before you confirm."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:307
+msgid "This site does not use HTTPS. SiteX Post Cloud only connects to HTTPS sites in production."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:318
+msgid "SiteX Post Cloud"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:320
+msgid "Set by the plugin (or SITEX_POST_CLOUD_URL in wp-config.php)."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:323
+msgid "Continue"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:325
+msgid "SiteX Post never asks for your WordPress password and never stores any AI API key on this site."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:336
+msgid "Read basic site information (name, versions, active SEO plugin, WooCommerce)"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:337
+msgid "Read the list of categories, tags, posts, pages and products (titles, links, excerpts)"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:338
+msgid "Create posts and pages as the account you choose below"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:339
+msgid "Update only the posts it created (never your other content)"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:340
+msgid "Upload images to the media library"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:341
+msgid "Write SEO title, description and focus keyword for its posts"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:346
+msgid "Review the connection request"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:349 includes/Admin/AdminPage.php:430
+msgid "Workspace"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:350 includes/Admin/AdminPage.php:431
+msgid "Website name in SiteX Post"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:351
+msgid "Registered address"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:354
+msgid "SiteX Post Cloud will be able to:"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:362
+msgid "It cannot change settings, plugins, themes, users or content it did not create. You can disconnect at any time."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:368
+msgid "Publish as"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:377
+msgid "Tip: create a dedicated Author or Editor account for SiteX Post instead of using an administrator."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:381
+msgid "I am an administrator of this site and I authorize this connection."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:383
+msgid "Confirm and connect"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:389
+msgid "Cancel"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:427
+msgid "Connected to SiteX Post Cloud"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:432
+msgid "Publishing account"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:432
+msgid "Missing — disconnect and pair again"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:433
+msgid "Connected since"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:434
+msgid "Last request from Cloud"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:434
+msgid "None yet"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:435
+msgid "Key ID"
+msgstr ""
+
+#. translators: %s: date */
+#: includes/Admin/AdminPage.php:435
+#, php-format
+msgid "(rotated %s)"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:442
+msgid "Test connection to Cloud"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:444
+msgid "Disconnect from SiteX Post Cloud? The key will be deleted and Cloud will immediately lose write access."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:447
+msgid "Disconnect"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:460
+msgid "All"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:460
+msgid "Errors"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:460
+msgid "Warnings"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:460
+msgid "Info"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:465
+msgid "No log entries yet."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:468
+msgid "Time (UTC)"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:468
+msgid "Level"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:468
+msgid "Event"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:468
+msgid "Message"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:484
+msgid "Clear logs"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:492
+msgid "OK"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:493
+msgid "Warning"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:494
+msgid "Problem"
+msgstr ""
+
+#. translators: %s: version */
+#: includes/Admin/AdminPage.php:507
+#, php-format
+msgid "SiteX Post plugin version %s"
+msgstr ""
+
+#: includes/Cloud/CloudClient.php:84
+msgid "SiteX Post Cloud returned an invalid pairing response."
+msgstr ""
+
+#: includes/Cloud/CloudClient.php:101
+msgid "Connected to SiteX Post Cloud."
+msgstr ""
+
+#: includes/Cloud/CloudClient.php:142
+msgid "Disconnected from SiteX Post Cloud by a WordPress administrator."
+msgstr ""
+
+#: includes/Cloud/CloudClient.php:155
+msgid "The SiteX Post Cloud URL must use HTTPS."
+msgstr ""
+
+#: includes/Cloud/CloudClient.php:168
+msgid "This site is not connected."
+msgstr ""
+
+#: includes/Cloud/CloudClient.php:192
+msgid "Could not reach SiteX Post Cloud. Please try again."
+msgstr ""
+
+#: includes/Cloud/CloudClient.php:200
+msgid "SiteX Post Cloud rejected the request."
+msgstr ""
+
+#: includes/Cloud/CloudClient.php:202
+msgid "SiteX Post Cloud no longer accepts this site key (it may have been revoked). Disconnect and pair again."
+msgstr ""
+
+#: includes/Content/MediaService.php:33 includes/Rest/RestController.php:279
+msgid "The publishing account cannot upload files."
+msgstr ""
+
+#: includes/Content/MediaService.php:38 includes/Content/PostService.php:51 includes/Rest/RestController.php:264
+msgid "A valid idempotency_key is required."
+msgstr ""
+
+#: includes/Content/MediaService.php:49
+msgid "Empty file."
+msgstr ""
+
+#: includes/Content/MediaService.php:52
+msgid "The file exceeds the maximum upload size."
+msgstr ""
+
+#: includes/Content/MediaService.php:66
+msgid "Could not store the upload."
+msgstr ""
+
+#: includes/Content/MediaService.php:74
+msgid "Only JPEG, PNG, GIF and WebP images are accepted."
+msgstr ""
+
+#. translators: %d: attachment ID */
+#: includes/Content/MediaService.php:102
+#, php-format
+msgid "Image #%d uploaded."
+msgstr ""
+
+#: includes/Content/PostService.php:56 includes/Content/PostService.php:134
+msgid "Unsupported post type."
+msgstr ""
+
+#: includes/Content/PostService.php:61
+msgid "A title (max 500 characters) is required."
+msgstr ""
+
+#: includes/Content/PostService.php:66
+msgid "Unsupported post status."
+msgstr ""
+
+#: includes/Content/PostService.php:73
+msgid "The same document is being processed. Retry shortly."
+msgstr ""
+
+#: includes/Content/PostService.php:100 includes/Rest/RestController.php:247 includes/Rest/RestController.php:268
+msgid "Post not found."
+msgstr ""
+
+#: includes/Content/PostService.php:103 includes/Rest/RestController.php:250
+msgid "This post was not created by SiteX Post and cannot be modified by it."
+msgstr ""
+
+#: includes/Content/PostService.php:106
+msgid "The idempotency key belongs to another post."
+msgstr ""
+
+#: includes/Content/PostService.php:112
+msgid "The post for this document was moved to the trash on WordPress."
+msgstr ""
+
+#. translators: %d: post ID */
+#: includes/Content/PostService.php:119
+#, php-format
+msgid "Update of post #%d refused: it was changed in WordPress."
+msgstr ""
+
+#: includes/Content/PostService.php:122
+msgid "The post was changed in WordPress since SiteX Post last wrote it. Resolve the conflict in SiteX Post Cloud."
+msgstr ""
+
+#: includes/Content/PostService.php:145
+msgid "The publishing account is not allowed to publish. Use draft or pending status."
+msgstr ""
+
+#: includes/Content/PostService.php:162
+msgid "Scheduled posts need a future date_gmt."
+msgstr ""
+
+#. translators: %d: post ID */
+#: includes/Content/PostService.php:227
+#, php-format
+msgid "Post #%d saved."
+msgstr ""
+
+#: includes/Content/PostService.php:384
+msgid "The featured image must be an image of the Media Library."
+msgstr ""
+
+#: includes/Content/PostService.php:428
+msgid "The publishing account does not have permission for this action."
+msgstr ""
+
+#: includes/Rest/RestController.php:306
+msgid "Invalid key material."
+msgstr ""
+
+#: includes/Rest/RestController.php:322
+msgid "Connection key rotated by SiteX Post Cloud."
+msgstr ""
+
+#: includes/Rest/RestController.php:333
+msgid "Disconnected by SiteX Post Cloud. The local key was deleted."
+msgstr ""
+
+#: includes/Security/RequestVerifier.php:54
+msgid "This site is not connected to SiteX Post Cloud."
+msgstr ""
+
+#: includes/Security/RequestVerifier.php:88
+msgid "The publishing account selected during pairing no longer exists."
+msgstr ""
+
+#: includes/Security/RequestVerifier.php:121
+msgid "Rejected a request with an invalid signature."
+msgstr ""
+
+#: includes/Security/RequestVerifier.php:122
+msgid "Invalid or expired signature."
+msgstr ""
+
+#: includes/Seo/NativeAdapter.php:20
+msgid "SiteX Post (built-in meta tags)"
+msgstr ""
+
+#: includes/Support/Environment.php:95
+msgid "PHP version"
+msgstr ""
+
+#: includes/Support/Environment.php:96
+msgid "WordPress version"
+msgstr ""
+
+#: includes/Support/Environment.php:97
+msgid "Site uses HTTPS"
+msgstr ""
+
+#: includes/Support/Environment.php:99
+msgid "SiteX Post Cloud URL uses HTTPS"
+msgstr ""
+
+#: includes/Support/Environment.php:100
+msgid "HMAC-SHA256 and secure random available"
+msgstr ""
+
+#: includes/Support/Environment.php:101
+msgid "REST API enabled"
+msgstr ""
+
+#: includes/Support/Environment.php:102
+msgid "Pretty permalinks"
+msgstr ""
+
+#: includes/Support/Environment.php:102
+msgid "Plain (the connector falls back to ?rest_route=)"
+msgstr ""
+
+#: includes/Support/Environment.php:103
+msgid "Uploads folder writable"
+msgstr ""
+
+#: includes/Support/Environment.php:104
+msgid "SEO metadata adapter"
+msgstr ""
+
+#: includes/Support/Environment.php:105
+msgid "WooCommerce"
+msgstr ""
+
+#: includes/Support/Environment.php:105
+msgid "Detected: products will be synced"
+msgstr ""
+
+#: includes/Support/Environment.php:105
+msgid "Not installed"
+msgstr ""
+
+#: includes/Support/Environment.php:108
+msgid "Publishing account permissions"
+msgstr ""
+
+#: includes/Support/Environment.php:108
+msgid "Missing"
+msgstr ""

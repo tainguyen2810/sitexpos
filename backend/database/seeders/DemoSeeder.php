@@ -57,6 +57,13 @@ class DemoSeeder extends Seeder
             $createWorkspace->handle($other, ['name' => 'Agency B (Demo)'], isDemo: true);
         }
 
+        // Phase 4 — topic discovery demo (DEMO-labelled, no fake metrics).
+        $this->call(ResearchDemoSeeder::class);
+        // Phase 5 — AI Writer demo (DEMO-labelled, no invented sources or verdicts).
+        $this->call(WriterDemoSeeder::class);
+        // Phase 6 — media, SEO audits, publishing jobs and conflicts (DEMO-labelled, nothing sent to WordPress).
+        $this->call(Phase6DemoSeeder::class);
+
         $this->command?->table(['Email', 'Mật khẩu', 'Vai trò'], [
             ['owner@'.self::DOMAIN, self::PASSWORD, 'OWNER — Cửa hàng A'],
             ['admin@'.self::DOMAIN, self::PASSWORD, 'ADMIN — Cửa hàng A'],

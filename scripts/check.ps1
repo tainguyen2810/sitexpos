@@ -18,5 +18,6 @@ Step 'Frontend: lint'     'frontend' { npm run --silent lint }
 Step 'Frontend: typecheck' 'frontend' { npm run --silent typecheck }
 Step 'Frontend: tests'    'frontend' { npm run --silent test }
 Step 'Frontend: build'    'frontend' { npm run --silent build }
+Step 'Frontend: no demo in build' 'frontend' { npm run --silent check:no-demo }
 
 Write-Host 'All checks passed.' -ForegroundColor Green

@@ -162,91 +162,80 @@ Ràng buộc nghiệp vụ: mỗi workspace có **đúng một** OWNER active (k
 
 **credit_ledger** (append-only): id, workspace_id, delta (int), balance_after, reason (`purchase`, `grant`, `consume`, `refund`, `expire`), reference_type, reference_id, expires_at null, created_by.
 
-### 3.6 Sites (WordPress)
+### 3.6 Sites (WordPress) ✦ Phase 2
+
+Migration: `backend/app/Modules/Sites/Database/Migrations/2026_11_06_000100_create_sites_tables.php`. Mọi bảng con có `workspace_id` + FK ghép `(workspace_id, site_id) → sites(workspace_id, id)` (không thể gắn dữ liệu của site sang workspace khác), model dùng `BelongsToWorkspace` (scope fail-closed, có arch test).
+
+**Sai khác so với thiết kế Phase 0 (có chủ đích):**
+- `sites` **không** có `deleted_at`: xóa site là xóa cứng (sau khi thu hồi khóa), dữ liệu con xóa theo `ON DELETE CASCADE`. Bài trên WordPress không bị ảnh hưởng. Lịch sử thao tác vẫn còn trong `audit_logs`.
+- Không có trạng thái `disconnected`: ngắt kết nối từ bất kỳ phía nào → `revoked` (+ `revoked_by` = `cloud` | `wordpress`).
+- `site_credentials` lưu **secret HMAC** (`secret_encrypted`, mã hóa bằng `Crypt`/`APP_KEY`) thay cho cặp khóa Ed25519 + envelope encryption (xem SECURITY §5, §6).
+- `site_posts_index` đổi tên thành `site_content_items` (gồm cả trang và sản phẩm WooCommerce); thêm `site_publications`, `site_media`, `site_activity_logs`.
 
 **sites**
 | Cột | Ghi chú |
 |---|---|
 | id, workspace_id | UNIQUE(workspace_id, id) |
 | name | |
-| url | URL gốc đã chuẩn hóa (https, không path thừa) |
-| url_hash | UNIQUE(workspace_id, url_hash) |
-| status | `pending_pairing`, `connected`, `degraded`, `disconnected`, `revoked` |
-| content_language | `vi`, `en`... |
-| wp_version, plugin_version, php_version | báo cáo từ plugin |
-| publish_author_wp_id | user WP dùng để đăng |
-| approval_mode | `manual`, `auto` |
-| settings | JSON: category mặc định, post status mặc định... |
-| last_seen_at, connected_at, revoked_at | |
-| timestamps, deleted_at | |
+| url | URL gốc đã chuẩn hóa (scheme + host + path, không query/fragment, không `/` cuối) |
+| url_hash | sha256 của URL bỏ scheme; UNIQUE(workspace_id, url_hash) |
+| status | `pending_pairing`, `connected`, `degraded`, `revoked` |
+| content_language | `vi`, `en` |
+| wp_version, php_version, plugin_version | báo cáo từ plugin |
+| publish_author_wp_id, publish_author_name | tài khoản WP dùng để đăng (do quản trị WP chọn khi ghép nối) |
+| approval_mode | `manual` (mặc định), `auto` — dùng từ Phase 8 |
+| settings | JSON: `default_post_status`, `default_category_id` |
+| capabilities | JSON từ health check: `rest_url`, `features`, `issues`, `author`, `limits` |
+| last_error_code, last_error_message | lỗi kết nối gần nhất |
+| last_seen_at, last_health_at, last_synced_at, connected_at, revoked_at, revoked_by | |
+| created_by, timestamps | |
 
-**site_pairings**: id, workspace_id, site_id, code_hash, expires_at (15 phút), used_at, attempts, created_by.
+**site_pairings**: id, workspace_id, site_id, code_hash (HMAC-SHA256 với `APP_KEY`, UNIQUE), expires_at (15 phút), used_at, invalidated_at, attempts (tối đa 5), created_by.
 
-**site_credentials** (một bản active / site)
+**site_credentials** (tối đa một bản `active` / site)
 | Cột | Ghi chú |
 |---|---|
 | id, workspace_id, site_id | |
-| key_id | ULID, gửi trong header `X-SiteX-Key-Id` |
-| cloud_public_key | base64 Ed25519 |
-| cloud_secret_key_encrypted | mã hóa envelope |
-| plugin_public_key | base64 Ed25519 do plugin sinh |
-| status | `active`, `rotated`, `revoked` |
-| created_at, rotated_at, revoked_at | |
+| key_id | ULID, UNIQUE, gửi trong header `X-SiteX-Key-Id` |
+| secret_encrypted | secret 32 byte (base64url) mã hóa bằng `Crypt`; không bao giờ trả qua API (trừ đúng một lần trong response `/connector/v1/pair`) |
+| status | `active`, `rotated` (còn hiệu lực tới `grace_until`), `revoked` |
+| grace_until, last_used_at, rotated_at, revoked_at, timestamps | |
 
-**site_health_checks**: id, workspace_id, site_id, checked_at, ok, http_status, latency_ms, error_code, details JSON. Giữ 30 ngày.
+**site_health_checks**: id, workspace_id, site_id, checked_at, ok, http_status, latency_ms, error_code, details JSON. Dọn sau `log_retention_days` (30 ngày) bằng `sitex:sites:prune`.
 
-**site_taxonomies**: id, workspace_id, site_id, type (`category`,`tag`), wp_term_id, name, slug, parent_wp_id — đồng bộ từ plugin.
+**site_taxonomies**: id, workspace_id, site_id, taxonomy (`category`, `post_tag`, `product_cat`, `product_tag`), wp_term_id, name, slug, parent_wp_id, count, synced_at. UNIQUE(site_id, taxonomy, wp_term_id). Term không còn trên WP bị xóa ở lần đồng bộ đầy đủ kế tiếp.
 
-**site_posts_index**: id, workspace_id, site_id, wp_post_id, url, title, excerpt, published_at, modified_at, is_managed (do SiteX tạo) — phục vụ internal linking và phát hiện bài cũ.
+**site_content_items** (chỉ mục nội dung + map ID bài WP): id, workspace_id, site_id, post_type (`post`, `page`, `product`), wp_post_id, status, title, url (chỉ giữ URL cùng host với site), slug, excerpt, term_ids JSON, product JSON (sku, price, regular_price, sale_price, currency, stock_status, type), is_managed (do SiteX tạo), published_at, modified_at, synced_at. UNIQUE(site_id, post_type, wp_post_id).
 
-### 3.7 BusinessProfile
+**site_publications** (idempotency phía Cloud): id, workspace_id, site_id, idempotency_key, source_type, source_id, post_type, wp_post_id, wp_status, url, payload_hash, status (`pending`, `succeeded`, `failed`), attempts, last_error_code, published_at. UNIQUE(site_id, idempotency_key).
 
-**business_profiles**: id, workspace_id, site_id null (null = dùng chung workspace), industry, description, target_markets JSON (quốc gia/khu vực/ngôn ngữ), audiences JSON, tone_of_voice, brand_terms JSON, banned_terms JSON, competitors JSON (domain do khách khai báo), compliance_notes.
+**site_media**: id, workspace_id, site_id, idempotency_key, sha256, mime, bytes, wp_media_id, url. UNIQUE(site_id, idempotency_key) — ảnh tải lại không tạo bản thứ hai.
 
-**offerings**: id, workspace_id, business_profile_id, type (`product`,`service`), name, description, url, attributes JSON, has_real_photos (bool).
+**site_activity_logs** (nhật ký kết nối, không chứa secret/payload): id (bigint), workspace_id, site_id, direction (`in`/`out`), operation, level, http_status, error_code, message, latency_ms, request_id, created_at. Dọn sau 30 ngày.
 
-### 3.8 Research
+**Phía WordPress (plugin):** option `sitex_post_connection` (autoload = no, chứa key_id/secret/tác giả/khóa cũ trong grace); bảng `{prefix}sitex_post_nonces` (key_id + nonce PRIMARY KEY, expires_at); bảng `{prefix}sitex_post_logs` (giữ 500 dòng); post meta `_sitex_post_managed`, `_sitex_post_idempotency_key`, `_sitex_post_source`, `_sitex_post_seo_*`. Gỡ plugin xóa option và hai bảng; post meta được giữ lại cùng bài viết (bài không bị xóa).
 
-**research_runs**: id, workspace_id, site_id, type (`industry`, `competitor`, `serp`, `article_sources`), status, input JSON, summary JSON, job_run_id, started_at, finished_at.
+### 3.7–3.9 Research, Keywords & Planning ✦ Phase 4 (đã triển khai — thay thiết kế dự kiến trước đây)
 
-**research_sources**
-| Cột | Ghi chú |
+Migration: `app/Modules/Research/Database/Migrations/2026_11_09_000100_create_research_tables.php`. Mọi bảng có `workspace_id` + global scope fail-closed, trừ `research_limits` và `research_source_settings` (cấu hình nền tảng).
+
+| Bảng | Nội dung chính |
 |---|---|
-| id, workspace_id, research_run_id | |
-| url, canonical_url, domain | |
-| title, author, published_at | trích từ trang, null nếu không có |
-| fetched_at, http_status, content_hash | bằng chứng đã tải thật |
-| content_text_path | file văn bản trích xuất trên storage (không nhét vào DB) |
-| source_kind | `web`, `serp`, `customer_provided`, `gsc` |
-| trust_tier | `high`, `medium`, `low`, `blocked` |
-| provider | adapter đã trả kết quả |
+| `website_profiles` | hồ sơ website theo site: title, tagline, mô tả, ngôn ngữ, sitemap, thống kê, chủ đề đã có, trạng thái crawl |
+| `website_knowledge` | nhận định theo `kind` (industry, product_line, audience, usp…), `source` (website/ai/user/demo), `confidence`, `evidence`, `status` (suggested/confirmed/rejected), unique theo fingerprint — quyết định của user không bị AI ghi đè |
+| `seo_campaigns` · `campaign_settings` · `research_schedules` | chiến dịch theo site; cài đặt phạm vi/số ý tưởng/trần AI/lịch đăng; lịch nghiên cứu định kỳ (`next_run_at`) |
+| `research_runs` · `research_sources` · `source_snapshots` | mỗi lần chạy (trạng thái, stage, stats, warnings, cost, `idempotency_key` unique); nguồn đã thu thập (URL, HTTP, robots, `fetched_at`); snapshot title/heading/câu hỏi (không lưu HTML) |
+| `keywords` | unique `(campaign_id, fingerprint)`; intent + nguồn của intent; `sources` JSON; `evidence`; `opportunity_score` + `score_breakdown`; `covered_by` (bài đã có) |
+| `keyword_metrics` | **chỉ ghi khi có dữ liệu thật**: `source` bắt buộc (dataforseo/search_console), volume/KD/CPC/impressions/clicks/position, `collected_at`. Không có cột nào do AI sinh |
+| `topic_clusters` · `content_gaps` · `internal_link_suggestions` | cụm (pillar, độ phủ), khoảng trống (missing/competitor/unanswered/cannibalization/overlap/striking_distance), gợi ý liên kết — đều unique theo fingerprint |
+| `content_ideas` · `content_idea_keywords` | ý tưởng (9 `content_type`, intent, ưu tiên, nguồn ai/rule/user/demo, evidence, brief, overlap), unique theo fingerprint; pivot role primary/secondary |
+| `competitor_websites` · `competitor_findings` | đối thủ theo chiến dịch; finding = kind/title/URL/headings/`fetched_at` (không thân bài) |
+| `content_calendar_items` | một ý tưởng tối đa một slot; `scheduled_for`, `position`, `status`, `source` |
+| `search_console_connections` | token OAuth mã hóa, property, trạng thái |
+| `research_notifications` | thông báo cơ hội/kết quả chạy |
+| `research_usage_counters` · `research_limits` · `research_source_settings` | quota theo tháng (used/reserved); giới hạn global/workspace; cấu hình nguồn + khóa mã hóa + bộ đếm lỗi |
 
-**competitors**: id, workspace_id, site_id, domain, source (`customer`, `serp_discovered`), notes, last_analyzed_at.
-
-### 3.9 Keywords & Planning
-
-**keywords**: id, workspace_id, site_id, keyword, normalized UNIQUE(site_id, normalized), language, country, intent (null nếu chưa phân loại), status (`suggested`,`accepted`,`rejected`,`used`), origin (`ai_suggested`, `serp`, `gsc`, `customer`).
-
-**keyword_metrics** — chỉ ghi khi có dữ liệu thật
-| Cột | Ghi chú |
-|---|---|
-| id, workspace_id, keyword_id | |
-| provider | `dataforseo`, `gsc`... **bắt buộc** |
-| search_volume, cpc_minor, competition, difficulty | null nếu provider không trả |
-| location_code, language_code | |
-| fetched_at | |
-
-AI chỉ được đề xuất từ khóa (`origin=ai_suggested`) — **không** có cột số liệu do AI sinh.
-
-**title_ideas**: id, workspace_id, site_id, keyword_id, title, angle, status.
-
-**topic_clusters**: id, workspace_id, site_id, name, pillar_keyword_id, description, status.
-
-**topic_cluster_items**: id, workspace_id, topic_cluster_id, keyword_id, role (`pillar`, `cluster`), title_idea_id null.
-
-**calendar_items**: id, workspace_id, site_id, topic_cluster_id null, title_idea_id null, article_id null, planned_date, status (`planned`,`in_progress`,`done`,`skipped`).
-
-### 3.10 Content & Verification
+### 3.10 Content & Verification (thiết kế ban đầu — đã được thay bằng §3.10b ở Phase 5)
 
 **articles**
 | Cột | Ghi chú |
@@ -287,29 +276,68 @@ AI chỉ được đề xuất từ khóa (`origin=ai_suggested`) — **không**
 
 **verification_reports**: id, workspace_id, article_id, content_version_id, result (`passed`,`failed`), score, summary JSON, overridden_by null, override_reason null.
 
-### 3.11 Media
+### 3.10b Writer ✦ Phase 5 (đã triển khai — thay thiết kế §3.10 cho phần bài viết & kiểm chứng)
 
-**media_assets**
-| Cột | Ghi chú |
+Một migration `app/Modules/Writer/Database/Migrations/2026_11_10_000100_create_writer_tables.php` tạo 25 bảng mới, không sửa bảng cũ. Mọi bảng có `workspace_id` (trừ `writer_settings` cho phép null = cấu hình nền tảng), model dùng `BelongsToWorkspace` (fail-closed). ID dạng ULID.
+
+| Bảng | Vai trò |
 |---|---|
-| id, workspace_id | |
-| kind | `stock_photo`, `customer_upload`, `ai_image`, `infographic` |
-| is_ai_generated | bool, bắt buộc true với `ai_image`/`infographic` do AI |
-| represents_real_product | bool — **không bao giờ** true với ảnh AI (ràng buộc trong Action + CHECK) |
-| storage_disk, path, mime, width, height, bytes, sha256 | |
-| source_provider, source_url, license, attribution | với ảnh stock |
-| alt_text, caption | |
-| moderation_status | `pending`, `approved`, `rejected` |
+| `writing_presets` | Brand voice: giọng văn, cụm từ cấm/ưu tiên, CTA, `facts[]` mỗi fact có `provenance` (`user_provided`, `website_extracted`, `source_verified`, `ai_inferred`) |
+| `writing_batches`, `writing_batch_items` | Lô viết bài, trạng thái từng bài |
+| `articles` | Bài viết: `status` (13 trạng thái của `ArticleStatus`), cấu hình wizard, ngân sách, `current_version_id`, `duplicate_check`, bộ đếm claim chưa xử lý |
+| `article_versions`, `article_sections` | Phiên bản bất biến; section có `content_hash` để phát hiện section đổi |
+| `research_dossiers`, `research_questions` | Hồ sơ nghiên cứu, câu hỏi |
+| `evidence_sources`, `evidence_snapshots`, `evidence_items` | Nguồn (URL, loại, độ tin cậy, trạng thái tải/bị chặn), bản chụp văn bản đã tải (hash), đoạn trích nguyên văn |
+| `content_briefs`, `article_outlines` | Brief và dàn ý (có trạng thái duyệt) |
+| `article_claims`, `claim_evidence` | Khẳng định (risk, category, status, section) và liên kết bằng chứng (supports/contradicts) |
+| `fact_check_runs`, `fact_check_results` | Lần kiểm chứng và verdict từng claim (đề xuất của model + verdict cuối + `rule_notes`, `reviewer_type`) |
+| `article_revisions` | Đề xuất sửa (tự động hoặc AI rewrite) kèm diff, trạng thái apply/discard |
+| `quality_reports` | Kết quả rubric theo phiên bản |
+| `editorial_approvals` | Duyệt/từ chối; `invalidated_at` khi nội dung đổi |
+| `article_workflow_runs` | Liên kết bài ↔ `workflow_runs` (kind: research/outline/draft/recheck/rewrite) |
+| `article_ai_usage` | Chi phí AI theo bước (micro-USD, token, task key) |
+| `writer_usage_counters` | Quota tháng theo workspace |
+| `writer_settings` | Ghi đè cấu hình nền tảng/workspace |
 
-**article_media**: id, workspace_id, article_id, media_asset_id, role (`featured`, `inline`), position, wp_media_id null.
+Rollback: `php artisan migrate:rollback --step=1` (xóa toàn bộ dữ liệu writer). Dữ liệu DEMO: `WriterDemoSeeder` (cờ `is_demo`, tiêu đề `[DEMO]`, chặn ở production).
 
-### 3.12 Seo & Publishing
+### 3.11–3.12 Media, Seo & Publishing ✦ Phase 6 (đã triển khai — thay thiết kế dự kiến trước đây)
 
-**internal_link_suggestions**: id, workspace_id, article_id, target_post_index_id, anchor_text, status (`suggested`,`applied`,`rejected`).
+Migration theo module: `Media/Database/Migrations/2026_11_11_000100_create_media_tables.php`, `Seo/.../2026_11_11_000200_create_seo_tables.php`, `Publishing/.../2026_11_11_000300_create_publishing_tables.php`. Mọi bảng tenant có `workspace_id` + `BelongsToWorkspace`, khóa ngoại tổng hợp `(workspace_id, id)`. Tiền: micro-USD số nguyên. Thời gian UTC.
 
-**publish_jobs**: id, workspace_id, site_id, article_id, content_version_id, action (`create`, `update`, `unpublish`), wp_status (`draft`, `publish`, `future`), run_at, status (`queued`, `running`, `succeeded`, `failed`, `canceled`), attempts, last_error, wp_post_id, idempotency_key UNIQUE.
+**Media**
+| Bảng | Cột chính | Ràng buộc |
+|---|---|---|
+| `media_sources` | site_id, type (`wordpress`/`woocommerce`/`upload`/`ai`/`stock`/`infographic`), enabled, status, config, items_count, last_synced_at | UNIQUE (site_id, type) |
+| `media_assets` | site_id?, source_type, source_url, source_ref, original_filename, mime, width, height, bytes, sha256, dhash, duplicate_of_id, storage_path, license (`owned`/`customer_provided`/`licensed_stock`/`wordpress_site`/`ai_generated`/`unknown`), attribution, **is_ai_generated**, ai_provider, ai_model, ai_prompt, generation_job_id, title, alt_text, caption, metadata, status (`processing`/`ready`/`failed`/`rejected`), error_code, wp_media_id, usage_count, is_demo | UNIQUE (site_id, source_type, source_ref) |
+| `media_versions` | media_asset_id, kind (`original`/`optimized`/`webp`/`avif`/`thumbnail`/`crop`), mime, width, height, bytes, sha256, storage_path, params | UNIQUE (media_asset_id, kind) |
+| `image_generation_jobs` | site_id, article_id, parent_job_id, version, image_type, section_key, aspect_ratio, style, quality, image_count, brand_colors, prompt_template, prompt, prompt_edited, status (`queued`/`running`/`succeeded`/`failed`/`blocked`/`canceled`), budget_cap_micro_usd, estimated/cost_micro_usd, provider, model, ai_request_id, **call_key** UNIQUE, result_asset_ids, job_run_id | |
+| `image_placements` | article_id, media_asset_id?, slot (`featured`/`intro`/`section`/`comparison`/`infographic`/`product`), section_key, section_heading, position, alt_text, caption, status (`suggested`/`accepted`/`rejected`), reason, origin (`engine`/`user`) | |
+| `media_limits` (nền tảng) | scope_key (`global` / `ws:<id>`) UNIQUE, max_storage_bytes, max_uploads_per_day, max_ai_images_per_day, max_ai_cost_per_job_micro_usd, ai_images_enabled | |
 
-**approval_requests**: id, workspace_id, article_id, content_version_id, requested_by, decided_by, decision (`approved`, `changes_requested`, `rejected`), comment, decided_at.
+**Seo**
+| Bảng | Cột chính |
+|---|---|
+| `seo_metadata` | article_id, site_id, seo_title, meta_description, slug, canonical_url, focus_keyword, secondary_keywords, og_title, og_description, social_image_asset_id, robots_noindex, robots_nofollow, schema_types, **manual_fields**, source, **lock_version** |
+| `seo_audit_runs` | article_id, site_id, article_version_id, content_hash, **rules_version**, status, score, pass/warning/error/blocked_count, links_checked, summary |
+| `seo_audit_issues` | seo_audit_run_id, rule, category, severity, weight, points, message, explanation, fix, context |
+| `seo_link_suggestions` | article_id, site_id, target_wp_post_id, target_post_type, target_url, target_title, anchor_text, section_key, paragraph_index, relevance, signals, reason, status, verified_at — UNIQUE (article_id, target_wp_post_id) |
+| `schema_configs` | site_id, injection_enabled (mặc định false), enabled_types, organization_name, logo_url, breadcrumbs_supported, allow_canonical_override, allow_robots_override |
+
+**Publishing**
+| Bảng | Cột chính | Ràng buộc |
+|---|---|---|
+| `publishing_policies` | site_id, default_mode, auto_publish_enabled(+_by, _at), require_seo_pass, require_media_ready, allow_update_published, max_posts_per_day, max_posts_per_campaign_per_day, min_minutes_between_posts, window_start/end_hour, window_days, max_schedule_days_ahead, max_attempts, missed_grace_minutes | |
+| `publishing_jobs` | site_id, article_id, campaign_id, publishing_batch_id, mapping_id, mode, status, **active_key**, article_version_id, **content_hash**, rendered_html, payload_meta, gate_results, scheduled_at, wp_target_status, attempts, max_attempts, next_attempt_at, last_error_*, blocked_reason, idempotency_key, approval_source, approved_by/at, published_at, **locked_until** | UNIQUE active_key (một job hoạt động / bài / site); UNIQUE (workspace_id, idempotency_key) |
+| `publishing_attempts` | publishing_job_id, attempt_no, operation, outcome, error_code, http_status, retryable, payload_hash, wp_post_id, duration_ms, details | UNIQUE (publishing_job_id, attempt_no) |
+| `wordpress_post_mappings` | site_id, article_id, external_content_id, **idempotency_key**, is_current, wp_post_id, wp_status, url, slug, site_host, last_published_version_id, last_payload_hash, **last_synced_hash**, **last_seo_hash**, last_modified_gmt, last_revision_id, last_published_at, last_checked_at | UNIQUE (site_id, external_content_id); UNIQUE (site_id, idempotency_key) |
+| `wordpress_sync_states` | mapping_id, state (`in_sync`/`manual_edit`/`slug_changed`/`seo_modified`/`domain_changed`/`missing`/`unreachable`), wp_status, wp_slug, wp_content_hash, wp_seo_hash, wp_modified_gmt, wp_revision_id, details, checked_at | |
+| `publishing_conflicts` | site_id, article_id, mapping_id, publishing_job_id, types, status (`open`/`resolved`), resolution, wp_state, expected_state, note, resolved_by/at | |
+| `publishing_schedules` | site_id, publishing_job_id, scheduled_at (UTC), timezone, local_time, status (`pending`/`dispatched`/`done`/`missed`/`canceled`), dispatched_at, note | |
+| `publishing_batches` | site_id, mode, status (`running`/`paused`/`completed`/`canceled`), start_at, interval_minutes, total, idempotency_key | UNIQUE (workspace_id, idempotency_key) |
+| `publishing_limits` (nền tảng) | scope_key UNIQUE, max_publishes_per_day, max_bulk_items, max_schedule_days_ahead, auto_publish_allowed, publishing_enabled | |
+
+Dữ liệu demo: `Phase6DemoSeeder` (gọi từ `DemoSeeder`, từ chối chạy ở production; cờ `is_demo`). Rollback: `php artisan migrate:rollback --step=3` (xóa dữ liệu Phase 6; file ảnh trong `storage/app/media` cần xóa tay).
 
 ### 3.13 Analytics
 
@@ -319,19 +347,43 @@ AI chỉ được đề xuất từ khóa (`origin=ai_suggested`) — **không**
 
 **refresh_suggestions**: id, workspace_id, site_id, article_id null, wp_post_id, reason (`declining_clicks`, `outdated_facts`, `low_ctr`...), evidence JSON (số liệu GSC dẫn chứng), status (`open`, `accepted`, `dismissed`, `done`).
 
-### 3.14 AiGateway
+### 3.14 AiGateway (Phase 3 — đã triển khai)
 
-**ai_providers**: id, code (`openai`, `gemini`, `anthropic`), is_enabled, priority. (API key ở `.env`, không ở DB.)
+Tiền: số nguyên **micro-USD** (1 USD = 1.000.000); giá theo **micro-USD / 1 triệu token** (ADR-014). Migration: `backend/app/Modules/AiGateway/Database/Migrations/2026_11_07_000100_create_ai_gateway_tables.php`.
 
-**ai_models**: id, provider_id, model_name, capabilities JSON, input_price_micro_usd_per_mtok, output_price_micro_usd_per_mtok, image_price_micro_usd, is_enabled, effective_from.
+**ai_providers** (toàn hệ thống): id, code UNIQUE (`openai`, `gemini`, `anthropic`, `deepseek`, `fake`, hoặc mã provider tùy chỉnh), driver (adapter: `openai`, `gemini`, `anthropic`, `deepseek`, `openai_compatible`, `fake`), name, base_url NULL (chỉ provider tùy chỉnh), api_key_encrypted TEXT NULL (cast `encrypted`, ẩn khi serialize), api_key_last4, is_custom, is_enabled, priority, timeout_seconds, max_retries, circuit_failure_threshold, circuit_cooldown_seconds, settings JSON (`response_format`: `json_schema`/`json_object`/`none` cho provider tùy chỉnh). Migration `2026_11_08_000100` (Phase 3E).
 
-**ai_task_routes**: id, task_key UNIQUE, primary_model_id, fallback_model_id null, max_input_tokens, max_output_tokens, temperature, prompt_template_id.
+**ai_models**: id, provider_id, model_key UNIQUE (`provider/model`), model_name, display_name, kind (`text`, `image`), tier, capabilities JSON, is_enabled, notes; UNIQUE(provider_id, model_name). Model mới tắt cho tới khi có giá.
 
-**prompt_templates**: id, key, version, UNIQUE(key, version), system_prompt, user_template, output_schema JSON, is_active, created_by.
+**ai_model_prices** (bất biến khi đã hiệu lực): id, model_id, version, effective_from, currency (`USD`), input_per_mtok, cached_input_per_mtok, cache_write_per_mtok, output_per_mtok, long_context_threshold + long_* (giá ngữ cảnh dài), offpeak_input_per_mtok / offpeak_cached_input_per_mtok / offpeak_output_per_mtok NULL + peak_windows JSON NULL (`[{days:[1..7 ISO], from:"HH:MM", to:"HH:MM"}]`, UTC; ngoài các khung này dùng giá thấp điểm; Phase 3E), per_image, source_url, notes, created_by; UNIQUE(model_id, version). Chỉ xóa được version chưa hiệu lực.
 
-**ai_requests** (BIGINT PK): workspace_id null, task_key, provider, model, job_run_id, input_tokens, output_tokens, cost_micro_usd, latency_ms, status, error_code, prompt_hash, created_at. Nội dung prompt/response đầy đủ chỉ lưu trên storage có thời hạn (mặc định 30 ngày) để debug.
+**ai_task_routes**: id, task_key UNIQUE, description, queue, priority, primary_model_id, economy_model_id null, fallback_model_ids JSON, max_input_tokens, max_output_tokens, temperature, timeout_seconds, max_attempts, allow_paid_retry, is_enabled.
 
-**ai_budgets**: id, scope (`global`, `workspace`), workspace_id null, period (`day`, `month`), limit_micro_usd, alert_threshold_pct, action_on_exceed (`alert`, `pause_batch`, `pause_all`).
+**ai_requests** (tenant, `BelongsToWorkspace`; mỗi lần thử một dòng): id (BIGINT), ulid, workspace_id, task_key, provider, model, model_id, price_id, workflow_run_id, call_key, attempt, is_fallback, status, error_code, error_message (đã lọc secret), http_status, billing_uncertain, input/cached_input/cache_write/output/reasoning_tokens, image_count, search_count, cost_micro_usd, estimated_cost_micro_usd, latency_ms, prompt_hash (SHA-256, **không lưu prompt**), provider_request_id, finish_reason, created_at. Xóa sau `SITEX_AI_REQUEST_LOG_RETENTION_DAYS` (mặc định 90) (`sitex:ai:prune`).
+
+**ai_budgets**: id, scope (`global`, `workspace`), workspace_id null, scope_key, period (`day`, `month`), limit_micro_usd, alert_threshold_pct, action_on_exceed (`alert`, `pause_batch`, `pause_all`), is_enabled, updated_by; UNIQUE(scope_key, period).
+
+**ai_budget_counters**: scope_key, period, period_start, reserved_micro_usd, spent_micro_usd, alerted_at; UNIQUE(scope_key, period, period_start). Cập nhật trong transaction với `SELECT … FOR UPDATE` khớp chính xác khóa duy nhất.
+
+**ai_budget_reservations**: id, idempotency_key UNIQUE (= `call_key`), workspace_id, status (`reserved`, `committed`, `released`, `uncertain`, `expired`), amount_micro_usd, actual_micro_usd, counter_ids JSON, expires_at, settled_at.
+
+> `prompt_templates` (template có version) **chưa** làm ở Phase 3: tác vụ thử dùng system prompt cố định trong code. Sẽ bổ sung ở Phase 5–6 khi có pipeline nội dung.
+
+### 3.14b Workflows (Phase 3 — đã triển khai)
+
+Migration: `backend/app/Modules/Workflows/Database/Migrations/2026_11_07_000200_create_workflow_tables.php`.
+
+**workflow_runs** (tenant): id, workspace_id, type, queue, status (`pending`, `running`, `retry_scheduled`, `succeeded`, `failed`, `canceled`), idempotency_key, request_hash, input JSON, output JSON, current_step, attempts (trong cycle hiện tại), max_attempts, cycle (+1 mỗi lần retry thủ công), version (compare-and-set), next_attempt_at, dispatched_at, locked_by, locked_until (lease), cancel_requested_at, error_code, error_message, job_run_id, created_by, started_at, finished_at; UNIQUE(workspace_id, idempotency_key); index (workspace_id, status, created_at), (status, locked_until), (status, next_attempt_at).
+
+**workflow_steps** (tenant): id, workspace_id, workflow_run_id, key, sequence, status, attempts, output JSON (checkpoint), error_code, error_message, started_at, finished_at; UNIQUE(workflow_run_id, key).
+
+**workflow_events** (tenant, append-only): id, workspace_id, workflow_run_id, event, from_status, to_status, details JSON, created_at.
+
+**dead_letters** (toàn hệ thống, chỉ admin): id, workspace_id null, source (`workflow`, `job`), workflow_run_id null, job_class, queue, failed_job_uuid, error_code, error_message, attempts, status (`open`, `retried`, `discarded`), resolved_by, resolved_at.
+
+### Phạm vi migration Phase 3
+- Hai migration mới ở trên, chỉ **tạo bảng mới**; không sửa bảng Phase 1–2. Rollback: `php artisan migrate:rollback --step=2` (xóa toàn bộ dữ liệu AI/workflow).
+- Seed danh mục provider/model/giá/route mặc định bằng `php artisan sitex:ai:sync-registry` (chỉ tạo nếu chưa có, không ghi đè thay đổi của admin).
 
 ### 3.15 Hạ tầng dùng chung
 
@@ -339,7 +391,7 @@ AI chỉ được đề xuất từ khóa (`origin=ai_suggested`) — **không**
 
 **notifications** (Laravel), **jobs/failed_jobs/job_batches** (Laravel), **cache/locks** (nếu không dùng Redis).
 
-**idempotency_keys** *(hoãn sang Phase 3 — Phase 1 chưa có endpoint tiêu tốn quota/credit)*: id, workspace_id, user_id, key, request_hash, response_status, response_body, expires_at, UNIQUE(workspace_id, user_id, key).
+**idempotency_keys** *(chưa tạo — Phase 3 dùng UNIQUE(workspace_id, idempotency_key) ngay trên `workflow_runs`; bảng chung sẽ xét lại ở Phase 4 cho thanh toán)*: id, workspace_id, user_id, key, request_hash, response_status, response_body, expires_at, UNIQUE(workspace_id, user_id, key).
 
 ## 4. Index & hiệu năng
 
@@ -351,3 +403,7 @@ AI chỉ được đề xuất từ khóa (`origin=ai_suggested`) — **không**
 ## 5. Phạm vi migration của Phase 1
 
 Chỉ tạo: `users` (+ cột platform_role, 2FA, locale, timezone, status), `sessions`, `password_reset_tokens`, `workspaces`, `workspace_members`, `workspace_invitations`, `audit_logs`, `impersonation_sessions`, `system_settings`, `job_runs`, bảng hệ thống của Laravel (`jobs`, `failed_jobs`, `job_batches`, `cache`, `notifications`). Các bảng khác thuộc phase sau (xem ROADMAP.md).
+
+## 6. Phạm vi migration của Phase 2
+
+Một migration của module Sites tạo 9 bảng ở §3.6. Không sửa bảng của Phase 1. Đã chạy được trên MySQL 8.0 (tên index ≤ 64 ký tự) và SQLite (test).

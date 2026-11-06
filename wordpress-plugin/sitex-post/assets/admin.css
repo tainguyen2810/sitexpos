@@ -1,0 +1,19 @@
+.sitex-post__body{max-width:900px}
+.sitex-post__card{background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:20px 24px;margin-top:16px}
+.sitex-post__card h2{margin-top:0;display:flex;align-items:center;gap:8px}
+.sitex-post__steps{display:flex;gap:24px;list-style:none;margin:20px 0 0;padding:0;flex-wrap:wrap}
+.sitex-post__steps li{color:#646970;display:flex;align-items:center;gap:6px;margin:0}
+.sitex-post__steps li span{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#f0f0f1;font-weight:600}
+.sitex-post__steps li.is-current{color:#1d2327;font-weight:600}
+.sitex-post__steps li.is-current span{background:#2271b1;color:#fff}
+.sitex-post__steps li.is-done span{background:#00a32a;color:#fff}
+.sitex-post__code{font-family:monospace;font-size:18px;letter-spacing:2px;text-transform:uppercase}
+.sitex-post__summary th{width:220px}
+.sitex-post__perms{list-style:disc;padding-left:20px}
+.sitex-post__actions{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap}
+.sitex-post__dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#c3c4c7}
+.sitex-post__dot.is-ok{background:#00a32a}.sitex-post__dot.is-warn{background:#dba617}.sitex-post__dot.is-fail{background:#d63638}
+.sitex-post__level{padding:2px 8px;border-radius:10px;background:#f0f0f1}
+.sitex-post__level.is-error{background:#fcf0f1;color:#8a2424}.sitex-post__level.is-warning{background:#fcf9e8;color:#614200}
+.sitex-post__filters a.current{font-weight:600;color:#1d2327}
+@media (max-width:600px){.sitex-post__card{padding:16px}.sitex-post__summary th{width:auto}}

@@ -1,0 +1,518 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: SiteX Post 1.0.0\n"
+"Language: vi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Domain: sitex-post\n"
+
+#: 
+msgid "SiteX Post"
+msgstr "SiteX Post"
+
+#: 
+msgid "Settings"
+msgstr "Cài đặt"
+
+#: 
+msgid "SiteX Post is installed but not connected yet."
+msgstr "SiteX Post đã được cài nhưng chưa kết nối."
+
+#: 
+msgid "Connect to SiteX Post Cloud"
+msgstr "Kết nối với SiteX Post Cloud"
+
+#: 
+msgid "You are not allowed to manage SiteX Post."
+msgstr "Bạn không có quyền quản lý SiteX Post."
+
+#: 
+msgid "Connection"
+msgstr "Kết nối"
+
+#: 
+msgid "Logs"
+msgstr "Nhật ký"
+
+#: 
+msgid "Diagnostics"
+msgstr "Chẩn đoán"
+
+#: 
+msgid "Connected. SiteX Post Cloud can now publish to this site with the account you selected."
+msgstr "Đã kết nối. SiteX Post Cloud có thể đăng bài lên website này bằng tài khoản bạn đã chọn."
+
+#: 
+msgid "Disconnected. The connection key was deleted and SiteX Post Cloud was notified."
+msgstr "Đã ngắt kết nối. Khóa kết nối đã bị xóa và SiteX Post Cloud đã được thông báo."
+
+#: 
+msgid "Disconnected locally. The key was deleted here, but SiteX Post Cloud could not be notified; it can no longer write to this site anyway."
+msgstr "Đã ngắt kết nối trên website. Khóa đã bị xóa ở đây nhưng không báo được cho SiteX Post Cloud; dù vậy Cloud không còn ghi được vào website này."
+
+#: 
+msgid "SiteX Post Cloud answered: the connection works."
+msgstr "SiteX Post Cloud đã phản hồi: kết nối hoạt động bình thường."
+
+#: 
+msgid "Logs cleared."
+msgstr "Đã xóa nhật ký."
+
+#: 
+msgid "Enter the pairing code shown in SiteX Post Cloud (format XXXX-XXXX)."
+msgstr "Nhập mã kết nối hiển thị trong SiteX Post Cloud (dạng XXXX-XXXX)."
+
+#: 
+msgid "The pairing session expired. Enter the code again."
+msgstr "Phiên kết nối đã hết hạn. Vui lòng nhập lại mã."
+
+#: 
+msgid "Please tick the confirmation box to authorize the connection."
+msgstr "Vui lòng đánh dấu ô xác nhận để cho phép kết nối."
+
+#: 
+msgid "Choose an account that can publish posts and upload media."
+msgstr "Hãy chọn tài khoản có quyền đăng bài và tải ảnh lên."
+
+#: 
+msgid "This site is already connected. Disconnect first."
+msgstr "Website đã được kết nối. Hãy ngắt kết nối trước."
+
+#: 
+msgid "SiteX Post Cloud returned an error."
+msgstr "SiteX Post Cloud trả về lỗi."
+
+#: 
+msgid "Pairing code"
+msgstr "Mã kết nối"
+
+#: 
+msgid "Review & confirm"
+msgstr "Kiểm tra & xác nhận"
+
+#: 
+msgid "Connected"
+msgstr "Đã kết nối"
+
+#: 
+msgid "Connect this site to SiteX Post Cloud"
+msgstr "Kết nối website này với SiteX Post Cloud"
+
+#: 
+msgid "In SiteX Post Cloud, open Websites → Add website and enter this site address."
+msgstr "Trong SiteX Post Cloud, mở Website → Thêm website và nhập địa chỉ website này."
+
+#: 
+msgid "Copy the one-time pairing code (valid 15 minutes) and paste it below."
+msgstr "Sao chép mã kết nối dùng một lần (hiệu lực 15 phút) và dán vào bên dưới."
+
+#: 
+msgid "Review who is asking and confirm. Nothing is granted before you confirm."
+msgstr "Kiểm tra bên yêu cầu rồi xác nhận. Chưa có quyền nào được cấp trước khi bạn xác nhận."
+
+#: 
+msgid "This site does not use HTTPS. SiteX Post Cloud only connects to HTTPS sites in production."
+msgstr "Website này chưa dùng HTTPS. SiteX Post Cloud chỉ kết nối với website HTTPS trong môi trường thật."
+
+#: 
+msgid "SiteX Post Cloud"
+msgstr "SiteX Post Cloud"
+
+#: 
+msgid "Set by the plugin (or SITEX_POST_CLOUD_URL in wp-config.php)."
+msgstr "Do plugin thiết lập (hoặc hằng SITEX_POST_CLOUD_URL trong wp-config.php)."
+
+#: 
+msgid "Continue"
+msgstr "Tiếp tục"
+
+#: 
+msgid "SiteX Post never asks for your WordPress password and never stores any AI API key on this site."
+msgstr "SiteX Post không bao giờ hỏi mật khẩu WordPress và không lưu bất kỳ khóa API AI nào trên website này."
+
+#: 
+msgid "Read basic site information (name, versions, active SEO plugin, WooCommerce)"
+msgstr "Đọc thông tin cơ bản của website (tên, phiên bản, plugin SEO đang dùng, WooCommerce)"
+
+#: 
+msgid "Read the list of categories, tags, posts, pages and products (titles, links, excerpts)"
+msgstr "Đọc danh sách chuyên mục, thẻ, bài viết, trang và sản phẩm (tiêu đề, đường dẫn, tóm tắt)"
+
+#: 
+msgid "Create posts and pages as the account you choose below"
+msgstr "Tạo bài viết và trang bằng tài khoản bạn chọn bên dưới"
+
+#: 
+msgid "Update only the posts it created (never your other content)"
+msgstr "Chỉ cập nhật các bài do SiteX Post tạo (không đụng tới nội dung khác)"
+
+#: 
+msgid "Upload images to the media library"
+msgstr "Tải ảnh lên thư viện media"
+
+#: 
+msgid "Write SEO title, description and focus keyword for its posts"
+msgstr "Ghi tiêu đề SEO, mô tả và từ khóa chính cho các bài của SiteX Post"
+
+#: 
+msgid "Review the connection request"
+msgstr "Kiểm tra yêu cầu kết nối"
+
+#: 
+msgid "Workspace"
+msgstr "Workspace"
+
+#: 
+msgid "Website name in SiteX Post"
+msgstr "Tên website trong SiteX Post"
+
+#: 
+msgid "Registered address"
+msgstr "Địa chỉ đã đăng ký"
+
+#: 
+msgid "SiteX Post Cloud will be able to:"
+msgstr "SiteX Post Cloud sẽ có thể:"
+
+#: 
+msgid "It cannot change settings, plugins, themes, users or content it did not create. You can disconnect at any time."
+msgstr "Cloud không thể thay đổi cài đặt, plugin, giao diện, người dùng hay nội dung mà nó không tạo. Bạn có thể ngắt kết nối bất cứ lúc nào."
+
+#: 
+msgid "Publish as"
+msgstr "Đăng bài với tài khoản"
+
+#: 
+msgid "Tip: create a dedicated Author or Editor account for SiteX Post instead of using an administrator."
+msgstr "Mẹo: tạo một tài khoản Tác giả hoặc Biên tập viên riêng cho SiteX Post thay vì dùng tài khoản quản trị."
+
+#: 
+msgid "I am an administrator of this site and I authorize this connection."
+msgstr "Tôi là quản trị viên của website này và tôi cho phép kết nối."
+
+#: 
+msgid "Confirm and connect"
+msgstr "Xác nhận và kết nối"
+
+#: 
+msgid "Cancel"
+msgstr "Hủy"
+
+#: 
+msgid "Connected to SiteX Post Cloud"
+msgstr "Đã kết nối với SiteX Post Cloud"
+
+#: 
+msgid "Publishing account"
+msgstr "Tài khoản đăng bài"
+
+#: 
+msgid "Missing — disconnect and pair again"
+msgstr "Không còn tồn tại — hãy ngắt kết nối rồi kết nối lại"
+
+#: 
+msgid "Connected since"
+msgstr "Kết nối từ"
+
+#: 
+msgid "Last request from Cloud"
+msgstr "Yêu cầu gần nhất từ Cloud"
+
+#: 
+msgid "None yet"
+msgstr "Chưa có"
+
+#: 
+msgid "Key ID"
+msgstr "Mã khóa"
+
+#: 
+#, php-format
+msgid "(rotated %s)"
+msgstr "(đổi khóa lúc %s)"
+
+#: 
+msgid "Test connection to Cloud"
+msgstr "Kiểm tra kết nối tới Cloud"
+
+#: 
+msgid "Disconnect from SiteX Post Cloud? The key will be deleted and Cloud will immediately lose write access."
+msgstr "Ngắt kết nối với SiteX Post Cloud? Khóa sẽ bị xóa và Cloud mất quyền ghi ngay lập tức."
+
+#: 
+msgid "Disconnect"
+msgstr "Ngắt kết nối"
+
+#: 
+msgid "All"
+msgstr "Tất cả"
+
+#: 
+msgid "Errors"
+msgstr "Lỗi"
+
+#: 
+msgid "Warnings"
+msgstr "Cảnh báo"
+
+#: 
+msgid "Info"
+msgstr "Thông tin"
+
+#: 
+msgid "No log entries yet."
+msgstr "Chưa có nhật ký."
+
+#: 
+msgid "Time (UTC)"
+msgstr "Thời gian (UTC)"
+
+#: 
+msgid "Level"
+msgstr "Mức độ"
+
+#: 
+msgid "Event"
+msgstr "Sự kiện"
+
+#: 
+msgid "Message"
+msgstr "Nội dung"
+
+#: 
+msgid "Clear logs"
+msgstr "Xóa nhật ký"
+
+#: 
+msgid "OK"
+msgstr "Ổn"
+
+#: 
+msgid "Warning"
+msgstr "Cảnh báo"
+
+#: 
+msgid "Problem"
+msgstr "Có lỗi"
+
+#: 
+#, php-format
+msgid "SiteX Post plugin version %s"
+msgstr "Plugin SiteX Post phiên bản %s"
+
+#: 
+msgid "SiteX Post Cloud returned an invalid pairing response."
+msgstr "SiteX Post Cloud trả về phản hồi kết nối không hợp lệ."
+
+#: 
+msgid "Connected to SiteX Post Cloud."
+msgstr "Đã kết nối với SiteX Post Cloud."
+
+#: 
+msgid "Disconnected from SiteX Post Cloud by a WordPress administrator."
+msgstr "Quản trị viên WordPress đã ngắt kết nối với SiteX Post Cloud."
+
+#: 
+msgid "The SiteX Post Cloud URL must use HTTPS."
+msgstr "Địa chỉ SiteX Post Cloud phải dùng HTTPS."
+
+#: 
+msgid "This site is not connected."
+msgstr "Website chưa được kết nối."
+
+#: 
+msgid "Could not reach SiteX Post Cloud. Please try again."
+msgstr "Không liên lạc được với SiteX Post Cloud. Vui lòng thử lại."
+
+#: 
+msgid "SiteX Post Cloud rejected the request."
+msgstr "SiteX Post Cloud từ chối yêu cầu."
+
+#: 
+msgid "SiteX Post Cloud no longer accepts this site key (it may have been revoked). Disconnect and pair again."
+msgstr "SiteX Post Cloud không còn chấp nhận khóa của website này (có thể đã bị thu hồi). Hãy ngắt kết nối rồi kết nối lại."
+
+#: 
+msgid "The publishing account cannot upload files."
+msgstr "Tài khoản đăng bài không có quyền tải tệp lên."
+
+#: 
+msgid "A valid idempotency_key is required."
+msgstr "Cần idempotency_key hợp lệ."
+
+#: 
+msgid "Empty file."
+msgstr "Tệp rỗng."
+
+#: 
+msgid "The file exceeds the maximum upload size."
+msgstr "Tệp vượt quá dung lượng tải lên tối đa."
+
+#: 
+msgid "Could not store the upload."
+msgstr "Không lưu được tệp tải lên."
+
+#: 
+msgid "Only JPEG, PNG, GIF and WebP images are accepted."
+msgstr "Chỉ chấp nhận ảnh JPEG, PNG, GIF và WebP."
+
+#: 
+#, php-format
+msgid "Image #%d uploaded."
+msgstr "Đã tải lên ảnh #%d."
+
+#: 
+msgid "Unsupported post type."
+msgstr "Loại nội dung không được hỗ trợ."
+
+#: 
+msgid "A title (max 500 characters) is required."
+msgstr "Cần có tiêu đề (tối đa 500 ký tự)."
+
+#: 
+msgid "Unsupported post status."
+msgstr "Trạng thái bài viết không được hỗ trợ."
+
+#: 
+msgid "The same document is being processed. Retry shortly."
+msgstr "Bài này đang được xử lý. Vui lòng thử lại sau ít giây."
+
+#: 
+msgid "Post not found."
+msgstr "Không tìm thấy bài viết."
+
+#: 
+msgid "This post was not created by SiteX Post and cannot be modified by it."
+msgstr "Bài viết này không do SiteX Post tạo nên SiteX Post không được sửa."
+
+#: 
+msgid "The idempotency key belongs to another post."
+msgstr "Khóa idempotency thuộc về một bài viết khác."
+
+#: 
+msgid "The post for this document was moved to the trash on WordPress."
+msgstr "Bài viết tương ứng đã bị chuyển vào thùng rác trên WordPress."
+
+#: 
+#, php-format
+msgid "Update of post #%d refused: it was changed in WordPress."
+msgstr "Từ chối cập nhật bài #%d: bài đã bị sửa trong WordPress."
+
+#: 
+msgid "The post was changed in WordPress since SiteX Post last wrote it. Resolve the conflict in SiteX Post Cloud."
+msgstr "Bài đã bị sửa trong WordPress kể từ lần SiteX Post ghi gần nhất. Hãy xử lý xung đột trong SiteX Post Cloud."
+
+#: 
+msgid "The publishing account is not allowed to publish. Use draft or pending status."
+msgstr "Tài khoản đăng bài không có quyền xuất bản. Hãy dùng trạng thái nháp hoặc chờ duyệt."
+
+#: 
+msgid "Scheduled posts need a future date_gmt."
+msgstr "Bài hẹn giờ cần date_gmt ở tương lai."
+
+#: 
+#, php-format
+msgid "Post #%d saved."
+msgstr "Đã lưu bài #%d."
+
+#: 
+msgid "The featured image must be an image of the Media Library."
+msgstr "Ảnh đại diện phải là ảnh trong Thư viện Media."
+
+#: 
+msgid "The publishing account does not have permission for this action."
+msgstr "Tài khoản đăng bài không có quyền thực hiện thao tác này."
+
+#: 
+msgid "Invalid key material."
+msgstr "Dữ liệu khóa không hợp lệ."
+
+#: 
+msgid "Connection key rotated by SiteX Post Cloud."
+msgstr "SiteX Post Cloud đã đổi khóa kết nối."
+
+#: 
+msgid "Disconnected by SiteX Post Cloud. The local key was deleted."
+msgstr "SiteX Post Cloud đã ngắt kết nối. Khóa trên website đã bị xóa."
+
+#: 
+msgid "This site is not connected to SiteX Post Cloud."
+msgstr "Website này chưa kết nối với SiteX Post Cloud."
+
+#: 
+msgid "The publishing account selected during pairing no longer exists."
+msgstr "Tài khoản đăng bài đã chọn khi kết nối không còn tồn tại."
+
+#: 
+msgid "Rejected a request with an invalid signature."
+msgstr "Đã từ chối một yêu cầu có chữ ký không hợp lệ."
+
+#: 
+msgid "Invalid or expired signature."
+msgstr "Chữ ký không hợp lệ hoặc đã hết hạn."
+
+#: 
+msgid "SiteX Post (built-in meta tags)"
+msgstr "SiteX Post (thẻ meta tích hợp)"
+
+#: 
+msgid "PHP version"
+msgstr "Phiên bản PHP"
+
+#: 
+msgid "WordPress version"
+msgstr "Phiên bản WordPress"
+
+#: 
+msgid "Site uses HTTPS"
+msgstr "Website dùng HTTPS"
+
+#: 
+msgid "SiteX Post Cloud URL uses HTTPS"
+msgstr "Địa chỉ SiteX Post Cloud dùng HTTPS"
+
+#: 
+msgid "HMAC-SHA256 and secure random available"
+msgstr "Có HMAC-SHA256 và bộ sinh số ngẫu nhiên an toàn"
+
+#: 
+msgid "REST API enabled"
+msgstr "REST API đang bật"
+
+#: 
+msgid "Pretty permalinks"
+msgstr "Đường dẫn tĩnh (permalink)"
+
+#: 
+msgid "Plain (the connector falls back to ?rest_route=)"
+msgstr "Mặc định (plugin dùng ?rest_route= thay thế)"
+
+#: 
+msgid "Uploads folder writable"
+msgstr "Thư mục uploads ghi được"
+
+#: 
+msgid "SEO metadata adapter"
+msgstr "Bộ ghi dữ liệu SEO"
+
+#: 
+msgid "WooCommerce"
+msgstr "WooCommerce"
+
+#: 
+msgid "Detected: products will be synced"
+msgstr "Đã phát hiện: sản phẩm sẽ được đồng bộ"
+
+#: 
+msgid "Not installed"
+msgstr "Chưa cài"
+
+#: 
+msgid "Publishing account permissions"
+msgstr "Quyền của tài khoản đăng bài"
+
+#: 
+msgid "Missing"
+msgstr "Thiếu"

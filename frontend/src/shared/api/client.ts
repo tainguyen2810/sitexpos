@@ -72,6 +72,8 @@ export interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined | null>
   /** Do not trigger the global 401 handler (e.g. for the initial /me probe). */
   silent401?: boolean
+  /** Extra request headers (e.g. Idempotency-Key). Auth headers cannot be overridden. */
+  headers?: Record<string, string>
 }
 
 export async function request<T>(method: Method, path: string, body?: unknown, options: RequestOptions = {}, retried = false): Promise<T> {
@@ -83,13 +85,16 @@ export async function request<T>(method: Method, path: string, body?: unknown, o
   }
 
   const headers: Record<string, string> = {
+    ...(options.headers ?? {}),
     Accept: 'application/json',
     'Accept-Language': config.locale(),
     'X-Requested-With': 'XMLHttpRequest',
   }
   const xsrf = readCookie('XSRF-TOKEN')
   if (xsrf) headers['X-XSRF-TOKEN'] = xsrf
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData
+  // Multipart bodies (file uploads) let the browser set the boundary header.
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
 
   let response: Response
   try {
@@ -97,7 +102,7 @@ export async function request<T>(method: Method, path: string, body?: unknown, o
       method,
       headers,
       credentials: 'include',
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
     })
   } catch {
     throw new ApiError(0, 'network_error', '')

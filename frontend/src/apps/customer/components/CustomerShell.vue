@@ -30,9 +30,13 @@ const nav = computed<NavItem[]>(() => {
   const base = `/w/${id}`
   const items: NavItem[] = [
     { label: t('nav.dashboard'), to: `${base}/dashboard`, icon: 'home' },
-    { label: t('nav.sites'), icon: 'globe', soon: true },
-    { label: t('nav.content'), icon: 'file', soon: true },
-    { label: t('nav.keywords'), icon: 'key', soon: true },
+    { label: t('nav.sites'), to: `${base}/sites`, icon: 'globe' },
+    { label: t('nav.writer'), to: `${base}/writer`, icon: 'pen' },
+    { label: t('nav.research'), to: `${base}/research`, icon: 'target' },
+    { label: t('nav.media'), to: `${base}/media`, icon: 'image' },
+    { label: t('nav.seo'), to: `${base}/seo`, icon: 'search' },
+    { label: t('nav.publishing'), to: `${base}/publishing`, icon: 'send' },
+    { label: t('nav.ai'), to: `${base}/ai`, icon: 'sparkles' },
     { label: t('nav.members'), to: `${base}/members`, icon: 'users' },
     { label: t('nav.audit'), to: `${base}/audit`, icon: 'list' },
     { label: t('nav.settings'), to: `${base}/settings`, icon: 'settings' },
