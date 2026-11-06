@@ -22,7 +22,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDoc))
       <span class="hidden max-w-[10rem] truncate text-sm font-medium sm:block">{{ name }}</span>
       <AppIcon name="chevronDown" :size="16" class="text-ink-subtle" />
     </button>
-    <div v-if="open" class="absolute right-0 mt-2 w-64 rounded-xl border border-line bg-surface p-2 shadow-lg">
+    <div v-if="open" class="absolute right-0 z-30 mt-2 w-64 rounded-xl bg-surface p-2 shadow-lg ring-1 ring-slate-900/5">
       <div class="border-b border-line px-3 pb-2 pt-1">
         <p class="truncate text-sm font-medium">{{ name }}</p>
         <p class="truncate text-xs text-ink-muted">{{ email }}</p>

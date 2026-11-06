@@ -13,7 +13,6 @@ import { useApiForm } from '@/shared/composables/useApiForm'
 import { useToast } from '@/shared/composables/useToast'
 import { useSessionStore } from '@/shared/stores/session'
 import { formatDateTime } from '@/shared/utils/format'
-import AppCard from '@/shared/ui/AppCard.vue'
 import AppBadge from '@/shared/ui/AppBadge.vue'
 import AppButton from '@/shared/ui/AppButton.vue'
 import AppInput from '@/shared/ui/AppInput.vue'
@@ -22,6 +21,14 @@ import AppModal from '@/shared/ui/AppModal.vue'
 import ConfirmDialog from '@/shared/ui/ConfirmDialog.vue'
 import LoadingState from '@/shared/ui/LoadingState.vue'
 import ErrorState from '@/shared/ui/ErrorState.vue'
+import EmptyState from '@/shared/ui/EmptyState.vue'
+import PageHeader from '@/shared/ui/PageHeader.vue'
+import Tabs from '@/shared/ui/Tabs.vue'
+import Toggle from '@/shared/ui/Toggle.vue'
+import AppIcon from '@/shared/ui/AppIcon.vue'
+import DropdownMenu from '@/shared/ui/DropdownMenu.vue'
+import SearchInput from '@/shared/ui/SearchInput.vue'
+import FilterSelect from '@/shared/ui/FilterSelect.vue'
 
 type Tab = 'providers' | 'models' | 'routes' | 'budgets'
 
@@ -30,7 +37,7 @@ const toast = useToast()
 const session = useSessionStore()
 const canManage = computed(() => session.user?.platform_permissions.includes('platform.ai.manage') ?? false)
 const tabs = computed<Tab[]>(() => (canManage.value ? ['providers', 'models', 'routes', 'budgets'] : ['budgets']))
-const tab = ref<Tab>(canManage.value ? 'providers' : 'budgets')
+const tab = ref<string>(canManage.value ? 'providers' : 'budgets')
 
 const providers = useAsync(() => (canManage.value ? adminAiApi.providers() : Promise.resolve([] as AiProvider[])))
 const models = useAsync(() => (canManage.value ? adminAiApi.models() : Promise.resolve([] as AiModel[])))
@@ -53,7 +60,45 @@ async function guarded(fn: () => Promise<unknown>, reload: () => Promise<unknown
 
 const ENV: Record<string, string> = { openai: 'OPENAI_API_KEY', gemini: 'GEMINI_API_KEY', anthropic: 'ANTHROPIC_API_KEY', deepseek: 'DEEPSEEK_API_KEY', fake: 'SITEX_AI_FAKE_PROVIDER=true' }
 const CAPS: Capability[] = ['structured_output', 'web_search', 'image_generation', 'temperature', 'vision']
-const circuitTone = (s: string) => (s === 'closed' ? 'success' : s === 'open' ? 'danger' : 'warning')
+const circuitText = (s: string) => (s === 'closed' ? 'text-success-700' : s === 'open' ? 'text-danger-700' : 'text-warning-700')
+
+// ---- overview (summary cards + tab counts) ----
+const list = <T,>(a: { data: { value: T[] | null } }) => a.data.value ?? []
+const enabledProviders = computed(() => list(providers).filter((p) => p.is_enabled))
+const readyProviders = computed(() => enabledProviders.value.filter((p) => p.has_api_key || p.driver === 'fake'))
+const enabledModels = computed(() => list(models).filter((m) => m.is_enabled))
+const unpricedModels = computed(() => enabledModels.value.filter((m) => !m.current_price))
+const routedTasks = computed(() => list(routes).filter((r) => r.primary_model))
+const mainBudget = computed(() => {
+  const all = list(budgets)
+  return all.find((b) => b.scope === 'global' && b.period === 'month') ?? all.find((b) => b.scope === 'global') ?? null
+})
+const tabItems = computed(() => {
+  const counts: Record<Tab, number | undefined> = {
+    providers: providers.data.value?.length, models: models.data.value?.length, routes: routes.data.value?.length, budgets: budgets.data.value?.length,
+  }
+  return tabs.value.map((k) => ({ key: k, label: t(`aiAdmin.tabs.${k}`), count: counts[k] }))
+})
+
+const AVATAR = ['bg-sky-50 text-sky-700 ring-sky-600/15', 'bg-emerald-50 text-emerald-700 ring-emerald-600/15', 'bg-violet-50 text-violet-700 ring-violet-600/15', 'bg-amber-50 text-amber-700 ring-amber-600/20', 'bg-rose-50 text-rose-700 ring-rose-600/15', 'bg-indigo-50 text-indigo-700 ring-indigo-600/15']
+function initials(name: string) {
+  const w = name.trim().split(/\s+/)
+  return (w.length > 1 ? (w[0]?.[0] ?? '') + (w[1]?.[0] ?? '') : name.slice(0, 2)).toUpperCase()
+}
+function avatarClass(p: AiProvider) {
+  if (!p.is_enabled) return 'bg-slate-100 text-slate-500 ring-slate-500/15'
+  let h = 0
+  for (const c of p.code) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return AVATAR[h % AVATAR.length]
+}
+const needsKey = (p: AiProvider) => p.driver !== 'fake' && !p.has_api_key
+const advancedOpen = ref<Set<string>>(new Set())
+function toggleAdvanced(id: string) {
+  const next = new Set(advancedOpen.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  advancedOpen.value = next
+}
 
 // ---- providers ----
 const toggleProvider = (p: AiProvider) => guarded(() => adminAiApi.updateProvider(p.id, { is_enabled: !p.is_enabled }), providers.run)
@@ -260,6 +305,32 @@ async function createModel() {
   toast.success(t('common.saved'))
   await models.run()
 }
+const modelSearch = ref('')
+const modelProvider = ref('')
+const modelStatus = ref('')
+const filteredModels = computed(() => {
+  const q = modelSearch.value.trim().toLowerCase()
+  return list(models).filter((m) => (!q || `${m.display_name} ${m.model_key}`.toLowerCase().includes(q))
+    && (!modelProvider.value || m.provider.id === modelProvider.value)
+    && (!modelStatus.value || (modelStatus.value === 'on') === m.is_enabled))
+})
+const modelGroups = computed(() => {
+  const groups = new Map<string, { name: string; items: AiModel[] }>()
+  for (const m of filteredModels.value) {
+    const g = groups.get(m.provider.id) ?? { name: m.provider.name, items: [] }
+    g.items.push(m)
+    groups.set(m.provider.id, g)
+  }
+  return [...groups.entries()].map(([id, g]) => ({ id, ...g }))
+})
+const modelsFiltered = computed(() => !!(modelSearch.value || modelProvider.value || modelStatus.value))
+function clearModelFilters() {
+  modelSearch.value = ''
+  modelProvider.value = ''
+  modelStatus.value = ''
+}
+const statusFilterOptions = computed(() => [{ value: 'on', label: t('aiAdmin.enabled') }, { value: 'off', label: t('aiAdmin.disabled') }])
+const tierBadge: Record<string, 'success' | 'brand' | 'warning'> = { economy: 'success', standard: 'brand', premium: 'warning' }
 const providerOptions = computed(() => (providers.data.value ?? []).map((p) => ({ value: p.id, label: p.name })))
 const tierOptions = computed(() => (['economy', 'standard', 'premium'] as const).map((v) => ({ value: v, label: t(`aiAdmin.tiers.${v}`) })))
 
@@ -298,10 +369,12 @@ async function saveRoute() {
 
 // ---- budgets ----
 const budgetOpen = ref(false)
+const budgetEditing = ref(false)
 const budgetForm = useApiForm()
 const budgetDraft = ref({ scope: 'global' as 'global' | 'workspace', workspace_id: '', period: 'month' as 'day' | 'month', limit: '', alert: '80', action: 'pause_all' as BudgetAction })
 function openBudget(b?: AiBudget) {
   budgetForm.reset()
+  budgetEditing.value = !!b
   budgetDraft.value = b
     ? { scope: b.scope, workspace_id: b.workspace?.id ?? '', period: b.period, limit: String(b.limit_micro_usd / 1_000_000), alert: String(b.alert_threshold_pct), action: b.action_on_exceed }
     : { scope: 'global', workspace_id: '', period: 'month', limit: '', alert: '80', action: 'pause_all' }
@@ -328,149 +401,273 @@ async function deleteBudget() {
 const scopeOptions = computed(() => (['global', 'workspace'] as const).map((v) => ({ value: v, label: t(`aiAdmin.scopes.${v}`) })))
 const periodOptions = computed(() => (['day', 'month'] as const).map((v) => ({ value: v, label: t(`aiAdmin.periods.${v}`) })))
 const actionOptions = computed(() => (['alert', 'pause_batch', 'pause_all'] as const).map((v) => ({ value: v, label: t(`aiAdmin.actions.${v}`) })))
+function budgetState(b: AiBudget): { tone: 'success' | 'warning' | 'danger'; bar: string; key: 'safe' | 'near' | 'over' } {
+  if (b.usage.used_pct >= 100) return { tone: 'danger', bar: 'bg-danger-600', key: 'over' }
+  if (b.usage.used_pct >= b.alert_threshold_pct) return { tone: 'warning', bar: 'bg-warning-500', key: 'near' }
+  return { tone: 'success', bar: 'bg-brand-600', key: 'safe' }
+}
 const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((v) => ({ value: v, label: t(`aiAdmin.priorities.${v}`) })))
 </script>
 
+
 <template>
   <div class="space-y-6">
-    <div>
-      <h1 class="text-2xl font-bold">{{ $t('aiAdmin.settingsTitle') }}</h1>
-      <p class="mt-1 text-sm text-ink-muted">{{ $t('aiAdmin.settingsSubtitle') }}</p>
-    </div>
+    <PageHeader :title="$t('aiAdmin.settingsTitle')" :description="$t('aiAdmin.ui.subtitle')" :crumbs="[{ label: 'AI' }, { label: $t('aiAdmin.settingsTitle') }]" />
 
-    <div class="flex flex-wrap gap-2 border-b border-line" role="tablist">
-      <button
-        v-for="k in tabs" :key="k" type="button" role="tab" :aria-selected="tab === k"
-        class="-mb-px border-b-2 px-3 py-2 text-sm font-medium"
-        :class="tab === k ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-muted hover:text-ink'"
-        @click="tab = k"
-      >{{ $t(`aiAdmin.tabs.${k}`) }}</button>
-    </div>
-
-    <!-- Providers -->
-    <AppCard v-if="tab === 'providers'" :padded="false">
-      <template #actions><AppButton size="sm" @click="openCustom">{{ $t('aiAdmin.addCustomProvider') }}</AppButton></template>
-      <LoadingState v-if="providers.loading.value" class="p-5" />
-      <ErrorState v-else-if="providers.error.value" :error="providers.error.value" class="p-5" @retry="providers.run" />
-      <ul v-else class="divide-y divide-line" data-testid="provider-list">
-        <li v-for="p in providers.data.value ?? []" :key="p.id" class="flex flex-wrap items-center gap-4 px-5 py-4">
-          <div class="min-w-48 flex-1">
-            <p class="font-medium">{{ p.name }} <span class="font-mono text-xs text-ink-muted">{{ p.code }}</span>
-              <AppBadge v-if="p.is_custom" tone="brand" class="ml-1">{{ $t('aiAdmin.custom') }}</AppBadge>
-              <AppBadge v-if="!p.is_enabled" class="ml-1">{{ $t('aiAdmin.disabled') }}</AppBadge>
-            </p>
-            <p v-if="p.base_url" class="mt-0.5 break-all font-mono text-xs text-ink-muted">{{ p.base_url }}</p>
-            <p class="mt-1 flex flex-wrap items-center gap-2 text-xs">
-              <AppBadge :tone="p.has_api_key ? 'success' : 'warning'">{{ p.has_api_key ? $t('aiAdmin.hasKey') : $t('aiAdmin.noKey') }}</AppBadge>
-              <span v-if="p.api_key_source === 'database'" class="text-ink-muted" data-testid="key-source">{{ $t('aiAdmin.keyStored', { last4: p.api_key_last4 ?? '' }) }}</span>
-              <span v-else-if="p.api_key_source === 'env'" class="text-ink-muted">{{ $t('aiAdmin.keyFromEnv', { env: ENV[p.code] ?? 'API key' }) }}</span>
-              <span v-else-if="p.driver !== 'fake'" class="text-ink-muted">{{ $t('aiAdmin.keyHintUi') }}</span>
-            </p>
-          </div>
-          <div class="text-xs">
-            <p class="text-ink-muted">{{ $t('aiAdmin.circuit') }}</p>
-            <AppBadge :tone="circuitTone(p.circuit.state)">{{ $t(`aiAdmin.circuitStates.${p.circuit.state}`) }}</AppBadge>
-            <span v-if="p.circuit.failures" class="ml-1 text-ink-muted">{{ $t('aiAdmin.failures', { n: p.circuit.failures }) }}</span>
-          </div>
-          <label class="text-xs text-ink-muted">{{ $t('aiAdmin.timeout') }}
-            <input type="number" min="5" max="180" :value="p.timeout_seconds" class="mt-1 block w-20 rounded border border-line px-2 py-1 text-sm text-ink" @change="saveProviderNumber(p, 'timeout_seconds', ($event.target as HTMLInputElement).value)" />
-          </label>
-          <label class="text-xs text-ink-muted">{{ $t('aiAdmin.maxRetries') }}
-            <input type="number" min="0" max="3" :value="p.max_retries" class="mt-1 block w-16 rounded border border-line px-2 py-1 text-sm text-ink" @change="saveProviderNumber(p, 'max_retries', ($event.target as HTMLInputElement).value)" />
-          </label>
-          <div class="flex flex-wrap gap-2">
-            <AppButton v-if="p.circuit.state !== 'closed'" size="sm" variant="secondary" @click="resetCircuit(p)">{{ $t('aiAdmin.resetCircuit') }}</AppButton>
-            <AppButton v-if="p.driver !== 'fake'" size="sm" variant="ghost" @click="openKey(p)">{{ $t('aiAdmin.setKey') }}</AppButton>
-            <AppButton size="sm" variant="secondary" :loading="connTesting === p.id" @click="testConnection(p)">{{ $t('aiAdmin.testConnection') }}</AppButton>
-            <AppButton size="sm" :variant="p.is_enabled ? 'secondary' : 'primary'" @click="toggleProvider(p)">{{ p.is_enabled ? $t('aiAdmin.disable') : $t('aiAdmin.enable') }}</AppButton>
-            <AppButton v-if="p.is_custom && !p.models_count" size="sm" variant="ghost" @click="providerDeleting = p">{{ $t('common.delete') }}</AppButton>
-          </div>
-        </li>
-      </ul>
-    </AppCard>
-
-    <!-- Models -->
-    <AppCard v-if="tab === 'models'" :padded="false">
-      <template #actions><AppButton size="sm" @click="openModel">{{ $t('aiAdmin.addModel') }}</AppButton></template>
-      <LoadingState v-if="models.loading.value" class="p-5" />
-      <ErrorState v-else-if="models.error.value" :error="models.error.value" class="p-5" @retry="models.run" />
-      <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[960px] text-sm" data-testid="model-list">
-          <thead class="text-left text-xs text-ink-muted"><tr><th class="px-5 py-2">Model</th><th class="px-3 py-2">{{ $t('aiAdmin.tier') }}</th><th class="px-3 py-2"></th><th class="px-3 py-2">{{ $t('aiAdmin.priceInOut') }}</th><th class="px-5 py-2"></th></tr></thead>
-          <tbody class="divide-y divide-line">
-            <tr v-for="m in models.data.value ?? []" :key="m.id">
-              <td class="px-5 py-3"><p class="font-medium">{{ m.display_name }} <AppBadge v-if="!m.is_enabled">{{ $t('aiAdmin.disabled') }}</AppBadge></p><p class="font-mono text-xs text-ink-muted">{{ m.model_key }}</p></td>
-              <td class="px-3 py-3">{{ $t(`aiAdmin.tiers.${m.tier}`) }}</td>
-              <td class="px-3 py-3"><div class="flex flex-wrap gap-1"><AppBadge v-for="c in CAPS.filter((c) => m.capabilities[c])" :key="c">{{ $t(`aiAdmin.capabilities.${c}`) }}</AppBadge></div></td>
-              <td class="px-3 py-3">
-                <span v-if="m.current_price">{{ formatPerMtok(m.current_price.input_per_mtok) }} / {{ formatPerMtok(m.current_price.output_per_mtok) }}</span>
-                <span v-if="m.current_price?.peak_windows?.length" class="block text-xs text-ink-muted">{{ $t('aiAdmin.offPeakShort', { in: formatPerMtok(m.current_price.offpeak_input_per_mtok), out: formatPerMtok(m.current_price.offpeak_output_per_mtok) }) }}</span>
-                <span v-else class="text-warning-600">{{ $t('aiAdmin.noPrice') }}</span>
-                <AppBadge v-if="m.scheduled_prices" tone="brand" class="ml-1">+{{ m.scheduled_prices }}</AppBadge>
-              </td>
-              <td class="px-5 py-3">
-                <div class="flex justify-end gap-2">
-                  <AppButton size="sm" variant="ghost" @click="openEditModel(m)">{{ $t('common.edit') }}</AppButton>
-                  <AppButton size="sm" variant="ghost" @click="openPrices(m)">{{ $t('aiAdmin.prices') }}</AppButton>
-                  <AppButton size="sm" variant="secondary" @click="openTest(m)">{{ $t('aiAdmin.testModel') }}</AppButton>
-                  <AppButton size="sm" :variant="m.is_enabled ? 'secondary' : 'primary'" @click="toggleModel(m)">{{ m.is_enabled ? $t('aiAdmin.disable') : $t('aiAdmin.enable') }}</AppButton>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- Overview -->
+    <dl v-if="canManage" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" data-testid="ai-overview">
+      <div class="rounded-xl bg-surface p-5 shadow-xs ring-1 ring-line">
+        <dt class="text-sm font-medium text-ink-muted">{{ $t('aiAdmin.ui.sumProviders') }}</dt>
+        <dd class="mt-2 flex items-baseline gap-1.5"><span class="text-3xl font-semibold tracking-tight tabular-nums">{{ readyProviders.length }}</span><span class="text-sm text-ink-subtle">/ {{ list(providers).length }}</span></dd>
+        <p v-if="enabledProviders.length > readyProviders.length" class="mt-1 text-xs text-warning-700">{{ $t('aiAdmin.ui.sumProvidersMissingKey', { n: enabledProviders.length - readyProviders.length }) }}</p>
+        <p v-else-if="!readyProviders.length" class="mt-1 text-xs text-warning-700">{{ $t('aiAdmin.ui.sumProvidersNone') }}</p>
+        <p v-else class="mt-1 text-xs text-success-700">{{ $t('aiAdmin.ui.sumProvidersOk') }}</p>
       </div>
-    </AppCard>
+      <div class="rounded-xl bg-surface p-5 shadow-xs ring-1 ring-line">
+        <dt class="text-sm font-medium text-ink-muted">{{ $t('aiAdmin.ui.sumModels') }}</dt>
+        <dd class="mt-2 flex items-baseline gap-1.5"><span class="text-3xl font-semibold tracking-tight tabular-nums">{{ enabledModels.length }}</span><span class="text-sm text-ink-subtle">/ {{ list(models).length }}</span></dd>
+        <p v-if="unpricedModels.length" class="mt-1 text-xs text-warning-700">{{ $t('aiAdmin.ui.sumModelsNoPrice', { n: unpricedModels.length }) }}</p>
+        <p v-else class="mt-1 text-xs text-ink-muted">{{ $t('aiAdmin.ui.sumModelsOk') }}</p>
+      </div>
+      <div class="rounded-xl bg-surface p-5 shadow-xs ring-1 ring-line">
+        <dt class="text-sm font-medium text-ink-muted">{{ $t('aiAdmin.ui.sumRoutes') }}</dt>
+        <dd class="mt-2 flex items-baseline gap-1.5"><span class="text-3xl font-semibold tracking-tight tabular-nums">{{ routedTasks.length }}</span><span class="text-sm text-ink-subtle">/ {{ list(routes).length }}</span></dd>
+        <p v-if="list(routes).length > routedTasks.length" class="mt-1 text-xs text-danger-700">{{ $t('aiAdmin.ui.sumRoutesMissing', { n: list(routes).length - routedTasks.length }) }}</p>
+        <p v-else class="mt-1 text-xs text-success-700">{{ $t('aiAdmin.ui.sumRoutesOk') }}</p>
+      </div>
+      <div class="rounded-xl bg-surface p-5 shadow-xs ring-1 ring-line">
+        <dt class="text-sm font-medium text-ink-muted">{{ $t('aiAdmin.ui.sumBudget') }}<template v-if="mainBudget"> · {{ $t(`aiAdmin.periods.${mainBudget.period}`) }}</template></dt>
+        <template v-if="mainBudget">
+          <dd class="mt-2 flex items-baseline gap-1.5"><span class="text-3xl font-semibold tracking-tight tabular-nums">{{ formatUsd(mainBudget.usage.spent_micro_usd, 2) }}</span><span class="text-sm text-ink-subtle">/ {{ formatUsd(mainBudget.limit_micro_usd, 2) }}</span></dd>
+          <div class="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full" :class="budgetState(mainBudget).bar" :style="{ width: Math.min(100, mainBudget.usage.used_pct) + '%' }" /></div>
+        </template>
+        <template v-else>
+          <dd class="mt-2 text-3xl font-semibold tracking-tight text-ink-subtle">—</dd>
+          <p class="mt-1 text-xs text-warning-700">{{ $t('aiAdmin.ui.sumBudgetNone') }}</p>
+        </template>
+      </div>
+    </dl>
 
-    <!-- Routes -->
-    <AppCard v-if="tab === 'routes'" :padded="false">
-      <LoadingState v-if="routes.loading.value" class="p-5" />
-      <ErrorState v-else-if="routes.error.value" :error="routes.error.value" class="p-5" @retry="routes.run" />
-      <ul v-else class="divide-y divide-line" data-testid="route-list">
-        <li v-for="r in routes.data.value ?? []" :key="r.id" class="flex flex-wrap items-center gap-4 px-5 py-4">
-          <div class="min-w-48 flex-1">
-            <p class="font-mono text-sm font-medium">{{ r.task_key }} <AppBadge v-if="!r.is_enabled">{{ $t('aiAdmin.disabled') }}</AppBadge></p>
-            <p class="text-xs text-ink-muted">{{ r.description }} · {{ r.queue }} · {{ $t(`aiAdmin.priorities.${r.priority}`) }}</p>
-          </div>
-          <div class="text-xs">
-            <p><span class="text-ink-muted">{{ $t('aiAdmin.primary') }}:</span> {{ r.primary_model?.model_key ?? '—' }}</p>
-            <p v-if="r.economy_model"><span class="text-ink-muted">{{ $t('aiAdmin.economy') }}:</span> {{ r.economy_model.model_key }}</p>
-            <p><span class="text-ink-muted">{{ $t('aiAdmin.fallbacks') }}:</span> {{ r.fallback_models.map((m) => m.model_key).join(' → ') || '—' }}</p>
-          </div>
-          <AppBadge :tone="r.allow_paid_retry ? 'warning' : 'success'">{{ $t('aiAdmin.allowPaidRetry') }}: {{ r.allow_paid_retry ? $t('common.yes') : $t('common.no') }}</AppBadge>
-          <AppButton size="sm" variant="secondary" @click="openRoute(r)">{{ $t('common.edit') }}</AppButton>
-        </li>
-      </ul>
-    </AppCard>
+    <section class="rounded-xl bg-surface shadow-xs ring-1 ring-line">
+      <div class="px-5"><Tabs v-model="tab" :tabs="tabItems" /></div>
 
-    <!-- Budgets -->
-    <AppCard v-if="tab === 'budgets'" :padded="false">
-      <template v-if="canManage" #actions><AppButton size="sm" @click="openBudget()">{{ $t('aiAdmin.addBudget') }}</AppButton></template>
-      <LoadingState v-if="budgets.loading.value" class="p-5" />
-      <ErrorState v-else-if="budgets.error.value" :error="budgets.error.value" class="p-5" @retry="budgets.run" />
-      <p v-else-if="!(budgets.data.value ?? []).length" class="p-5 text-sm text-ink-muted">{{ $t('aiAdmin.noData') }}</p>
-      <ul v-else class="divide-y divide-line" data-testid="budget-list">
-        <li v-for="b in budgets.data.value ?? []" :key="b.id" class="flex flex-wrap items-center gap-4 px-5 py-4">
-          <div class="min-w-48 flex-1">
-            <p class="font-medium">{{ b.scope === 'global' ? $t('aiAdmin.scopes.global') : (b.workspace?.name ?? b.workspace?.id) }} · {{ $t(`aiAdmin.periods.${b.period}`) }}</p>
-            <p class="text-xs text-ink-muted">{{ $t(`aiAdmin.actions.${b.action_on_exceed}`) }} · {{ $t('aiAdmin.alertAt') }} {{ b.alert_threshold_pct }}%</p>
-          </div>
-          <div class="w-64">
-            <div class="h-2 rounded-full bg-surface-muted"><div class="h-2 rounded-full" :class="b.usage.used_pct >= 100 ? 'bg-danger-600' : b.usage.used_pct >= b.alert_threshold_pct ? 'bg-warning-600' : 'bg-brand-500'" :style="{ width: Math.min(100, b.usage.used_pct) + '%' }" /></div>
-            <p class="mt-1 text-xs">{{ $t('aiAdmin.usedOf', { spent: formatUsd(b.usage.spent_micro_usd), limit: formatUsd(b.limit_micro_usd), pct: b.usage.used_pct }) }}<span v-if="b.usage.reserved_micro_usd" class="text-ink-muted"> · {{ $t('aiAdmin.reserved', { amount: formatUsd(b.usage.reserved_micro_usd) }) }}</span></p>
-          </div>
-          <div v-if="canManage" class="flex gap-2">
-            <AppButton size="sm" variant="secondary" @click="openBudget(b)">{{ $t('common.edit') }}</AppButton>
-            <AppButton size="sm" variant="ghost" @click="deleting = b">{{ $t('common.delete') }}</AppButton>
-          </div>
-        </li>
-      </ul>
-    </AppCard>
+      <!-- Tab intro + primary action -->
+      <div class="flex flex-col gap-3 px-5 py-4 lg:flex-row lg:items-start lg:justify-between">
+        <div class="flex gap-3 rounded-lg bg-surface-muted px-4 py-3 text-sm text-ink-muted ring-1 ring-line lg:max-w-3xl">
+          <AppIcon name="info" :size="18" class="mt-0.5 shrink-0 text-brand-600" />
+          <p>{{ $t(`aiAdmin.ui.intro.${tab}`) }}</p>
+        </div>
+        <div class="shrink-0">
+          <AppButton v-if="tab === 'providers'" @click="openCustom"><AppIcon name="plus" :size="16" />{{ $t('aiAdmin.addCustomProvider') }}</AppButton>
+          <AppButton v-else-if="tab === 'models'" @click="openModel"><AppIcon name="plus" :size="16" />{{ $t('aiAdmin.addModel') }}</AppButton>
+          <AppButton v-else-if="tab === 'budgets' && canManage" @click="openBudget()"><AppIcon name="plus" :size="16" />{{ $t('aiAdmin.addBudget') }}</AppButton>
+        </div>
+      </div>
 
+      <!-- Providers -->
+      <div v-if="tab === 'providers'" class="px-5 pb-5">
+        <LoadingState v-if="providers.loading.value && !providers.data.value" />
+        <ErrorState v-else-if="providers.error.value" :error="providers.error.value" @retry="providers.run" />
+        <ul v-else class="grid grid-cols-1 items-start gap-4 xl:grid-cols-2" data-testid="provider-list">
+          <li v-for="p in providers.data.value ?? []" :key="p.id" class="flex flex-col rounded-xl bg-surface ring-1 ring-line" :data-provider="p.code">
+            <div class="flex items-start gap-3 p-4">
+              <span class="grid size-10 shrink-0 place-items-center rounded-lg text-sm font-bold ring-1 ring-inset" :class="avatarClass(p)" aria-hidden="true">{{ initials(p.name) }}</span>
+              <div class="min-w-0 flex-1">
+                <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span class="font-semibold text-ink">{{ p.name }}</span>
+                  <span class="font-mono text-xs text-ink-subtle">{{ p.code }}</span>
+                  <AppBadge v-if="p.is_custom" tone="brand">{{ $t('aiAdmin.custom') }}</AppBadge>
+                </p>
+                <p v-if="p.base_url" class="mt-0.5 truncate font-mono text-xs text-ink-subtle" :title="p.base_url">{{ p.base_url }}</p>
+                <p class="mt-1 flex items-center gap-1.5 text-xs" :class="needsKey(p) ? 'text-warning-700' : p.is_enabled ? 'text-success-700' : 'text-ink-muted'">
+                  <span class="size-1.5 rounded-full" :class="needsKey(p) ? 'bg-warning-500' : p.is_enabled ? 'bg-success-500' : 'bg-slate-300'" />
+                  {{ needsKey(p) ? $t('aiAdmin.ui.needsKey') : p.is_enabled ? $t('aiAdmin.ui.ready', { n: p.models_count }) : $t('aiAdmin.ui.off', { n: p.models_count }) }}
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-ink-muted">{{ p.is_enabled ? $t('aiAdmin.enabled') : $t('aiAdmin.disabled') }}</span>
+                <button
+                  type="button" role="switch" :aria-checked="p.is_enabled" :aria-label="$t('aiAdmin.ui.toggleProvider', { name: p.name })"
+                  class="relative inline-flex h-6 w-11 shrink-0 rounded-full ring-1 ring-inset ring-slate-900/5 transition-colors duration-200"
+                  :class="p.is_enabled ? 'bg-brand-600' : 'bg-slate-200'"
+                  @click="toggleProvider(p)"
+                ><span class="absolute top-0.5 size-5 rounded-full bg-white shadow transition-all" :class="p.is_enabled ? 'left-[22px]' : 'left-0.5'" /></button>
+              </div>
+            </div>
+
+            <dl class="grid grid-cols-1 border-y border-line bg-surface-muted text-xs sm:grid-cols-3 sm:divide-x sm:divide-line">
+              <div class="px-4 py-2.5">
+                <dt class="text-ink-muted">{{ $t('aiAdmin.apiKey') }}</dt>
+                <dd class="mt-0.5 font-medium" data-testid="key-source">
+                  <span v-if="p.api_key_source === 'database'" class="text-ink">{{ $t('aiAdmin.keyStored', { last4: p.api_key_last4 ?? '' }) }}</span>
+                  <span v-else-if="p.api_key_source === 'env'" class="text-ink">{{ $t('aiAdmin.ui.keyEnv', { env: ENV[p.code] ?? 'API key' }) }}</span>
+                  <span v-else-if="p.driver === 'fake'" class="text-ink-muted">{{ $t('aiAdmin.ui.keyNotNeeded') }}</span>
+                  <span v-else class="text-warning-700">{{ $t('aiAdmin.noKey') }}</span>
+                </dd>
+              </div>
+              <div class="px-4 py-2.5">
+                <dt class="text-ink-muted">{{ $t('aiAdmin.ui.connection') }}</dt>
+                <dd class="mt-0.5 font-medium" :class="circuitText(p.circuit.state)">
+                  {{ $t(`aiAdmin.circuitStates.${p.circuit.state}`) }}<template v-if="p.circuit.failures"> · {{ $t('aiAdmin.failures', { n: p.circuit.failures }) }}</template>
+                </dd>
+              </div>
+              <div class="px-4 py-2.5">
+                <dt class="text-ink-muted">{{ $t('aiAdmin.ui.timeoutRetries') }}</dt>
+                <dd class="mt-0.5 font-medium text-ink">{{ $t('aiAdmin.ui.timeoutValue', { s: p.timeout_seconds, n: p.max_retries }) }}</dd>
+              </div>
+            </dl>
+
+            <div v-if="advancedOpen.has(p.id)" class="grid grid-cols-2 gap-4 border-b border-line px-4 py-3 text-sm" data-testid="provider-advanced">
+              <label class="block text-xs font-medium text-ink">{{ $t('aiAdmin.timeout') }}
+                <input type="number" min="5" max="180" :value="p.timeout_seconds" class="mt-1 block w-full rounded-lg border-0 px-3 py-1.5 text-sm text-ink shadow-xs ring-1 ring-inset ring-line-strong focus:outline-none focus:ring-2 focus:ring-brand-600" @change="saveProviderNumber(p, 'timeout_seconds', ($event.target as HTMLInputElement).value)" />
+              </label>
+              <label class="block text-xs font-medium text-ink">{{ $t('aiAdmin.maxRetries') }}
+                <input type="number" min="0" max="3" :value="p.max_retries" class="mt-1 block w-full rounded-lg border-0 px-3 py-1.5 text-sm text-ink shadow-xs ring-1 ring-inset ring-line-strong focus:outline-none focus:ring-2 focus:ring-brand-600" @change="saveProviderNumber(p, 'max_retries', ($event.target as HTMLInputElement).value)" />
+              </label>
+              <p class="col-span-2 text-xs text-ink-muted">{{ $t('aiAdmin.ui.advancedHint') }}</p>
+            </div>
+
+            <div class="mt-auto flex flex-wrap items-center gap-2 px-4 py-3">
+              <template v-if="p.driver !== 'fake'">
+                <AppButton v-if="needsKey(p)" size="sm" @click="openKey(p)">{{ $t('aiAdmin.ui.enterKey') }}</AppButton>
+                <AppButton v-else size="sm" variant="secondary" @click="openKey(p)">{{ $t('aiAdmin.ui.changeKey') }}</AppButton>
+              </template>
+              <AppButton v-if="!needsKey(p)" size="sm" variant="secondary" :loading="connTesting === p.id" @click="testConnection(p)">{{ $t('aiAdmin.testConnection') }}</AppButton>
+              <button v-if="p.circuit.state !== 'closed'" type="button" class="rounded-lg bg-warning-50 px-2.5 py-1.5 text-xs font-semibold text-warning-700 ring-1 ring-inset ring-warning-600/25 hover:bg-warning-100" @click="resetCircuit(p)">{{ $t('aiAdmin.ui.resetConnection') }}</button>
+              <AppButton v-if="p.is_custom && !p.models_count" size="sm" variant="ghost" class="!text-danger-600 hover:!bg-danger-50" @click="providerDeleting = p">{{ $t('common.delete') }}</AppButton>
+              <button type="button" class="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium text-ink-muted hover:bg-slate-100 hover:text-ink" :aria-expanded="advancedOpen.has(p.id)" @click="toggleAdvanced(p.id)">
+                {{ $t('aiAdmin.ui.advanced') }}<AppIcon :name="advancedOpen.has(p.id) ? 'chevronUp' : 'chevronDown'" :size="14" />
+              </button>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Models -->
+      <div v-if="tab === 'models'">
+        <div class="flex flex-col gap-2 px-5 pb-4 sm:flex-row sm:items-center">
+          <SearchInput v-model="modelSearch" :placeholder="$t('aiAdmin.ui.searchModels')" />
+          <FilterSelect v-model="modelProvider" :label="$t('ai.provider')" :options="[{ value: '', label: $t('aiAdmin.ui.all') }, ...providerOptions]" />
+          <FilterSelect v-model="modelStatus" :label="$t('aiAdmin.ui.status')" :options="[{ value: '', label: $t('aiAdmin.ui.all') }, ...statusFilterOptions]" />
+          <button v-if="modelsFiltered" type="button" class="text-sm text-brand-700 hover:underline" @click="clearModelFilters">{{ $t('common.clearFilters') }}</button>
+        </div>
+        <LoadingState v-if="models.loading.value && !models.data.value" />
+        <ErrorState v-else-if="models.error.value" :error="models.error.value" @retry="models.run" />
+        <EmptyState v-else-if="!filteredModels.length" icon="cpu" :title="modelsFiltered ? $t('aiAdmin.ui.noMatch') : $t('aiAdmin.ui.noModels')" />
+        <div v-else class="overflow-x-auto">
+          <table class="w-full min-w-[880px] text-sm" data-testid="model-list">
+            <thead class="border-y border-line bg-surface-muted text-left text-xs font-semibold text-ink-muted">
+              <tr>
+                <th scope="col" class="py-2.5 pl-5 pr-3">{{ $t('aiAdmin.ui.colModel') }}</th>
+                <th scope="col" class="px-3">{{ $t('aiAdmin.tier') }}</th>
+                <th scope="col" class="px-3">{{ $t('aiAdmin.capabilitiesTitle') }}</th>
+                <th scope="col" class="px-3 text-right">{{ $t('aiAdmin.priceInOut') }}</th>
+                <th scope="col" class="px-3">{{ $t('aiAdmin.ui.status') }}</th>
+                <th scope="col" class="pl-3 pr-5"><span class="sr-only">{{ $t('aiAdmin.ui.actions') }}</span></th>
+              </tr>
+            </thead>
+            <tbody v-for="g in modelGroups" :key="g.id" class="divide-y divide-line border-b border-line last:border-b-0">
+              <tr class="bg-surface-muted/60"><th scope="colgroup" colspan="6" class="py-1.5 pl-5 text-left text-xs font-semibold text-ink-muted">{{ g.name }}</th></tr>
+              <tr v-for="m in g.items" :key="m.id" class="hover:bg-surface-muted/50">
+                <td class="py-3 pl-5 pr-3"><p class="font-medium text-ink">{{ m.display_name }}</p><p class="font-mono text-xs text-ink-subtle">{{ m.model_key }}</p></td>
+                <td class="px-3"><AppBadge :tone="tierBadge[m.tier]">{{ $t(`aiAdmin.tiers.${m.tier}`) }}</AppBadge></td>
+                <td class="px-3">
+                  <div class="flex flex-wrap gap-1">
+                    <span v-for="c in CAPS.filter((c) => m.capabilities[c])" :key="c" class="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-ink-muted">{{ $t(`aiAdmin.capabilities.${c}`) }}</span>
+                  </div>
+                </td>
+                <td class="px-3 text-right tabular-nums">
+                  <template v-if="m.current_price">
+                    <span class="font-medium text-ink">{{ formatPerMtok(m.current_price.input_per_mtok) }} / {{ formatPerMtok(m.current_price.output_per_mtok) }}</span>
+                    <AppBadge v-if="m.scheduled_prices" tone="brand" class="ml-1">{{ $t('aiAdmin.ui.scheduled', { n: m.scheduled_prices }) }}</AppBadge>
+                    <span v-if="m.current_price.peak_windows?.length" class="block text-xs text-ink-subtle">{{ $t('aiAdmin.offPeakShort', { in: formatPerMtok(m.current_price.offpeak_input_per_mtok), out: formatPerMtok(m.current_price.offpeak_output_per_mtok) }) }}</span>
+                  </template>
+                  <AppBadge v-else tone="warning">{{ $t('aiAdmin.noPrice') }}</AppBadge>
+                </td>
+                <td class="px-3"><AppBadge :tone="m.is_enabled ? 'success' : 'neutral'" dot>{{ m.is_enabled ? $t('aiAdmin.enabled') : $t('aiAdmin.disabled') }}</AppBadge></td>
+                <td class="pl-3 pr-5">
+                  <div class="flex items-center justify-end gap-1">
+                    <AppButton v-if="!m.current_price" size="sm" @click="openPrices(m)">{{ $t('aiAdmin.ui.addPriceCta') }}</AppButton>
+                    <AppButton v-else size="sm" variant="ghost" class="!text-brand-700" @click="openPrices(m)">{{ $t('aiAdmin.prices') }}</AppButton>
+                    <AppButton size="sm" variant="ghost" class="!text-brand-700" @click="openTest(m)">{{ $t('aiAdmin.testModel') }}</AppButton>
+                    <DropdownMenu :label="$t('aiAdmin.ui.moreActions')">
+                      <button type="button" role="menuitem" class="block w-full px-3 py-2 text-left text-ink hover:bg-slate-50" @click="openEditModel(m)">{{ $t('common.edit') }}</button>
+                      <button type="button" role="menuitem" class="block w-full px-3 py-2 text-left text-ink hover:bg-slate-50" @click="toggleModel(m)">{{ m.is_enabled ? $t('aiAdmin.disable') : $t('aiAdmin.enable') }}</button>
+                      <button type="button" role="menuitem" class="block w-full px-3 py-2 text-left text-danger-600 hover:bg-danger-50" @click="modelDeleting = m">{{ $t('common.delete') }}</button>
+                    </DropdownMenu>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Routes -->
+      <div v-if="tab === 'routes'" class="border-t border-line">
+        <LoadingState v-if="routes.loading.value && !routes.data.value" />
+        <ErrorState v-else-if="routes.error.value" :error="routes.error.value" @retry="routes.run" />
+        <ul v-else class="divide-y divide-line" data-testid="route-list">
+          <li v-for="r in routes.data.value ?? []" :key="r.id" class="flex flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center lg:gap-6" :class="r.is_enabled ? '' : 'bg-surface-muted/60'">
+            <div class="lg:w-72 lg:shrink-0">
+              <p class="flex flex-wrap items-center gap-2 font-medium text-ink">{{ r.description || r.task_key }} <AppBadge v-if="!r.is_enabled">{{ $t('aiAdmin.disabled') }}</AppBadge></p>
+              <p class="mt-0.5 font-mono text-xs text-ink-subtle">{{ r.task_key }} · {{ $t(`aiAdmin.priorities.${r.priority}`) }} · {{ $t('aiAdmin.ui.maxTokens', { n: r.max_output_tokens.toLocaleString('vi-VN') }) }}</p>
+            </div>
+            <div class="flex flex-1 flex-wrap items-center gap-1.5 text-xs">
+              <template v-if="r.primary_model">
+                <span class="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 font-medium text-brand-700 ring-1 ring-inset ring-brand-600/20" :title="$t('aiAdmin.primary')"><AppIcon name="star" :size="12" />{{ r.primary_model.model_key }}</span>
+                <template v-for="f in r.fallback_models" :key="f.id">
+                  <AppIcon name="chevronRight" :size="14" class="text-ink-subtle" />
+                  <span class="rounded-md bg-surface px-2 py-1 text-ink-muted ring-1 ring-inset ring-line" :title="$t('aiAdmin.fallbacks')">{{ f.model_key }}</span>
+                </template>
+              </template>
+              <AppBadge v-else tone="danger">{{ $t('aiAdmin.ui.noPrimary') }}</AppBadge>
+              <span v-if="r.economy_model" class="ml-1 text-ink-subtle">· {{ $t('aiAdmin.ui.economyModel', { m: r.economy_model.model_key }) }}</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="inline-flex items-center gap-1 text-xs" :class="r.allow_paid_retry ? 'text-warning-700' : 'text-success-700'">
+                <AppIcon :name="r.allow_paid_retry ? 'alert' : 'shieldCheck'" :size="14" />{{ r.allow_paid_retry ? $t('aiAdmin.ui.paidRetryOn') : $t('aiAdmin.ui.paidRetryOff') }}
+              </span>
+              <AppButton size="sm" variant="secondary" @click="openRoute(r)">{{ $t('common.edit') }}</AppButton>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Budgets -->
+      <div v-if="tab === 'budgets'" class="px-5 pb-5">
+        <LoadingState v-if="budgets.loading.value && !budgets.data.value" />
+        <ErrorState v-else-if="budgets.error.value" :error="budgets.error.value" @retry="budgets.run" />
+        <EmptyState v-else-if="!(budgets.data.value ?? []).length" icon="coins" :title="$t('aiAdmin.ui.noBudgetTitle')" :description="$t('aiAdmin.ui.noBudgetDesc')" />
+        <ul v-else class="grid grid-cols-1 gap-4 lg:grid-cols-2" data-testid="budget-list">
+          <li v-for="b in budgets.data.value ?? []" :key="b.id" class="rounded-xl p-5 ring-1 ring-line">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="font-semibold text-ink">{{ b.scope === 'global' ? $t('aiAdmin.scopes.global') : (b.workspace?.name ?? b.workspace?.id) }} · {{ $t(`aiAdmin.periods.${b.period}`) }}</p>
+                <p class="mt-0.5 text-xs text-ink-muted">{{ $t('aiAdmin.ui.onExceed', { action: $t(`aiAdmin.actions.${b.action_on_exceed}`), pct: b.alert_threshold_pct }) }}</p>
+              </div>
+              <AppBadge :tone="budgetState(b).tone">{{ $t(`aiAdmin.ui.budgetStates.${budgetState(b).key}`) }}</AppBadge>
+            </div>
+            <p class="mt-4 flex items-baseline gap-1.5"><span class="text-2xl font-semibold tracking-tight tabular-nums text-ink">{{ formatUsd(b.usage.spent_micro_usd, 2) }}</span><span class="text-sm text-ink-subtle">/ {{ formatUsd(b.limit_micro_usd, 2) }} · {{ b.usage.used_pct }}%</span></p>
+            <div class="relative mt-2">
+              <div class="h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full transition-all" :class="budgetState(b).bar" :style="{ width: Math.min(100, b.usage.used_pct) + '%' }" /></div>
+              <div class="absolute -top-1 h-4 w-0.5 rounded bg-warning-500" :style="{ left: Math.min(100, b.alert_threshold_pct) + '%' }" :title="$t('aiAdmin.alertAt') + ' ' + b.alert_threshold_pct + '%'" />
+            </div>
+            <p v-if="b.usage.reserved_micro_usd" class="mt-2 text-xs text-ink-muted">{{ $t('aiAdmin.reserved', { amount: formatUsd(b.usage.reserved_micro_usd) }) }}</p>
+            <div v-if="canManage" class="mt-4 flex gap-2">
+              <AppButton size="sm" variant="secondary" @click="openBudget(b)">{{ $t('common.edit') }}</AppButton>
+              <AppButton size="sm" variant="ghost" class="!text-danger-600 hover:!bg-danger-50" @click="deleting = b">{{ $t('common.delete') }}</AppButton>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </section>
     <!-- Price versions -->
-    <AppModal :open="!!priceModel" :title="$t('aiAdmin.pricesOf', { name: priceModel?.display_name ?? '' })" @close="priceModel = null">
-      <p class="text-xs text-ink-muted">{{ $t('aiAdmin.priceLocked') }}</p>
-      <ul class="mt-3 divide-y divide-line rounded-lg border border-line text-sm">
+    <AppModal :open="!!priceModel" :title="$t('aiAdmin.pricesOf', { name: priceModel?.display_name ?? '' })" width="lg" @close="priceModel = null">
+      <h3 class="text-sm font-semibold text-ink">{{ $t('aiAdmin.ui.priceHistory') }}</h3>
+      <p class="mt-0.5 text-xs text-ink-muted">{{ $t('aiAdmin.priceLocked') }}</p>
+      <p v-if="!priceList.length" class="mt-3 rounded-lg bg-warning-50 px-3 py-2 text-sm text-warning-700 ring-1 ring-inset ring-warning-600/20">{{ $t('aiAdmin.noPrice') }}</p>
+      <ul v-else class="mt-3 divide-y divide-line rounded-lg text-sm ring-1 ring-line">
         <li v-for="p in priceList" :key="p.id" class="flex flex-wrap items-center gap-3 px-3 py-2">
           <span class="font-medium">{{ $t('aiAdmin.priceVersion', { v: p.version }) }}</span>
           <AppBadge :tone="p.state === 'effective' ? 'success' : 'brand'">{{ $t(`aiAdmin.priceStates.${p.state}`) }}</AppBadge>
@@ -482,7 +679,8 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
           <AppButton v-if="p.state === 'scheduled'" size="sm" variant="ghost" @click="deletePrice(p)">{{ $t('common.delete') }}</AppButton>
         </li>
       </ul>
-      <form id="price-form" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2" novalidate @submit.prevent="addPrice">
+      <h3 class="mt-6 border-t border-line pt-4 text-sm font-semibold text-ink">{{ $t('aiAdmin.addPrice') }}</h3>
+      <form id="price-form" class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" novalidate @submit.prevent="addPrice">
         <p v-if="priceForm.formError.value" class="sm:col-span-2 rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">{{ priceForm.formError.value }}</p>
         <AppInput v-model="priceDraft.effective_from" type="datetime-local" :label="$t('aiAdmin.effectiveFrom')" :error="priceForm.errors.effective_from" />
         <AppInput v-model="priceDraft.source_url" :label="$t('aiAdmin.sourceUrl')" :error="priceForm.errors.source_url" />
@@ -492,14 +690,14 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
         <AppInput v-model="priceDraft.cache_write" inputmode="decimal" :label="$t('aiAdmin.cacheWritePrice')" />
         <AppInput v-model="priceDraft.search" inputmode="decimal" :label="$t('aiAdmin.searchPrice')" />
         <AppInput v-model="priceDraft.image" inputmode="decimal" :label="$t('aiAdmin.imagePrice')" />
-        <label class="flex items-start gap-2 text-sm sm:col-span-2"><input v-model="priceDraft.timeOfDay" type="checkbox" class="mt-1" data-testid="time-of-day" />
+        <label class="flex items-start gap-2 rounded-lg bg-surface-muted p-3 text-sm ring-1 ring-line sm:col-span-2"><input v-model="priceDraft.timeOfDay" type="checkbox" class="mt-0.5" data-testid="time-of-day" />
           <span>{{ $t('aiAdmin.timeOfDay') }}<br /><span class="text-xs text-ink-muted">{{ $t('aiAdmin.timeOfDayHint') }}</span></span></label>
         <template v-if="priceDraft.timeOfDay">
           <AppInput v-model="priceDraft.off_input" inputmode="decimal" :label="$t('aiAdmin.offInputPrice')" :error="priceForm.errors.offpeak_input_per_mtok" />
           <AppInput v-model="priceDraft.off_output" inputmode="decimal" :label="$t('aiAdmin.offOutputPrice')" :error="priceForm.errors.offpeak_output_per_mtok" />
           <AppInput v-model="priceDraft.off_cached" inputmode="decimal" :label="$t('aiAdmin.offCachedPrice')" />
           <label class="text-sm sm:col-span-2">{{ $t('aiAdmin.peakWindows') }}
-            <textarea v-model="priceDraft.windows" rows="2" class="mt-1 block w-full rounded-lg border border-line px-3 py-2 font-mono text-sm" placeholder="1-5 01:00-04:00&#10;1-5 06:00-10:00" data-testid="peak-windows" />
+            <textarea v-model="priceDraft.windows" rows="2" class="mt-1 block w-full rounded-lg border-0 px-3 py-2 font-mono text-sm shadow-xs ring-1 ring-inset ring-line-strong focus:outline-none focus:ring-2 focus:ring-brand-600" placeholder="1-5 01:00-04:00&#10;1-5 06:00-10:00" data-testid="peak-windows" />
             <span class="text-xs text-ink-muted">{{ $t('aiAdmin.peakWindowsHint') }}</span>
             <span v-if="priceForm.errors.peak_windows" class="block text-xs text-danger-600" role="alert">{{ priceForm.errors.peak_windows }}</span>
           </label>
@@ -535,10 +733,11 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
         <AppSelect v-model="routeDraft.economy" :label="$t('aiAdmin.economy')" :options="[{ value: '', label: $t('aiAdmin.none') }, ...modelOptions]" />
         <fieldset>
           <legend class="text-sm font-medium">{{ $t('aiAdmin.fallbacks') }}</legend>
-          <div class="mt-1 grid grid-cols-1 max-h-40 gap-1 overflow-y-auto rounded-lg border border-line p-2 sm:grid-cols-2">
-            <label v-for="o in modelOptions.filter((o) => o.value !== routeDraft.primary)" :key="o.value" class="flex items-center gap-2 text-xs">
+          <p class="text-xs text-ink-muted">{{ $t('aiAdmin.ui.fallbackHint') }}</p>
+          <div class="mt-1.5 grid max-h-44 grid-cols-1 gap-1 overflow-y-auto rounded-lg p-2 ring-1 ring-line sm:grid-cols-2">
+            <label v-for="o in modelOptions.filter((o) => o.value !== routeDraft.primary)" :key="o.value" class="flex items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-surface-muted">
               <input type="checkbox" :checked="routeDraft.fallbacks.includes(o.value)" @change="toggleFallback(o.value)" />
-              {{ o.label }}<span v-if="routeDraft.fallbacks.includes(o.value)" class="text-ink-muted">#{{ routeDraft.fallbacks.indexOf(o.value) + 1 }}</span>
+              {{ o.label }}<span v-if="routeDraft.fallbacks.includes(o.value)" class="ml-auto rounded bg-brand-50 px-1.5 font-medium text-brand-700">#{{ routeDraft.fallbacks.indexOf(o.value) + 1 }}</span>
             </label>
           </div>
         </fieldset>
@@ -547,8 +746,10 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
           <AppInput v-model="routeDraft.max_attempts" type="number" :label="$t('aiAdmin.maxAttempts')" :error="routeForm.errors.max_attempts" />
           <AppSelect v-model="routeDraft.priority" :label="$t('aiAdmin.priority')" :options="priorityOptions" />
         </div>
-        <label class="flex items-start gap-2 text-sm"><input v-model="routeDraft.allow_paid_retry" type="checkbox" class="mt-1" /> <span>{{ $t('aiAdmin.allowPaidRetry') }}<br /><span class="text-xs text-ink-muted">{{ $t('aiAdmin.allowPaidRetryHint') }}</span></span></label>
-        <label class="flex items-center gap-2 text-sm"><input v-model="routeDraft.is_enabled" type="checkbox" /> {{ $t('aiAdmin.enabled') }}</label>
+        <div class="divide-y divide-line rounded-lg px-3 ring-1 ring-line">
+          <Toggle v-model="routeDraft.allow_paid_retry" :label="$t('aiAdmin.allowPaidRetry')" :description="$t('aiAdmin.allowPaidRetryHint')" />
+          <Toggle v-model="routeDraft.is_enabled" :label="$t('aiAdmin.ui.routeEnabled')" />
+        </div>
       </form>
       <template #footer>
         <AppButton variant="secondary" @click="routeEdit = null">{{ $t('common.cancel') }}</AppButton>
@@ -557,7 +758,7 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
     </AppModal>
 
     <!-- Budget -->
-    <AppModal :open="budgetOpen" :title="$t('aiAdmin.addBudget')" width="sm" @close="budgetOpen = false">
+    <AppModal :open="budgetOpen" :title="budgetEditing ? $t('aiAdmin.ui.editBudget') : $t('aiAdmin.addBudget')" width="sm" @close="budgetOpen = false">
       <form id="budget-form" class="space-y-3" novalidate @submit.prevent="saveBudget">
         <p v-if="budgetForm.formError.value" class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">{{ budgetForm.formError.value }}</p>
         <AppSelect v-model="budgetDraft.scope" :label="$t('aiAdmin.budgetScope')" :options="scopeOptions" />
@@ -577,11 +778,11 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
       <form id="key-form" class="space-y-3" novalidate autocomplete="off" @submit.prevent="saveKey()">
         <p v-if="keyForm.formError.value" class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">{{ keyForm.formError.value }}</p>
         <AppInput v-model="keyDraft" type="password" autocomplete="new-password" :label="$t('aiAdmin.apiKey')" :error="keyForm.errors.api_key" />
-        <p class="text-xs text-ink-muted">{{ $t('aiAdmin.keySecurity') }}</p>
+        <p class="flex gap-2 text-xs text-ink-muted"><AppIcon name="lock" :size="14" class="mt-0.5 shrink-0" />{{ $t('aiAdmin.keySecurity') }}</p>
         <p v-if="keyProvider?.api_key_source === 'database'" class="text-xs">{{ $t('aiAdmin.keyStored', { last4: keyProvider.api_key_last4 ?? '' }) }}</p>
       </form>
       <template #footer>
-        <AppButton v-if="keyProvider?.api_key_source === 'database'" variant="ghost" :loading="keyForm.submitting.value" @click="saveKey(true)">{{ $t('aiAdmin.clearKey') }}</AppButton>
+        <AppButton v-if="keyProvider?.api_key_source === 'database'" variant="ghost" class="mr-auto !text-danger-600 hover:!bg-danger-50" :loading="keyForm.submitting.value" @click="saveKey(true)">{{ $t('aiAdmin.clearKey') }}</AppButton>
         <AppButton variant="secondary" @click="keyProvider = null">{{ $t('common.cancel') }}</AppButton>
         <AppButton type="submit" form="key-form" :disabled="keyDraft.trim().length < 8" :loading="keyForm.submitting.value">{{ $t('common.save') }}</AppButton>
       </template>
@@ -638,13 +839,13 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
         <p class="text-xs text-ink-muted">{{ $t('aiAdmin.modelIdHint') }}</p>
         <fieldset>
           <legend class="text-sm font-medium">{{ $t('aiAdmin.capabilitiesTitle') }}</legend>
-          <div class="mt-1 flex flex-wrap gap-3">
-            <label v-for="c in CAPS" :key="c" class="flex items-center gap-1 text-xs"><input v-model="editDraft.caps[c]" type="checkbox" /> {{ $t(`aiAdmin.capabilities.${c}`) }}</label>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <label v-for="c in CAPS" :key="c" class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs ring-1 ring-line hover:bg-surface-muted"><input v-model="editDraft.caps[c]" type="checkbox" /> {{ $t(`aiAdmin.capabilities.${c}`) }}</label>
           </div>
         </fieldset>
       </form>
       <template #footer>
-        <AppButton variant="ghost" @click="modelDeleting = editModel">{{ $t('common.delete') }}</AppButton>
+        <AppButton variant="ghost" class="mr-auto !text-danger-600 hover:!bg-danger-50" @click="modelDeleting = editModel">{{ $t('common.delete') }}</AppButton>
         <AppButton variant="secondary" @click="editModel = null">{{ $t('common.cancel') }}</AppButton>
         <AppButton type="submit" form="edit-model-form" :loading="editForm.submitting.value">{{ $t('common.save') }}</AppButton>
       </template>
@@ -653,7 +854,7 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
     <!-- Test model -->
     <AppModal :open="!!testModel" :title="$t('aiAdmin.testModelTitle', { name: testModel?.model_key ?? '' })" @close="testModel = null">
       <div class="space-y-3 text-sm">
-        <p class="rounded-lg bg-warning-50 px-3 py-2 text-warning-700">{{ $t('aiAdmin.testModelPaid') }}</p>
+        <p class="flex gap-2 rounded-lg bg-warning-50 px-3 py-2 text-warning-700 ring-1 ring-inset ring-warning-600/20"><AppIcon name="alert" :size="16" class="mt-0.5 shrink-0" />{{ $t('aiAdmin.testModelPaid') }}</p>
         <AppInput v-model="testDraft.prompt" :label="$t('aiAdmin.testPrompt')" :placeholder="$t('aiAdmin.testPromptPlaceholder')" />
         <label class="flex items-center gap-2"><input v-model="testDraft.structured" type="checkbox" /> {{ $t('aiAdmin.testStructured') }}</label>
         <div v-if="testResult" class="space-y-2 rounded-lg border border-line p-3" data-testid="model-test-result">

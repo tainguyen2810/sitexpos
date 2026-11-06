@@ -58,13 +58,13 @@ const statusTone = (s: Campaign['status']) => (({ active: 'success', paused: 'wa
 
     <div v-if="usage.data.value" class=" ">
       <StatCard :label="t('research.campaigns.title')" :value="`${usage.data.value.campaigns}/${usage.data.value.limits.max_campaigns}`" icon="target" />
-      <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+      <div class="rounded-xl bg-surface shadow-xs ring-1 ring-line p-4">
         <p class="text-sm text-ink-muted">{{ t('research.run.history') }}</p>
         <p class="mt-2 text-2xl font-semibold tabular-nums">{{ usage.data.value.usage.runs.used }}<span class="text-base text-ink-muted">/{{ usage.data.value.usage.runs.limit }}</span></p>
         <ProgressBar class="mt-2" tone="auto" :value="usage.data.value.usage.runs.used + usage.data.value.usage.runs.reserved" :max="usage.data.value.usage.runs.limit ?? 0" />
       </div>
       <StatCard :label="t('research.overview.ideas')" :value="usage.data.value.usage.ideas.used" icon="sparkles" />
-      <div class="col-span-2 rounded-xl border border-line bg-surface p-4 shadow-sm lg:col-span-1">
+      <div class="col-span-2 rounded-xl bg-surface shadow-xs ring-1 ring-line p-4 lg:col-span-1">
         <p class="text-sm text-ink-muted">{{ t('research.keywords.source') }}</p>
         <ul class="mt-2 space-y-1 text-xs">
           <li v-for="s in usage.data.value.sources" :key="s.source" class="flex items-center justify-between gap-2">

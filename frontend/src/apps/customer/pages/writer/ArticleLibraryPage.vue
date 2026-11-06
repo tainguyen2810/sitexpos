@@ -71,7 +71,7 @@ const siteName = (sid: string) => sites.data.value?.find((s) => s.id === sid)?.n
     <WriterNav active="library" />
 
     <div v-if="overview.data.value" class=" ">
-      <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+      <div class="rounded-xl bg-surface shadow-xs ring-1 ring-line p-4">
         <p class="text-sm text-ink-muted">{{ t('writer.overview.quota') }}</p>
         <p class="mt-2 text-2xl font-semibold tabular-nums">{{ overview.data.value.quota.used }}<span class="text-base text-ink-muted">/{{ overview.data.value.quota.limit }}</span></p>
         <ProgressBar class="mt-2" tone="auto" :value="overview.data.value.quota.used" :max="overview.data.value.quota.limit" />

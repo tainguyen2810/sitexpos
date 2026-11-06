@@ -34,7 +34,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
       <span class="min-w-0 flex-1 truncate font-medium">{{ label }}</span>
       <AppIcon name="chevronDown" :size="16" class="text-ink-subtle" />
     </button>
-    <div v-if="open" class="absolute left-0 right-0 z-50 mt-2 rounded-xl border border-line bg-surface p-1 shadow-lg">
+    <div v-if="open" class="absolute left-0 right-0 z-50 mt-2 rounded-xl bg-surface p-1 shadow-lg ring-1 ring-slate-900/5">
       <p class="px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-ink-subtle">{{ $t('nav.switchWorkspace') }}</p>
       <RouterLink
         v-for="w in workspaces"

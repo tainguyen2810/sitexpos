@@ -20,10 +20,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <h2 class="truncate text-base font-semibold">{{ title }}</h2>
             <p v-if="subtitle" class="truncate text-sm text-ink-muted">{{ subtitle }}</p>
           </div>
-          <button type="button" class="rounded p-1 text-ink-muted hover:bg-surface-muted" :aria-label="$t('common.close')" @click="emit('close')"><AppIcon name="x" /></button>
+          <button type="button" class="rounded-md p-1 text-ink-subtle hover:bg-slate-100 hover:text-ink" :aria-label="$t('common.close')" @click="emit('close')"><AppIcon name="x" /></button>
         </header>
         <div class="flex-1 overflow-y-auto px-5 py-4"><slot /></div>
-        <footer v-if="$slots.footer" class="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-3"><slot name="footer" /></footer>
+        <footer v-if="$slots.footer" class="flex flex-wrap justify-end gap-2 border-t border-line bg-surface-muted px-5 py-3"><slot name="footer" /></footer>
       </aside>
     </div>
   </Teleport>
