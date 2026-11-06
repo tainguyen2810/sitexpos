@@ -3,6 +3,7 @@ import writer from './writer.vi'
 import writerAdmin from './writerAdmin.vi'
 import p6 from './phase6.vi'
 import billing from './billing.vi'
+import analytics from './analytics.vi'
 export default {
   common: {
     appName: 'SiteX Post',
@@ -128,6 +129,9 @@ export default {
     writerAdmin: 'AI Writer',
     research_admin: 'Nghiên cứu SEO',
     billing: 'Gói & thanh toán',
+    analytics: 'SEO Analytics',
+    agent: 'SEO Agent',
+    analyticsAdmin: 'Analytics & Agent',
     workspaces: 'Workspace',
     users: 'Người dùng',
     staff: 'Nhân sự nền tảng',
@@ -948,4 +952,5 @@ export default {
   writerAdmin,
   p6,
   ...billing,
+  ...analytics,
 } as const

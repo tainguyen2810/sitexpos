@@ -36,6 +36,8 @@ const nav = computed<NavItem[]>(() => {
     { label: t('nav.media'), to: `${base}/media`, icon: 'image' },
     { label: t('nav.seo'), to: `${base}/seo`, icon: 'search' },
     { label: t('nav.publishing'), to: `${base}/publishing`, icon: 'send' },
+    { label: t('nav.analytics'), to: `${base}/analytics`, icon: 'chart' },
+    { label: t('nav.agent'), to: `${base}/agent`, icon: 'cpu' },
     { label: t('nav.ai'), to: `${base}/ai`, icon: 'sparkles' },
     { label: t('nav.members'), to: `${base}/members`, icon: 'users' },
     { label: t('nav.audit'), to: `${base}/audit`, icon: 'list' },
