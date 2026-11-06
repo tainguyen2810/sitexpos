@@ -37,3 +37,10 @@ Schedule::command('sitex:billing:lifecycle')->everyFifteenMinutes()->withoutOver
 Schedule::command('sitex:billing:expire-credits')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('sitex:billing:aggregate-costs --days=2')->hourly()->withoutOverlapping();
 Schedule::command('sitex:billing:verify-ledger')->dailyAt('03:15');
+
+// Phase 8 — SEO Analytics & Autonomous SEO Agent
+Schedule::command('sitex:analytics:sync')->hourly()->withoutOverlapping()->onOneServer();
+Schedule::command('sitex:analytics:refresh-tick')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+Schedule::command('sitex:analytics:prune')->dailyAt('03:40')->onOneServer();
+Schedule::command('sitex:agent:schedule')->everyMinute()->withoutOverlapping()->onOneServer();
+Schedule::command('sitex:agent:recover')->everyFiveMinutes()->withoutOverlapping()->onOneServer();

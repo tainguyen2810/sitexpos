@@ -11,6 +11,7 @@ use SiteXPost\Kernel\Modules\ModuleServiceProvider;
 use SiteXPost\Modules\Analytics\Console\PruneAnalytics;
 use SiteXPost\Modules\Analytics\Console\ScheduleAnalyticsSync;
 use SiteXPost\Modules\Analytics\Console\TickContentRefresh;
+use SiteXPost\Modules\Analytics\Contracts\SeoInsights;
 use SiteXPost\Modules\Analytics\Domain\AnalyticsProperty;
 use SiteXPost\Modules\Analytics\Domain\AnalyticsSetting;
 use SiteXPost\Modules\Analytics\Domain\AnalyticsSyncRun;
@@ -23,6 +24,7 @@ use SiteXPost\Modules\Analytics\Domain\SeoOpportunity;
 use SiteXPost\Modules\Analytics\Domain\SeoRecommendation;
 use SiteXPost\Modules\Analytics\Domain\SeoReport;
 use SiteXPost\Modules\Analytics\Policies\AnalyticsPolicy;
+use SiteXPost\Modules\Analytics\Queries\SeoInsightsService;
 
 /**
  * Phase 8 — SEO Analytics & Content Intelligence (ANALYTICS-ARCHITECTURE.md,
@@ -43,6 +45,11 @@ final class AnalyticsServiceProvider extends ModuleServiceProvider
         SeoReport::class => AnalyticsPolicy::class,
         CopilotQuery::class => AnalyticsPolicy::class,
     ];
+
+    public function register(): void
+    {
+        $this->app->bind(SeoInsights::class, SeoInsightsService::class);
+    }
 
     protected function bootModule(): void
     {

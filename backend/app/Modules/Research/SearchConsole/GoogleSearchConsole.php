@@ -294,7 +294,7 @@ class GoogleSearchConsole
             throw new SearchConsoleException('quota_exceeded', 'Search Console API rate limit.', true);
         }
         if (! $res->successful()) {
-            throw new SearchConsoleException('api_error', 'Search Console API error '.$res->status(), $res->serverError() || $res->status() === 429);
+            throw new SearchConsoleException('api_error', 'Search Console API error '.$res->status(), $res->serverError());
         }
 
         return (array) $res->json();

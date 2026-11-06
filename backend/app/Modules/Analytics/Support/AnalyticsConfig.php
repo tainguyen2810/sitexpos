@@ -72,7 +72,7 @@ final class AnalyticsConfig
      */
     public static function thresholds(?string $workspaceId = null): array
     {
-        $over = $workspaceId !== null ? (AnalyticsSetting::query()->where('workspace_id', $workspaceId)->first()?->thresholds ?? []) : [];
+        $over = $workspaceId !== null ? (AnalyticsSetting::query()->where('workspace_id', $workspaceId)->first()->thresholds ?? []) : [];
         $out = self::THRESHOLDS;
         foreach ($over as $k => $v) {
             if (array_key_exists($k, $out) && is_numeric($v)) {
@@ -88,7 +88,7 @@ final class AnalyticsConfig
      */
     public static function weights(?string $workspaceId = null): array
     {
-        $over = $workspaceId !== null ? (AnalyticsSetting::query()->where('workspace_id', $workspaceId)->first()?->health_weights ?? []) : [];
+        $over = $workspaceId !== null ? (AnalyticsSetting::query()->where('workspace_id', $workspaceId)->first()->health_weights ?? []) : [];
         $out = self::HEALTH_WEIGHTS;
         foreach ($over as $k => $v) {
             if (array_key_exists($k, $out) && is_numeric($v)) {

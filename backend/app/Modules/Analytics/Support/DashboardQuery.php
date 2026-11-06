@@ -108,7 +108,7 @@ final class DashboardQuery
         };
 
         return $this->daily($f)->whereBetween('date', [$f['from'], $f['to']])->groupBy($col)->selectRaw($col.' as dim, '.self::SUMS)
-            ->orderByDesc('clicks')->limit(100)->get()->map(fn ($r) => ['value' => (string) $r->dim] + $this->shape($r))->all();
+            ->orderByDesc('clicks')->limit(100)->get()->map(fn ($r) => ['value' => (string) $r->getAttribute('dim')] + $this->shape($r))->all();
     }
 
     /**
@@ -160,7 +160,7 @@ final class DashboardQuery
             $cur = $this->shape($r);
             $pv = $p !== null ? $this->shape($p) : ['clicks' => 0, 'impressions' => 0, 'ctr' => null, 'position' => null];
 
-            return ['key' => (string) $r->{$hash}, 'label' => (string) $r->label] + ($withArticle ? ['article_id' => $r->article_id] : []) + $cur + [
+            return ['key' => (string) $r->{$hash}, 'label' => (string) $r->getAttribute('label')] + ($withArticle ? ['article_id' => $r->getAttribute('article_id')] : []) + $cur + [
                 'previous' => $pv, 'clicks_change' => Metrics::change($cur['clicks'], $pv['clicks']),
                 'position_change' => $cur['position'] !== null && $pv['position'] !== null ? round($pv['position'] - $cur['position'], 2) : null,
             ];

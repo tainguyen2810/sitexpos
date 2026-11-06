@@ -102,7 +102,7 @@ final class DashboardController
             ->whereBetween('date', [$f['from'], $f['to']])->groupBy('date')->orderBy('date')
             ->selectRaw('date, SUM(clicks) as clicks, SUM(impressions) as impressions, SUM(position * impressions) as pw')->get()
             ->map(fn ($r) => ['date' => (string) $r->date, 'clicks' => (int) $r->clicks, 'impressions' => (int) $r->impressions,
-                'ctr' => Metrics::ctr((int) $r->clicks, (int) $r->impressions), 'position' => (int) $r->impressions > 0 ? round((float) $r->pw / (int) $r->impressions, 2) : null])->all();
+                'ctr' => Metrics::ctr((int) $r->clicks, (int) $r->impressions), 'position' => (int) $r->impressions > 0 ? round((float) $r->getAttribute('pw') / (int) $r->impressions, 2) : null])->all();
         $period = SearchQueryPageMetric::query()->where('site_id', $a['site_id'])->max('period_end');
         $queries = $period === null ? [] : SearchQueryPageMetric::query()->where('site_id', $a['site_id'])->whereIn('page_hash', $hashes)->where('period_end', $period)
             ->orderByDesc('clicks')->orderByDesc('impressions')->limit(50)->get()

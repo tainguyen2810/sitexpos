@@ -42,7 +42,11 @@ final class OpportunityRules
         return $out;
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * @param  array<string, mixed>  $d
+     * @param  array<string, float|int>  $t
+     * @return list<array<string, mixed>>
+     */
     private static function queryHighImprLowCtr(array $d, array $t): array
     {
         $out = [];
@@ -71,7 +75,11 @@ final class OpportunityRules
         return $out;
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * @param  array<string, mixed>  $d
+     * @param  array<string, float|int>  $t
+     * @return list<array<string, mixed>>
+     */
     private static function pageTrafficDecline(array $d, array $t): array
     {
         $out = [];
@@ -90,7 +98,11 @@ final class OpportunityRules
         return $out;
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * @param  array<string, mixed>  $d
+     * @param  array<string, float|int>  $t
+     * @return list<array<string, mixed>>
+     */
     private static function pagePositionImproving(array $d, array $t): array
     {
         $out = [];
@@ -114,7 +126,11 @@ final class OpportunityRules
         return $out;
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * @param  array<string, mixed>  $d
+     * @param  array<string, float|int>  $t
+     * @return list<array<string, mixed>>
+     */
     private static function newQuery(array $d, array $t): array
     {
         if (! ($d['has_long_history'] ?? false)) {
@@ -135,7 +151,11 @@ final class OpportunityRules
         return array_slice($out, 0, 50);
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * @param  array<string, mixed>  $d
+     * @param  array<string, float|int>  $t
+     * @return list<array<string, mixed>>
+     */
     private static function contentMissingInfo(array $d, array $t): array
     {
         $out = [];
@@ -175,7 +195,11 @@ final class OpportunityRules
         return $out;
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * @param  array<string, mixed>  $d
+     * @param  array<string, float|int>  $t
+     * @return list<array<string, mixed>>
+     */
     private static function outdatedInfo(array $d, array $t): array
     {
         $out = [];
@@ -200,7 +224,11 @@ final class OpportunityRules
         return $out;
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * @param  array<string, mixed>  $d
+     * @param  array<string, float|int>  $t
+     * @return list<array<string, mixed>>
+     */
     private static function keywordCannibalization(array $d, array $t): array
     {
         $byQuery = [];
@@ -229,7 +257,11 @@ final class OpportunityRules
         return $out;
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * @param  array<string, mixed>  $d
+     * @param  array<string, float|int>  $t
+     * @return list<array<string, mixed>>
+     */
     private static function internalLinkOpportunity(array $d, array $t): array
     {
         $out = [];
@@ -262,7 +294,11 @@ final class OpportunityRules
         return $out;
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * @param  array<string, mixed>  $d
+     * @param  array<string, float|int>  $t
+     * @return list<array<string, mixed>>
+     */
     private static function orphanContent(array $d, array $t): array
     {
         $managed = array_values(array_filter($d['managed'], fn ($a) => $a['url'] !== null));
@@ -289,7 +325,11 @@ final class OpportunityRules
         return $out;
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * @param  array<string, mixed>  $d
+     * @param  array<string, float|int>  $t
+     * @return list<array<string, mixed>>
+     */
     private static function brokenInternalLinks(array $d, array $t): array
     {
         if ($d['inventory_urls'] === []) {
@@ -316,7 +356,11 @@ final class OpportunityRules
         return $out;
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * @param  array<string, mixed>  $d
+     * @param  array<string, float|int>  $t
+     * @return list<array<string, mixed>>
+     */
     private static function duplicateTitleMeta(array $d, array $t): array
     {
         $groups = [];
@@ -349,7 +393,11 @@ final class OpportunityRules
         return $out;
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * @param  array<string, mixed>  $d
+     * @param  array<string, float|int>  $t
+     * @return list<array<string, mixed>>
+     */
     private static function missingMetadata(array $d, array $t): array
     {
         $out = [];
@@ -369,7 +417,11 @@ final class OpportunityRules
         return $out;
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * @param  array<string, mixed>  $d
+     * @param  array<string, float|int>  $t
+     * @return list<array<string, mixed>>
+     */
     private static function contentGap(array $d, array $t): array
     {
         $out = [];
@@ -387,7 +439,11 @@ final class OpportunityRules
         return array_slice($out, 0, 50);
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * @param  array<string, mixed>  $d
+     * @param  array<string, float|int>  $t
+     * @return list<array<string, mixed>>
+     */
     private static function clusterCoverageGap(array $d, array $t): array
     {
         $out = [];
@@ -403,7 +459,11 @@ final class OpportunityRules
         return $out;
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * @param  array<string, mixed>  $d
+     * @param  array<string, float|int>  $t
+     * @return list<array<string, mixed>>
+     */
     private static function refreshCandidate(array $d, array $t): array
     {
         $out = [];

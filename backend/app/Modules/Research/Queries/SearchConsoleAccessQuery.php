@@ -34,7 +34,7 @@ final class SearchConsoleAccessQuery implements SearchConsoleAccess
 
         return [
             'connected' => $c !== null,
-            'status' => $c?->status ?? 'not_connected',
+            'status' => $c->status ?? 'not_connected',
             'property_url' => $c?->property_url,
             'google_email' => $c?->google_email,
             'last_synced_at' => $c?->last_synced_at?->toIso8601ZuluString(),
