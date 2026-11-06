@@ -227,6 +227,7 @@ export default {
       expand_topic_cluster: 'Mở rộng cụm chủ đề',
       fix_broken_links: 'Sửa liên kết hỏng',
       improve_article_structure: 'Cải thiện cấu trúc bài',
+      rewrite_title_meta: 'Viết lại tiêu đề & mô tả',
       fix_metadata: 'Sửa metadata',
       investigate: 'Cần điều tra thêm',
     },

@@ -338,14 +338,50 @@ Tiền tố `/workspaces/{ws}`. `{articleRef}` = id bài Writer (Phase 5) của 
 | GET · POST (**P**) | `/batches` · POST `/batches/preview` | Bulk: tối đa `max_bulk_items`; `Idempotency-Key` |
 | GET · POST (**P**) | `/batches/{b}` · `/pause` · `/resume` · `/cancel` | |
 
-### 2.7 Analytics (Phase 9)
-| Method | Path |
-|---|---|
-| GET | `/workspaces/{ws}/sites/{site}/gsc/connect` → URL OAuth Google |
-| GET | `/oauth/google/callback` (state ký, gắn workspace + site) |
-| DELETE | `/workspaces/{ws}/sites/{site}/gsc` |
-| GET | `/workspaces/{ws}/sites/{site}/performance?from&to&dimension=page|query` |
-| GET/PATCH | `/workspaces/{ws}/sites/{site}/refresh-suggestions` |
+### 2.7 Analytics (Phase 8) ✦
+Tiền tố `/workspaces/{ws}/analytics`. Đọc: mọi thành viên (`workspace.view`). Kết nối / property / đồng bộ / cài đặt: `sites.manage`. Duyệt cơ hội, decay, đề xuất, tạo/duyệt refresh, experiment, báo cáo: `content.edit`; đăng refresh: `content.publish`. Bộ lọc chung: `site_id`, `from`, `to`, `search_type`, `device` (`desktop|mobile|tablet`), `country` (ISO-3 thường, ví dụ `vnm`), `q`, `sort`, `mapped_only`. Mọi response danh sách có `meta.latest_date` và ghi chú độ trễ GSC. Xem `ANALYTICS-ARCHITECTURE.md`, `GSC-INTEGRATION.md`.
+
+| Method | Path | Mô tả |
+|---|---|---|
+| GET | `/sites` | Site + trạng thái Search Console, property Analytics, health mới nhất |
+| GET | `/sites/{site}/connection` | Trạng thái chi tiết (`oauth_configured`, `search_console`, `analytics`, `ga4.available=false`) |
+| POST | `/sites/{site}/connect` | → `{url}` OAuth Google (scope `webmasters.readonly`) |
+| GET | `/sites/{site}/properties` | Property truy cập được |
+| PUT | `/sites/{site}/property` | `{property_url}`; 422 `property_unknown` nếu không thuộc danh sách |
+| DELETE | `/sites/{site}/connection` | Thu hồi token tại Google + xóa token (`revoked_at_google`) |
+| POST | `/sites/{site}/sync` | `{kind: incremental\|backfill}` + `Idempotency-Key` → 202 `{run}`; 409 `sync_in_progress` |
+| GET | `/sync-runs` | Lịch sử đồng bộ (`status`, `rows_upserted`, `api_requests`, `error_code`, `next_retry_at`) |
+| GET | `/overview` · `/queries` · `/pages` · `/dimensions` | Dashboard, so sánh với kỳ trước |
+| GET | `/articles` · `/articles/{article}` | Bài đã duyệt + hiệu suất theo URL khớp chính xác; chi tiết: chuỗi ngày, truy vấn, URL đã khớp (`source`), snapshot, refresh, experiment |
+| GET | `/content` · `/clusters` | Phân loại nội dung (`classification`, `labels`, `reasons`) · cụm chủ đề |
+| GET | `/opportunities[/{id}]` · PATCH `/opportunities/{id}` | Lọc `rule`, `severity`, `status`; PATCH `{status: open\|accepted\|dismissed\|resolved, note?}` |
+| GET | `/decay` · PATCH `/decay/{id}` | `{status: DECAY_SUSPECTED\|NEEDS_INVESTIGATION\|CONFIRMED_ISSUE\|NO_ACTION, note?}` |
+| GET | `/recommendations` · PATCH `/recommendations/{id}` | Lọc `status`, `source`, `type`; PATCH `{status: approved\|rejected\|dismissed, note?}` |
+| GET · POST | `/refresh-jobs` | Tạo `{article_id, recommendation_id?}` + `Idempotency-Key` → 202; 409 `refresh_in_progress`, `refresh_requires_approved_article`, `refresh_not_published` |
+| GET | `/refresh-jobs/{id}` | Brief, diff theo section, fact-check, SEO audit, kiểm tra WordPress |
+| POST | `/refresh-jobs/{id}/approve` · `/publish` · `/cancel` · `/poll` | Duyệt (`content.edit`), đăng qua Publisher (`content.publish`, 422 `gates_failed`, 409 `wordpress_changed`), hủy, tiến độ |
+| GET · POST | `/experiments` · GET `/experiments/{id}` · POST `/experiments/{id}/cancel` | Theo dõi trước/sau (`method = before_after`) |
+| GET | `/health` | Điểm hiện tại + lịch sử + thành phần `{value, weight, available, detail}` |
+| GET · POST | `/reports` · GET `/reports/{id}` · GET `/reports/{id}/csv` | `{period_type: weekly\|monthly\|custom, period_start?, period_end?}` → 202 |
+| POST | `/reports/{id}/email` | `{recipient_ids[]}` — chỉ thành viên đang hoạt động; người khác → 403 `recipient_not_member` |
+| GET · POST | `/copilot` · GET `/copilot/{id}` | Câu hỏi; trả `answer.{facts, inferences, recommendations}`, `data_refs`, `data_freshness`, `mode: rules\|ai_pending\|ai`; không thực thi |
+| GET · PUT | `/settings` | Ngưỡng quy tắc, trọng số health, `backfill_days`, `raw_retention_days` |
+
+### 2.8 SEO Agent (Phase 8) ✦
+Tiền tố `/workspaces/{ws}/agent`. Xem `AUTONOMOUS-SEO-AGENT.md`, `AGENT-POLICY-ENGINE.md`.
+
+| Method | Path | Quyền | Mô tả |
+|---|---|---|---|
+| GET | `/tools` | view | Registry: `{name, min_level, permission, writes, content, cost, description}` |
+| GET · PUT | `/sites/{site}/config` | view · `sites.manage` | Cấu hình; lên mức 3 bắt buộc `confirm_level3: true` (409 `level3_confirmation_required`) |
+| POST | `/sites/{site}/emergency-stop` | dừng: `content.edit` · bỏ dừng: `sites.manage` | `{stop: bool}` — dừng hủy mọi run/task mở |
+| POST | `/sites/{site}/runs` | `content.edit` | `{kind}` + `Idempotency-Key` → 202; 409 `agent_run_active`, `agent_disabled`, `agent_emergency_stop`, `agent_platform_kill_switch`, `agent_busy` |
+| GET | `/runs[/{id}]` | view | Run + tasks + phase |
+| POST | `/runs/{id}/pause` · `/resume` · `/cancel` | `content.edit` | |
+| GET | `/tasks` | view | Mặc định `status=awaiting_approval` |
+| POST | `/tasks/{id}/approve` · `/reject` · `/retry` | `content.edit` (+ quyền của tool) | `{note?}`; 403 `approver_lacks_permission`, 409 `policy_denied` |
+| GET · POST | `/sites/{site}/schedules` · PATCH `/schedules/{id}` | view · `sites.manage` | Lịch theo múi giờ site; trả `next_run_at`, `preview[]` |
+| GET | `/logs` · `/memories` | view | Nhật ký chỉ ghi thêm; bộ nhớ có `expires_at` |
 
 ---
 
@@ -432,6 +468,13 @@ Yêu cầu `platform_role` + 2FA đã xác nhận. User thường nhận **404**
 | GET | `/reports/revenue` · `/reports/costs` · `/reports/profitability` | `?from&to` — tiền mặt / ghi nhận / hoãn lại / nợ credit; chi phí AI; lợi nhuận theo tenant/gói + cảnh báo (không tự khóa) |
 | GET · PUT | `/settings` | Cài đặt billing (`enforcement`, trial, ân hạn, proration, hết hạn đơn, nhắc gia hạn, tỷ giá, thông tin bên bán…) |
 | GET · PUT | `/providers[/{code}]` | Cấu hình cổng; `credentials` ghi-một-chiều, chỉ trả `credentials_set[]` |
+
+**Phase 8 — Analytics & Agent**
+| Method | Path | Quyền | Mô tả |
+|---|---|---|---|
+| GET | `/analytics/overview?days=` | `platform.jobs.manage` | Property theo trạng thái, dữ liệu cũ, request GSC, dòng ghi, lỗi thường gặp, site lỗi, refresh, Copilot (số câu, chi phí); `oauth_configured` |
+| GET | `/agent/overview?days=` | `platform.jobs.manage` | Run theo trạng thái, quyết định, task theo tool, run lỗi, chi phí ước tính, số site theo mức tự động, dừng khẩn cấp |
+| GET · PUT | `/agent/policy` | `platform.ai.manage` | Kill switch (+ `kill_reason`), `max_autonomy_level`, `forbidden_tools`, `max_tasks_per_run`, `max_concurrent_runs`, timeout; audit `agent.platform_policy_updated` / `agent.platform_kill_switch` |
 
 ## 4. Connector API trên Cloud (`/connector/v1`) — plugin gọi (Phase 2) ✦
 

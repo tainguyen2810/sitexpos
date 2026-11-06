@@ -37,6 +37,15 @@ it('builds a report from stored data only, exports CSV safely and emails only ac
     $csv = $this->actingAs($t['viewer'])->get(anUrl($t['workspace'], "analytics/reports/{$id}/csv"));
     $csv->assertOk()->assertHeader('content-type', 'text/csv; charset=UTF-8');
     expect($csv->streamedContent())->toContain('Báo cáo SEO');
+    // A target label taken from website data cannot become a spreadsheet formula.
+    inAnalyticsTenant($t, function () use ($id): void {
+        $r = SeoReport::query()->findOrFail($id);
+        $p = $r->payload;
+        $p['opportunities'] = [['rule_code' => 'new_query', 'target_label' => '=HYPERLINK("http://evil.example")', 'severity' => 'low', 'recommended_action' => 'investigate']];
+        $r->forceFill(['payload' => $p])->save();
+    });
+    $evil = $this->actingAs($t['viewer'])->get(anUrl($t['workspace'], "analytics/reports/{$id}/csv"))->streamedContent();
+    expect($evil)->toContain("'=HYPERLINK")->not->toMatch('/(^|,)"?=HYPERLINK/m');
 
     $this->actingAs($t['viewer'])->postJson(anUrl($t['workspace'], "analytics/reports/{$id}/email"), ['recipient_ids' => [$t['viewer']->id]])->assertForbidden();
     $outsider = User::factory()->create();

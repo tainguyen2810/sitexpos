@@ -87,7 +87,7 @@ describe('Phase 8 i18n', () => {
     check('an.opportunities.status', OPPORTUNITY_STATUSES)
     check('an.decay.status', DECAY_STATUSES)
     check('an.decay.mark', DECAY_STATUSES)
-    check('an.actions', [...RECOMMENDATION_TYPES, 'fix_metadata', 'investigate'])
+    check('an.actions', [...RECOMMENDATION_TYPES, 'rewrite_title_meta', 'fix_metadata', 'investigate'])
     check('an.recommendations.status', RECOMMENDATION_STATUSES)
     check('an.refresh.status', REFRESH_STATUSES)
     check('an.experiments.change', CHANGE_TYPES)
