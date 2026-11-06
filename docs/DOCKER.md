@@ -37,7 +37,8 @@ Image chỉ chứa mã nguồn, `vendor/` (không có gói dev) và hai SPA đã
 
 ```bash
 sudo mkdir -p /opt/sitexpost && cd /opt/sitexpost
-# lấy 2 file từ repo: deploy/docker/docker-compose.yml và deploy/docker/env.example
+# lấy 3 file từ repo: deploy/docker/docker-compose.yml, deploy/docker/env.example, deploy/docker/update.sh
+sudo chmod +x update.sh
 sudo cp env.example .env && sudo chmod 600 .env
 sudo nano .env      # điền 3 URL và 2 mật khẩu (tạo bằng: openssl rand -base64 24)
 sudo docker compose pull
@@ -88,12 +89,23 @@ Kiểm tra: `https://api.<domain>/up` trả trang "Application up"; `https://app
 
 ## 4. Nâng cấp
 
+Một lệnh SSH:
+
+```bash
+sudo /opt/sitexpost/update.sh 1.1.0     # lên phiên bản 1.1.0
+sudo /opt/sitexpost/update.sh           # tải bản mới nhất của tag đang dùng (vd. latest)
+```
+
+`update.sh` (lấy từ `deploy/docker/update.sh`, đặt cạnh `docker-compose.yml`) làm lần lượt: sao lưu mã hóa + kiểm tra (bắt buộc khi đã đặt khóa sao lưu; sao lưu lỗi thì dừng, không đổi gì) → ghi `SITEX_VERSION` → `docker compose pull` (lỗi thì trả lại phiên bản cũ) → `docker compose up -d` → chờ pre-flight/migration → báo kết quả. Nếu bản mới bị chặn, script in đúng lệnh quay lại, ví dụ `sudo /opt/sitexpost/update.sh 1.0.0`. Script không xóa volume, không sửa `.env` của Laravel.
+
+Làm tay (tương đương):
+
 ```bash
 cd /opt/sitexpost
-sudo docker compose exec app artisan sitex:backup:run --verify   # sao lưu trước
-sudo nano .env                     # SITEX_VERSION=1.1.0
+sudo docker compose exec app artisan sitex:backup:run --verify
+sudo sed -i 's/^SITEX_VERSION=.*/SITEX_VERSION=1.1.0/' .env
 sudo docker compose pull && sudo docker compose up -d
-sudo docker compose logs -f app    # xem pre-flight / migration
+sudo docker compose logs -f app
 ```
 
 Khi container `app` khởi động (đã cài đặt), nó tự:
