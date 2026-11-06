@@ -302,7 +302,10 @@ final class OpportunityRules
     private static function orphanContent(array $d, array $t): array
     {
         $managed = array_values(array_filter($d['managed'], fn ($a) => $a['url'] !== null));
-        if (count($managed) < 3) {
+        // Links are only known for articles whose content SiteX stores: without the
+        // content of (almost) every article, "nobody links here" cannot be concluded.
+        $withContent = count(array_filter($managed, fn ($a) => ($a['text'] ?? '') !== ''));
+        if (count($managed) < 3 || $withContent < max(3, (int) ceil(0.8 * count($managed)))) {
             return [];
         }
         $linked = [];

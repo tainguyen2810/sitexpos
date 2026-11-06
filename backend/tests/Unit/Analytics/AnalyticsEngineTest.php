@@ -4,6 +4,7 @@ use SiteXPost\Modules\Analytics\Engine\DecayDetector;
 use SiteXPost\Modules\Analytics\Engine\ExperimentEvaluator;
 use SiteXPost\Modules\Analytics\Engine\HealthScorer;
 use SiteXPost\Modules\Analytics\Engine\Metrics;
+use SiteXPost\Modules\Analytics\Engine\OpportunityRules;
 use SiteXPost\Modules\Analytics\Engine\TrendClassifier;
 use SiteXPost\Modules\Analytics\Support\AnalyticsConfig;
 use SiteXPost\Modules\Analytics\Support\UrlNormalizer;
@@ -88,4 +89,16 @@ it('normalizes URLs for exact mapping without guessing', function () {
     expect(UrlNormalizer::normalize('HTTPS://Blog.Example.com/Bai-Viet/?utm_source=x#top'))->toBe(UrlNormalizer::normalize('https://blog.example.com/Bai-Viet/'))
         ->and(UrlNormalizer::hash('https://blog.example.com/a/'))->not->toBe(UrlNormalizer::hash('https://blog.example.com/b/'))
         ->and(UrlNormalizer::host('https://www.blog.example.com/x'))->toContain('blog.example.com');
+});
+
+it('does not call content orphaned when the content of the other articles is unknown', function () {
+    $orphan = new ReflectionMethod(OpportunityRules::class, 'orphanContent');
+    $article = fn (int $i, string $text, array $links = []) => ['article_id' => 'a'.$i, 'title' => 'Bài '.$i, 'url' => "https://b.example/bai-$i/", 'text' => $text, 'links_norm' => $links];
+    $unknown = ['managed' => array_map(fn ($i) => $article($i, ''), range(1, 5))];
+    expect($orphan->invoke(null, $unknown, []))->toBe([]);
+
+    $linksTo = fn (int $i) => [UrlNormalizer::normalize("https://b.example/bai-$i/")];
+    $known = ['managed' => [$article(1, 'x', $linksTo(2)), $article(2, 'x', $linksTo(3)), $article(3, 'x', $linksTo(1)), $article(4, 'x', $linksTo(1)), $article(5, 'x')]];
+    $found = $orphan->invoke(null, $known, []);
+    expect(array_column($found, 'target_ref'))->toEqualCanonicalizing(['a4', 'a5']);
 });

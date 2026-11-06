@@ -70,7 +70,9 @@ final class ComputeHealthScore
             if ($known !== [] && $internal > 0) {
                 $components['broken_links'] = ['value' => 100 - $broken / $internal * 100, 'detail' => "{$broken}/{$internal} liên kết nội bộ trong bài SiteX không khớp nội dung đã đồng bộ."];
             }
-            if (count($managed) >= 3) {
+            $withContent = count(array_filter($managed, fn ($a) => ($a['text'] ?? '') !== ''));
+            // Inbound links are only known when SiteX holds the content of (almost) every article.
+            if (count($managed) >= 3 && $withContent >= (int) ceil(0.8 * count($managed))) {
                 $linked = [];
                 foreach ($managed as $a) {
                     foreach ($a['links_norm'] as $l) {
