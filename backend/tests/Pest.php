@@ -1,8 +1,10 @@
 <?php
 
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
@@ -13,6 +15,8 @@ use SiteXPost\Modules\AiGateway\Domain\AiBudget;
 use SiteXPost\Modules\AiGateway\Domain\AiModel;
 use SiteXPost\Modules\AiGateway\Domain\AiTaskRoute;
 use SiteXPost\Modules\AiGateway\Registry\AiRegistry;
+use SiteXPost\Modules\Analytics\Domain\AnalyticsProperty;
+use SiteXPost\Modules\Analytics\Support\UrlNormalizer;
 use SiteXPost\Modules\Billing\Domain\CreditPolicy;
 use SiteXPost\Modules\Billing\Domain\PaymentProviderConfig;
 use SiteXPost\Modules\Billing\Domain\Plan;
@@ -29,6 +33,7 @@ use SiteXPost\Modules\Publishing\Domain\PublishingConflict;
 use SiteXPost\Modules\Publishing\Domain\PublishingJob;
 use SiteXPost\Modules\Publishing\Domain\WordPressPostMapping;
 use SiteXPost\Modules\Research\Domain\CampaignSettings;
+use SiteXPost\Modules\Research\Domain\SearchConsoleConnection;
 use SiteXPost\Modules\Research\Domain\SeoCampaign;
 use SiteXPost\Modules\Seo\Domain\SeoAuditRun;
 use SiteXPost\Modules\Seo\Domain\SeoLinkSuggestion;
@@ -514,4 +519,144 @@ function bankTx(string $id, int $amount, string $memo, string $currency = 'VND')
 function billingUrl(Workspace $workspace, string $path): string
 {
     return '/api/v1/workspaces/'.$workspace->id.'/billing/'.ltrim($path, '/');
+}
+
+/**
+ * Phase 8 (Analytics & Agent) helpers ------------------------------------
+ */
+
+/**
+ * An active Search Console connection with a valid (fake) access token.
+ */
+function gscConnected(Workspace $workspace, Site $site, string $property = 'sc-domain:b.example'): SearchConsoleConnection
+{
+    return app(TenantContext::class)->runAs($workspace, null, function () use ($site, $property): SearchConsoleConnection {
+        $c = new SearchConsoleConnection;
+        $c->forceFill(['site_id' => $site->id, 'property_url' => $property, 'google_email' => 'owner@example.com', 'access_token_encrypted' => 'ya29.test',
+            'refresh_token_encrypted' => '1//refresh', 'token_expires_at' => now()->addHour(), 'status' => 'active'])->save();
+
+        return $c;
+    });
+}
+
+/**
+ * Fake Google endpoints: property list + searchAnalytics rows per dimension set.
+ *
+ * @param  array<string, list<array<string, mixed>>>  $rows  keyed by implode(',', dimensions)
+ * @param  int|Closure(): int  $status  HTTP status of searchAnalytics calls (closure = changes over time)
+ */
+function fakeGsc(array $rows, string $property = 'sc-domain:b.example', int|Closure $status = 200): void
+{
+    Http::fake(function (Request $request) use ($rows, $property, $status) {
+        $status = $status instanceof Closure ? $status() : $status;
+        $url = $request->url();
+        if (str_contains($url, 'oauth2.googleapis.com/revoke')) {
+            return Http::response('', 200);
+        }
+        if (str_ends_with($url, '/webmasters/v3/sites')) {
+            return Http::response(['siteEntry' => [['siteUrl' => $property, 'permissionLevel' => 'siteOwner']]]);
+        }
+        if (str_contains($url, '/searchAnalytics/query')) {
+            if ($status !== 200) {
+                return Http::response(['error' => ['code' => $status, 'errors' => [['reason' => $status === 429 ? 'rateLimitExceeded' : 'backendError']]]], $status);
+            }
+            $data = $request->data();
+            if ((int) ($data['startRow'] ?? 0) > 0) {
+                return Http::response(['rows' => []]);
+            }
+
+            return Http::response(['rows' => $rows[implode(',', (array) $data['dimensions'])] ?? []]);
+        }
+
+        return Http::response(['error' => 'unexpected '.$url], 500);
+    });
+}
+
+/**
+ * Seed daily Search Console metrics directly (analysis tests): one page and
+ * one query per spec, `$days` days ending at `$end`.
+ *
+ * @param  list<array{url: string, query: string, clicks: callable(int): int, impressions: callable(int): int, position: float, article_id?: string|null}>  $pages
+ */
+function seedMetrics(Workspace $workspace, Site $site, array $pages, int $days = 120, ?string $end = null): void
+{
+    $endDay = CarbonImmutable::parse($end ?? now('UTC')->subDays(3)->toDateString());
+    $rows = ['daily' => [], 'page' => [], 'query' => []];
+    for ($i = $days - 1; $i >= 0; $i--) {
+        $d = $endDay->subDays($i)->toDateString();
+        $sumC = 0;
+        $sumI = 0;
+        foreach ($pages as $p) {
+            $c = ($p['clicks'])($i);
+            $im = ($p['impressions'])($i);
+            $sumC += $c;
+            $sumI += $im;
+            $rows['page'][] = ['id' => strtolower((string) Str::ulid()), 'workspace_id' => $workspace->id, 'site_id' => $site->id, 'date' => $d, 'search_type' => 'web',
+                'page_hash' => UrlNormalizer::hash($p['url']), 'page_url' => UrlNormalizer::normalize($p['url']),
+                'article_id' => $p['article_id'] ?? null, 'clicks' => $c, 'impressions' => $im, 'position' => $p['position'], 'is_demo' => false];
+            $rows['query'][] = ['id' => strtolower((string) Str::ulid()), 'workspace_id' => $workspace->id, 'site_id' => $site->id, 'date' => $d, 'search_type' => 'web',
+                'query_hash' => UrlNormalizer::queryHash($p['query']), 'query' => $p['query'], 'clicks' => $c, 'impressions' => $im, 'position' => $p['position'], 'is_demo' => false];
+        }
+        $rows['daily'][] = ['id' => strtolower((string) Str::ulid()), 'workspace_id' => $workspace->id, 'site_id' => $site->id, 'date' => $d, 'search_type' => 'web',
+            'device' => 'mobile', 'country' => 'vnm', 'clicks' => $sumC, 'impressions' => $sumI, 'position' => $pages[0]['position'] ?? 10, 'is_demo' => false];
+    }
+    foreach (array_chunk($rows['daily'], 500) as $c) {
+        DB::table('search_performance_daily')->insert($c);
+    }
+    foreach (array_chunk($rows['page'], 500) as $c) {
+        DB::table('search_page_metrics')->insert($c);
+    }
+    foreach (array_chunk($rows['query'], 500) as $c) {
+        DB::table('search_query_metrics')->insert($c);
+    }
+    app(TenantContext::class)->runAs($workspace, null, function () use ($site, $endDay, $days): void {
+        $p = (AnalyticsProperty::query()->where(['site_id' => $site->id, 'provider' => 'gsc'])->first() ?? (new AnalyticsProperty)->forceFill(['site_id' => $site->id, 'provider' => 'gsc']));
+        $p->forceFill(['site_id' => $site->id, 'provider' => 'gsc', 'property_ref' => 'sc-domain:test', 'status' => 'active',
+            'first_date' => $endDay->subDays($days - 1)->toDateString(), 'last_complete_date' => $endDay->toDateString()])->save();
+    });
+}
+
+/**
+ * Phase 8 rows of one tenant for isolation tests.
+ *
+ * @param  array<string, string>  $writer
+ * @return array<string, string>
+ */
+function phase8Fixture(Workspace $workspace, Site $site, array $writer, string $label = 'B'): array
+{
+    return app(TenantContext::class)->runAs($workspace, null, function () use ($site, $writer, $label): array {
+        $m = static function (string $class, array $attrs) {
+            $row = new $class;
+            $row->forceFill($attrs)->save();
+
+            return $row;
+        };
+        $A = 'SiteXPost\\Modules\\Analytics\\Domain\\';
+        $G = 'SiteXPost\\Modules\\Agent\\Domain\\';
+        $opp = $m($A.'SeoOpportunity', ['site_id' => $site->id, 'rule_code' => 'new_query', 'rule_version' => 'v1', 'fingerprint' => sha1('o'.$label), 'target_type' => 'query',
+            'target_ref' => 'secret query '.$label, 'target_label' => 'Secret opportunity '.$label, 'evidence' => [], 'detection_rule' => 'test', 'severity' => 'high', 'impact' => 'medium',
+            'impact_basis' => 'test', 'confidence' => 60, 'confidence_explanation' => 'test', 'recommended_action' => 'investigate', 'first_detected_at' => now(), 'last_detected_at' => now()]);
+        $decay = $m($A.'ContentDecayEvent', ['site_id' => $site->id, 'page_hash' => sha1('p'.$label), 'page_url' => 'https://b.example/secret', 'status' => 'DECAY_SUSPECTED',
+            'open_key' => sha1('p'.$label), 'decline_pct' => -40, 'recent' => [], 'previous' => [], 'signals' => [], 'detected_at' => now(), 'last_evaluated_at' => now()]);
+        $rec = $m($A.'SeoRecommendation', ['site_id' => $site->id, 'opportunity_id' => $opp->id, 'fingerprint' => sha1('r'.$label), 'type' => 'refresh_content', 'target_type' => 'article',
+            'target_ref' => $writer['article'], 'target_label' => 'Secret rec '.$label, 'article_id' => $writer['article'], 'evidence' => [], 'rationale' => 'Secret rationale '.$label,
+            'priority' => 50, 'benefit_hypothesis' => 'test', 'risk' => 'low', 'required_approval' => 'editor', 'status' => 'proposed']);
+        $exp = $m($A.'SeoExperiment', ['site_id' => $site->id, 'article_id' => $writer['article'], 'page_hash' => sha1('p'.$label), 'page_url' => 'https://b.example/secret',
+            'change_type' => 'seo_title', 'change_date' => now()->subDays(5), 'baseline_start' => now()->subDays(33)->toDateString(), 'baseline_end' => now()->subDays(6)->toDateString(),
+            'observation_end' => now()->addDays(23)->toDateString(), 'target_metrics' => ['clicks'], 'status' => 'observing']);
+        $refresh = $m($A.'ContentRefreshJob', ['site_id' => $site->id, 'article_id' => $writer['article'], 'status' => 'awaiting_approval', 'new_version_id' => $writer['version']]);
+        $report = $m($A.'SeoReport', ['site_id' => $site->id, 'period_type' => 'weekly', 'period_start' => '2026-10-01', 'period_end' => '2026-10-07', 'status' => 'ready',
+            'payload' => ['secret' => 'Secret report '.$label]]);
+        $copilot = $m($A.'CopilotQuery', ['user_id' => strtolower((string) Str::ulid()), 'site_id' => $site->id, 'question' => 'Secret question '.$label, 'intent' => 'overview',
+            'answer' => ['summary' => 'Secret answer '.$label], 'mode' => 'rules']);
+        $run = $m($G.'AgentRun', ['site_id' => $site->id, 'trigger' => 'manual', 'kind' => 'daily_monitoring', 'status' => 'awaiting_approval', 'phase' => 'done',
+            'autonomy_level' => 1, 'policy_snapshot' => [], 'max_tasks' => 5]);
+        $task = $m($G.'AgentTask', ['site_id' => $site->id, 'agent_run_id' => $run->id, 'sequence' => 1, 'tool' => 'create_proposal', 'status' => 'awaiting_approval',
+            'decision' => 'require_approval', 'decision_reasons' => [], 'input' => [], 'policy_snapshot' => [], 'idempotency_key' => $run->id.':1:test']);
+        $schedule = $m($G.'AutomationSchedule', ['site_id' => $site->id, 'kind' => 'weekly_audit', 'frequency' => 'weekly', 'day_of_week' => 1, 'local_time' => '07:00',
+            'timezone' => 'Asia/Ho_Chi_Minh', 'status' => 'active', 'next_run_at' => now()->addDay()]);
+
+        return ['opportunity' => $opp->id, 'decay' => $decay->id, 'recommendation' => $rec->id, 'experiment' => $exp->id, 'refreshJob' => $refresh->id,
+            'report' => $report->id, 'copilotQuery' => $copilot->id, 'agentRun' => $run->id, 'agentTask' => $task->id, 'automationSchedule' => $schedule->id];
+    });
 }

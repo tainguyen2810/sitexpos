@@ -18,7 +18,7 @@ it('seeds labelled AI Writer demo data without fake verdicts or sources', functi
 
     $ws = Workspace::query()->where('name', 'Cửa hàng A (Demo)')->firstOrFail();
     $counts = app(TenantContext::class)->runAs($ws, null, fn () => [
-        'articles' => Article::query()->where('is_demo', true)->where('title', 'like', '[DEMO]%')->count(),
+        'articles' => Article::query()->where('is_demo', true)->where('title', 'like', '[DEMO]%')->whereNotNull('writing_preset_id')->count(), // Phase 8 adds 100 published demo articles without a preset
         'briefs' => ContentBrief::query()->count(),
         'dossiers' => ResearchDossier::query()->count(),
         'claims' => ArticleClaim::query()->count(),

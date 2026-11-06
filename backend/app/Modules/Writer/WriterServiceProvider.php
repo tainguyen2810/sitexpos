@@ -14,11 +14,13 @@ use SiteXPost\Modules\Workflows\Engine\WorkflowRegistry;
 use SiteXPost\Modules\Writer\Console\RunAutonomousWriter;
 use SiteXPost\Modules\Writer\Console\SyncWriter;
 use SiteXPost\Modules\Writer\Contracts\ArticleCatalog;
+use SiteXPost\Modules\Writer\Contracts\ArticleRefresh;
 use SiteXPost\Modules\Writer\Domain\Article;
 use SiteXPost\Modules\Writer\Domain\WritingBatch;
 use SiteXPost\Modules\Writer\Domain\WritingPreset;
 use SiteXPost\Modules\Writer\Policies\WriterPolicy;
 use SiteXPost\Modules\Writer\Queries\ArticleCatalogQuery;
+use SiteXPost\Modules\Writer\Queries\ArticleRefreshService;
 use SiteXPost\Modules\Writer\Support\WriterSettings;
 use SiteXPost\Modules\Writer\Workflows\DraftWorkflow;
 use SiteXPost\Modules\Writer\Workflows\OutlineWorkflow;
@@ -41,6 +43,7 @@ final class WriterServiceProvider extends ModuleServiceProvider
     {
         $this->app->scoped(WriterSettings::class);
         $this->app->bind(ArticleCatalog::class, ArticleCatalogQuery::class);
+        $this->app->bind(ArticleRefresh::class, ArticleRefreshService::class);
     }
 
     protected function bootModule(): void

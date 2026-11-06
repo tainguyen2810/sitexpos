@@ -10,13 +10,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use SiteXPost\Kernel\Http\ApiException;
 use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\Audit\Audit;
 use SiteXPost\Modules\Research\Domain\SearchConsoleConnection;
 use SiteXPost\Modules\Research\Domain\SeoCampaign;
 use SiteXPost\Modules\Research\Http\Requests\SearchConsolePropertyRequest;
+use SiteXPost\Modules\Research\Queries\SearchConsoleAccessQuery;
 use SiteXPost\Modules\Research\SearchConsole\GoogleSearchConsole;
 use SiteXPost\Modules\Research\SearchConsole\SearchConsoleException;
 use SiteXPost\Modules\Sites\Contracts\SiteDirectory;
@@ -43,12 +43,7 @@ final class SearchConsoleController
         if (! $gsc->isConfigured()) {
             throw ApiException::conflict('gsc_not_configured', __('research.errors.gsc_not_configured'));
         }
-        $nonce = Str::random(40);
-        Cache::put('gsc-state:'.$nonce, 1, 600);
-        $state = Crypt::encryptString((string) json_encode([
-            'n' => $nonce, 'u' => (string) $request->user()?->getAuthIdentifier(), 'w' => $workspace->id,
-            's' => $campaign->site_id, 'c' => $campaign->id, 'e' => now()->addMinutes(10)->timestamp,
-        ]));
+        $state = SearchConsoleAccessQuery::state($workspace->id, $campaign->site_id, (string) $request->user()?->getAuthIdentifier(), $campaign->id, 'research');
 
         return new JsonResponse(['data' => ['authorization_url' => $gsc->authorizationUrl($state)]]);
     }
@@ -68,7 +63,10 @@ final class SearchConsoleController
         if (! is_array($state) || ($state['e'] ?? 0) < now()->timestamp || ! Cache::pull('gsc-state:'.($state['n'] ?? ''))) {
             return redirect()->away($front.'/?gsc=invalid_state');
         }
-        $back = $front.'/w/'.$state['w'].'/research/'.$state['c'].'/settings';
+        // Phase 8: the site-level flow (Analytics settings) has no campaign.
+        $back = ($state['r'] ?? 'research') === 'analytics' || ($state['c'] ?? null) === null
+            ? $front.'/w/'.$state['w'].'/analytics/settings'
+            : $front.'/w/'.$state['w'].'/research/'.$state['c'].'/settings';
         $code = $request->query('code');
         if (! is_string($code) || $code === '') {
             return redirect()->away($back.'?gsc=denied');
@@ -141,12 +139,14 @@ final class SearchConsoleController
         return new JsonResponse(['data' => self::data($conn, $gsc)]);
     }
 
-    public function disconnect(Workspace $workspace, SeoCampaign $campaign): JsonResponse
+    public function disconnect(Workspace $workspace, SeoCampaign $campaign, GoogleSearchConsole $gsc): JsonResponse
     {
         Gate::authorize('manage', $campaign);
         $conn = SearchConsoleConnection::query()->where('site_id', $campaign->site_id)->first();
         if ($conn !== null) {
-            Audit::record('research.search_console.disconnected', $conn);
+            // Phase 8: also revoke the grant at Google (best effort).
+            $revoked = $gsc->revoke($conn);
+            Audit::record('research.search_console.disconnected', $conn, ['revoked_at_google' => $revoked]);
             $conn->delete();
         }
 

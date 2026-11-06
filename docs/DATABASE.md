@@ -348,13 +348,47 @@ Migration theo module: `Media/Database/Migrations/2026_11_11_000100_create_media
 
 Dữ liệu demo: `Phase6DemoSeeder` (gọi từ `DemoSeeder`, từ chối chạy ở production; cờ `is_demo`). Rollback: `php artisan migrate:rollback --step=3` (xóa dữ liệu Phase 6; file ảnh trong `storage/app/media` cần xóa tay).
 
-### 3.13 Analytics
+### 3.13 Analytics & Agent ✦ Phase 8 (đã triển khai — thay thiết kế `gsc_connections` / `refresh_suggestions` dự kiến trước đây)
 
-**gsc_connections**: id, workspace_id, site_id, google_account_email, property_uri, refresh_token_encrypted, scopes, status, connected_by, last_synced_at, revoked_at.
+Kết nối Google **không** có bảng mới: dùng lại `search_console_connections` (Phase 4, token mã hóa). Mọi bảng dưới đây có `workspace_id` + trait `BelongsToWorkspace` (trừ `agent_policies` là hàng nền tảng), PK ULID, thời gian UTC, `is_demo` trên các bảng có dữ liệu mẫu. Migration: `app/Modules/Analytics/Database/Migrations/2026_11_13_000100_create_analytics_tables.php`, `app/Modules/Agent/Database/Migrations/2026_11_13_000200_create_agent_tables.php`.
 
-**search_performance_daily**: workspace_id, site_id, date, page_url_hash, page_url, query_hash null, query null, clicks, impressions, ctr, position, PK(site_id, date, page_url_hash, query_hash). Dữ liệu thật từ GSC.
+**Analytics — thu thập**
+| Bảng | Nội dung chính | Khóa / index |
+|---|---|---|
+| `analytics_settings` | Ngưỡng quy tắc, trọng số health, `backfill_days`, `raw_retention_days` theo workspace | UNIQUE(workspace_id) |
+| `analytics_properties` | Property theo site + provider (`gsc`, `ga4` chưa dùng): `status`, `first_date`, `last_complete_date` (checkpoint), `last_sync_*`, `consecutive_failures` | UNIQUE(site_id, provider) |
+| `analytics_sync_runs` | Lần đồng bộ: `kind` (incremental/backfill/manual), `status`, khoảng ngày, `checkpoint_date`, `progress`, `rows_upserted`, `api_requests`, `attempts`, `next_retry_at`, `idempotency_key` | (status, next_retry_at) |
+| `search_performance_daily` | Tổng theo ngày × loại tìm kiếm × thiết bị × quốc gia (ISO-3) | UNIQUE(site_id, date, search_type, device, country) |
+| `search_query_metrics` | Theo ngày × truy vấn (`query_hash` = sha1 chuẩn hóa) | UNIQUE(site_id, date, search_type, query_hash) |
+| `search_page_metrics` | Theo ngày × URL chuẩn hóa (`page_hash`), `article_id` theo mapping | UNIQUE(site_id, date, search_type, page_hash) |
+| `search_query_page_metrics` | Tổng cửa sổ truy vấn × trang (thay theo cửa sổ) | UNIQUE(site_id, period_end, search_type, query_hash, page_hash) |
+| `analytics_url_mappings` | URL ↔ bài: `source` (publisher/publisher_history/canonical/inventory/manual), `wp_post_id`, `is_current`; URL tranh chấp → `article_id` null | UNIQUE(site_id, page_hash) |
 
-**refresh_suggestions**: id, workspace_id, site_id, article_id null, wp_post_id, reason (`declining_clicks`, `outdated_facts`, `low_ctr`...), evidence JSON (số liệu GSC dẫn chứng), status (`open`, `accepted`, `dismissed`, `done`).
+**Analytics — phân tích & hành động**
+| Bảng | Nội dung chính |
+|---|---|
+| `content_performance_snapshots` | Mỗi trang × `period_end` × `window_days`: clicks/impressions/vị trí kỳ này, kỳ trước, baseline, cùng kỳ năm trước, `classification`, `labels`, `reasons` |
+| `seo_opportunities` | `rule_code`, `rule_version`, `fingerprint` (UNIQUE theo site), đối tượng, `evidence`, `detection_rule`, `severity`, `impact` + `impact_basis`, `confidence` + giải thích, `recommended_action`, chi phí ước tính, `status`, người duyệt, `detections` |
+| `content_decay_events` | `status` (4 trạng thái), `open_key` (UNIQUE: một sự kiện mở mỗi trang), `decline_pct`, recent/previous/baseline/seasonal, thay đổi truy vấn/URL/nội dung, `signals`, quyết định |
+| `seo_recommendations` | `type`, đối tượng, `evidence`, `rationale`, `priority`, `benefit_hypothesis`, chi phí, `risk`, `required_approval`, `status`, `suggested_value`, `source` (rule/ai/agent), `agent_run_id` |
+| `seo_experiments` / `experiment_observations` | Theo dõi trước/sau (`method` = `before_after`), baseline/quan sát, `outcome`, `external_factors`; quan sát theo ngày |
+| `content_refresh_jobs` | Quy trình làm mới: `status` (16 trạng thái), `active_key` (UNIQUE: một job mở mỗi bài), `wp_check`, `base_version_id`, brief, `revision_ids`, `new_version_id`, `diff`, `fact_check`, `seo_audit`, `publishing_job_id`, `experiment_id`, người yêu cầu/duyệt, `idempotency_key` |
+| `seo_health_scores` | Điểm theo site × ngày (null khi không có thành phần), `components`, `weights` |
+| `seo_reports` | `period_type`, khoảng ngày, `status`, `payload`, `emailed_at`, `recipients_count` |
+| `copilot_queries` | Câu hỏi, `intent`, `answer` (facts/inferences/recommendations), `data_refs`, `mode`, model, chi phí |
+
+**Agent**
+| Bảng | Nội dung chính |
+|---|---|
+| `agent_policies` | Một hàng nền tảng: `kill_switch` (+ lý do, người bật), `max_autonomy_level`, `forbidden_tools`, giới hạn run/task, timeout |
+| `agent_configs` | Theo site (UNIQUE): `enabled`, `autonomy_level` (mặc định 1), `emergency_stop`, allow/forbid, giới hạn ngày/tháng/ngân sách, khung giờ đăng, `timezone`, `approval_requirements`, `principal_user_id`, `level3_enabled_by/at`, `lock_version` |
+| `automation_schedules` | `kind` (UNIQUE theo site), `frequency`, `day_of_week` (ISO), `day_of_month` (1–28), `local_time`, `timezone`, `status`, `next_run_at`, `last_*`, `consecutive_failures` |
+| `agent_runs` | `trigger`, `kind`, `status`, `phase`, `active_key` (UNIQUE: một run hoạt động mỗi site), `autonomy_level`, `policy_snapshot`, chi phí ước tính/thực, observations/plan/summary, `deadline_at`, `idempotency_key` |
+| `agent_tasks` | `sequence`, `tool`, `status`, `decision`, `decision_reasons`, `input`, `policy_snapshot`, chi phí, `output`, `evidence`, `attempts`/`max_attempts`, `next_attempt_at`, `timeout_at`, người duyệt, `idempotency_key` (UNIQUE) |
+| `agent_action_logs` | Chỉ ghi thêm: `event`, `level`, `message`, `context`, `actor_type` (agent/user/system/admin) |
+| `agent_memories` | `kind`, `content`, `evidence`, `verified`, `confidence`, `expires_at` |
+
+Lưu trữ: dữ liệu thô GSC giữ `raw_retention_days` (mặc định 490), bộ nhớ Agent 180 ngày, nhật ký 365 ngày (`sitex:analytics:prune`).
 
 ### 3.14 AiGateway (Phase 3 — đã triển khai)
 

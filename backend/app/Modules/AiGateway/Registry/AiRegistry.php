@@ -164,6 +164,13 @@ final class AiRegistry
                 'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'fake/fake-echo'], 'max_out' => 1500],
             'writer.final_review' => ['desc' => 'Writer: final editorial review notes (advisory)', 'queue' => 'writing', 'priority' => 'batch',
                 'primary' => 'openai/gpt-6.1-terra', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['gemini/gemini-3.8-flash', 'fake/fake-echo'], 'max_out' => 1500],
+            // Phase 8 — SEO analytics & agent (defaults only; AI never produces metrics, it phrases and suggests).
+            'analytics.recommend' => ['desc' => 'SEO recommendation wording: title/meta suggestions from GSC evidence (never metrics)', 'queue' => 'analytics', 'priority' => 'batch',
+                'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'deepseek/deepseek-flash', 'fake/fake-echo'], 'max_out' => 1500],
+            'agent.plan' => ['desc' => 'SEO agent: rank candidate tasks with rationale (tools are fixed; policy decides)', 'queue' => 'analytics', 'priority' => 'batch',
+                'primary' => 'openai/gpt-6.1-terra', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['gemini/gemini-3.8-flash', 'deepseek/deepseek-flash', 'fake/fake-echo'], 'max_out' => 2000],
+            'copilot.answer' => ['desc' => 'AI SEO Copilot: answer from tenant data (facts / inferences / recommendations)', 'queue' => 'analytics', 'priority' => 'interactive',
+                'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'deepseek/deepseek-flash', 'fake/fake-echo'], 'max_out' => 2000],
             'media.image' => ['desc' => 'AI image generation (always labelled as AI)', 'queue' => 'media', 'priority' => 'batch',
                 'primary' => 'openai/gpt-image-2.5-sunburst', 'economy' => null, 'fallbacks' => ['fake/fake-image'], 'max_out' => 1],
         ];

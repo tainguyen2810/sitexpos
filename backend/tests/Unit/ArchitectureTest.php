@@ -193,3 +193,30 @@ arch('billing API requests extend the base ApiRequest (workspace_id is never acc
 arch('only the Billing module knows billing internals; others use its contracts')
     ->expect(['SiteXPost\Modules\Billing\Credits', 'SiteXPost\Modules\Billing\Payments', 'SiteXPost\Modules\Billing\Subscriptions', 'SiteXPost\Modules\Billing\Entitlements'])
     ->toOnlyBeUsedIn(['SiteXPost\Modules\Billing', 'Database\Seeders']); // + the dev-only demo seeder
+
+arch('Phase 8 tenant models use the fail-closed workspace scope')
+    ->expect(['SiteXPost\\Modules\\Analytics\\Domain', 'SiteXPost\\Modules\\Agent\\Domain'])
+    ->classes()
+    ->toUseTrait(BelongsToWorkspace::class)
+    ->ignoring('SiteXPost\\Modules\\Agent\\Domain\\AgentPolicy'); // platform-wide policy, Super Admin only
+
+arch('Phase 8 requests extend the base ApiRequest (workspace_id is never accepted)')
+    ->expect(['SiteXPost\\Modules\\Analytics\\Http\\Requests', 'SiteXPost\\Modules\\Agent\\Http\\Requests'])
+    ->toExtend(ApiRequest::class);
+
+arch('Phase 8 modules reach other modules only through contracts')
+    ->expect(['SiteXPost\\Modules\\Analytics', 'SiteXPost\\Modules\\Agent'])
+    ->not->toUse(['SiteXPost\\Modules\\Writer\\Domain', 'SiteXPost\\Modules\\Writer\\Actions', 'SiteXPost\\Modules\\Sites\\Domain', 'SiteXPost\\Modules\\Sites\\Actions',
+        'SiteXPost\\Modules\\Sites\\Connector', 'SiteXPost\\Modules\\Sites\\Contracts\\WordPressGateway', 'SiteXPost\\Modules\\Research\\Domain',
+        'SiteXPost\\Modules\\Publishing\\Domain', 'SiteXPost\\Modules\\Publishing\\Actions', 'SiteXPost\\Modules\\Seo\\Domain', 'SiteXPost\\Modules\\Seo\\Actions',
+        'SiteXPost\\Modules\\Billing\\Credits', 'SiteXPost\\Modules\\Billing\\Payments', 'SiteXPost\\Modules\\Billing\\Subscriptions', 'SiteXPost\\Modules\\AiGateway\\Providers']);
+
+arch('the agent uses Analytics only through its contract and never touches the database directly')
+    ->expect('SiteXPost\\Modules\\Agent')
+    ->not->toUse(['SiteXPost\\Modules\\Analytics\\Domain', 'SiteXPost\\Modules\\Analytics\\Actions', 'SiteXPost\\Modules\\Analytics\\Engine',
+        'SiteXPost\\Modules\\Analytics\\Support', 'Illuminate\\Support\\Facades\\Process', 'shell_exec', 'exec', 'proc_open', 'passthru', 'system'])
+    ->ignoring('SiteXPost\\Modules\\Agent\\Console');
+
+arch('agent tools are executed only by the orchestrator')
+    ->expect('SiteXPost\\Modules\\Agent\\Tools\\ToolExecutor')
+    ->toOnlyBeUsedIn(['SiteXPost\\Modules\\Agent\\Engine']);

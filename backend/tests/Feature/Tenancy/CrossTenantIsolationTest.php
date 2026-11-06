@@ -74,6 +74,7 @@ function twoTenants(): array
     $researchB = researchFixture($b['workspace'], $siteB);
     $writerB = writerFixture($b['workspace'], $siteB);
     $phase6B = phase6Fixture($b['workspace'], $siteB, $writerB);
+    $phase8B = phase8Fixture($b['workspace'], $siteB, $writerB);
 
     // Phase 7: a payment order + internal receipt owned by tenant B.
     billingPlan('ct-pro', 100_000);
@@ -92,7 +93,7 @@ function twoTenants(): array
             'workflowRun' => $runB->id,
             'paymentOrder' => $orderB->id,
             'billingDocument' => $docB->id,
-        ] + $researchB + $writerB + $phase6B,
+        ] + $researchB + $writerB + $phase6B + $phase8B,
         'siteB' => $siteB,
         'wpB' => $wpB,
     ];
@@ -136,7 +137,7 @@ it('returns 404 when tenant A uses its own workspace with tenant B child ids', f
     ['a' => $a, 'b' => $b, 'ids' => $ids] = twoTenants();
 
     foreach (tenantRoutes() as [$method, $uri]) {
-        if (! preg_match('/\{(member|invitation|jobRun|site|workflowRun|campaign|notification|article|preset|batch|articleRef|asset|imageJob|auditRun|suggestion|publishingBatch|mapping|publishingJob|conflict|paymentOrder|billingDocument)\}/', $uri)) {
+        if (! preg_match('/\{(member|invitation|jobRun|site|workflowRun|campaign|notification|article|preset|batch|articleRef|asset|imageJob|auditRun|suggestion|publishingBatch|mapping|publishingJob|conflict|paymentOrder|billingDocument|opportunity|decay|recommendation|experiment|refreshJob|report|copilotQuery|agentRun|agentTask|automationSchedule)\}/', $uri)) {
             continue;
         }
         $url = fillUri($uri, $a['workspace']->id, $ids);

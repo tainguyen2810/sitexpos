@@ -31,6 +31,13 @@ final class SiteDirectoryQuery implements SiteDirectory
         ];
     }
 
+    public function all(): array
+    {
+        return Site::query()->orderBy('name')->limit(500)->get()
+            ->map(fn (Site $s): array => ['id' => $s->id, 'name' => $s->name, 'url' => $s->url, 'status' => $s->status->value, 'paired' => $s->status->isPaired()])
+            ->values()->all();
+    }
+
     public function content(string $siteId, array $types = ['post', 'page', 'product'], int $limit = 2000): array
     {
         return SiteContentItem::query()

@@ -25,6 +25,11 @@ class GoogleSearchConsole
 
     private const API = 'https://www.googleapis.com/webmasters/v3';
 
+    private const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
+
+    /** Search Console API page size limit (searchAnalytics.query rowLimit). */
+    public const MAX_ROWS = 25000;
+
     public function isConfigured(): bool
     {
         return (string) config('services.google.client_id') !== '' && (string) config('services.google.client_secret') !== '';
@@ -45,7 +50,11 @@ class GoogleSearchConsole
     }
 
     /**
-     * @return array{access_token: string, refresh_token: string|null, expires_in: int, email: string|null}
+     * Phase 8: the granted scopes are validated — a user who unticks the
+     * Search Console permission on Google's consent screen gets
+     * `scope_missing` instead of a connection that fails later.
+     *
+     * @return array{access_token: string, refresh_token: string|null, expires_in: int, email: string|null, scope: string|null}
      *
      * @throws SearchConsoleException
      */
@@ -56,6 +65,10 @@ class GoogleSearchConsole
             'redirect_uri' => (string) config('services.google.redirect_uri'),
             'grant_type' => 'authorization_code',
         ]);
+        if ($data['scope'] !== null && ! self::hasScope($data['scope'])) {
+            $this->revokeToken($data['refresh_token'] ?? $data['access_token']);
+            throw new SearchConsoleException('scope_missing', 'Google did not grant the Search Console read-only scope.');
+        }
 
         $email = null;
         try {
@@ -135,6 +148,68 @@ class GoogleSearchConsole
     }
 
     /**
+     * Generic searchAnalytics.query (Phase 8 ingestion). `$body` is built by
+     * the caller (dimensions, startRow, searchType, dataState); rows keep
+     * their `keys` in dimension order.
+     *
+     * @param  array<string, mixed>  $body
+     * @return list<array{keys: list<string>, clicks: int, impressions: int, ctr: float, position: float}>
+     *
+     * @throws SearchConsoleException
+     */
+    public function searchAnalytics(SearchConsoleConnection $connection, string $property, array $body): array
+    {
+        $body['rowLimit'] = max(1, min(self::MAX_ROWS, (int) ($body['rowLimit'] ?? self::MAX_ROWS)));
+        $res = $this->api($connection, 'POST', '/sites/'.rawurlencode($property).'/searchAnalytics/query', $body);
+        $rows = [];
+        foreach ((array) ($res['rows'] ?? []) as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $keys = array_values(array_map('strval', array_filter((array) ($row['keys'] ?? []), 'is_scalar')));
+            $rows[] = [
+                'keys' => $keys,
+                'clicks' => (int) ($row['clicks'] ?? 0),
+                'impressions' => (int) ($row['impressions'] ?? 0),
+                'ctr' => (float) ($row['ctr'] ?? 0),
+                'position' => (float) ($row['position'] ?? 0),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Revoke the grant at Google (disconnect). Best effort: a token that is
+     * already invalid counts as revoked.
+     */
+    public function revoke(SearchConsoleConnection $connection): bool
+    {
+        $token = $connection->refresh_token_encrypted ?? $connection->access_token_encrypted;
+
+        return $token === null || $this->revokeToken((string) $token);
+    }
+
+    public static function hasScope(string $granted): bool
+    {
+        return in_array(self::SCOPE, preg_split('/\s+/', trim($granted)) ?: [], true);
+    }
+
+    private function revokeToken(?string $token): bool
+    {
+        if ($token === null || $token === '') {
+            return true;
+        }
+        try {
+            $res = Http::asForm()->timeout(10)->post(self::REVOKE_URL, ['token' => $token]);
+        } catch (ConnectionException) {
+            return false;
+        }
+
+        return $res->successful() || $res->status() === 400;
+    }
+
+    /**
      * Pick the verified property matching the site: Domain property first,
      * then the URL-prefix property.
      *
@@ -160,7 +235,7 @@ class GoogleSearchConsole
 
     /**
      * @param  array<string, string>  $params
-     * @return array{access_token: string, refresh_token: string|null, expires_in: int}
+     * @return array{access_token: string, refresh_token: string|null, expires_in: int, scope: string|null}
      *
      * @throws SearchConsoleException
      */
@@ -186,6 +261,7 @@ class GoogleSearchConsole
             'access_token' => (string) $res->json('access_token'),
             'refresh_token' => is_string($res->json('refresh_token')) ? (string) $res->json('refresh_token') : null,
             'expires_in' => (int) ($res->json('expires_in') ?? 3600),
+            'scope' => is_string($res->json('scope')) ? (string) $res->json('scope') : null,
         ];
     }
 
@@ -208,10 +284,17 @@ class GoogleSearchConsole
             throw new SearchConsoleException('reauth_required', 'Search Console token rejected.');
         }
         if ($res->status() === 403) {
+            $reason = (string) ($res->json('error.errors.0.reason') ?? '');
+            if (in_array($reason, ['quotaExceeded', 'rateLimitExceeded', 'userRateLimitExceeded', 'dailyLimitExceeded'], true)) {
+                throw new SearchConsoleException('quota_exceeded', 'Search Console API quota exceeded.', true);
+            }
             throw new SearchConsoleException('forbidden', 'No access to this Search Console property.');
         }
+        if ($res->status() === 429) {
+            throw new SearchConsoleException('quota_exceeded', 'Search Console API rate limit.', true);
+        }
         if (! $res->successful()) {
-            throw new SearchConsoleException('api_error', 'Search Console API error '.$res->status(), $res->serverError() || $res->status() === 429);
+            throw new SearchConsoleException('api_error', 'Search Console API error '.$res->status(), $res->serverError());
         }
 
         return (array) $res->json();

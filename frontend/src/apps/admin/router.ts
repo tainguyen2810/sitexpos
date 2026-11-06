@@ -45,6 +45,7 @@ export const router = createRouter({
         { path: 'billing/credits', name: 'billing-credits', component: () => import('./pages/billing/AdminCreditsPage.vue'), meta: { permission: 'platform.billing.manage' } },
         { path: 'billing/reports', name: 'billing-reports', component: () => import('./pages/billing/AdminReportsPage.vue'), meta: { permission: 'platform.billing.manage' } },
         { path: 'billing/settings', name: 'billing-settings', component: () => import('./pages/billing/AdminBillingSettingsPage.vue'), meta: { permission: 'platform.billing.manage' } },
+        { path: 'analytics', name: 'analytics', component: () => import('./pages/AnalyticsAdminPage.vue'), meta: { permission: 'platform.jobs.manage' } },
         { path: 'jobs', name: 'jobs', component: () => import('./pages/JobsPage.vue'), meta: { permission: 'platform.jobs.manage' } },
         { path: 'audit', name: 'audit', component: () => import('./pages/AuditLogPage.vue') },
         { path: 'account', name: 'account', component: () => import('./pages/AccountPage.vue') },

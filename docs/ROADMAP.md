@@ -207,13 +207,20 @@ Nhánh `claude/project-thread-cz2bqq` (tách từ `main` sau khi merge Phase 2�
 
 **Nghiệm thu**: webhook lặp không kích hoạt hai lần; webhook sai chữ ký/quá hạn bị từ chối; client không thể tự đánh dấu đã trả; retry AI không trừ credit hai lần; số dư không âm; ledger `verify()` khớp; gói đang dùng không xóa được; version đã publish không sửa được; hết hạn gói không xóa dữ liệu; cross-tenant 404.
 
-## Phase 8 trở đi
-Nội dung Phase 8–9 do chủ dự án xác định. Kế hoạch ban đầu cho "Media & SEO" và "Duyệt & xuất bản" đã làm ở Phase 6.
+## Phase 8 — SEO Analytics, Content Intelligence & Autonomous SEO Agent ✦ (đã triển khai, chờ nghiệm thu — xem `PHASE8-IMPLEMENTATION.md`, `PHASE8-TEST-REPORT.md`, ADR-022–024)
+Theo yêu cầu của chủ dự án, phần “Search Console & làm mới nội dung” trước đây dự kiến cho Phase 9 được làm trong Phase 8 (ADR-022).
+- [x] GSC dùng lại OAuth Phase 4: kiểm tra scope, chọn property thật, refresh, thu hồi token khi ngắt kết nối.
+- [x] Đồng bộ theo ngày × truy vấn / trang / thiết bị / quốc gia / loại tìm kiếm; incremental + backfill, checkpoint, phân trang, dedupe, backoff khi quota; GA4 là adapter giữ chỗ.
+- [x] Dashboard có bộ lọc + ánh xạ bài viết chính xác; phân loại nội dung; decay 4 trạng thái; 15 quy tắc cơ hội có bằng chứng; đề xuất; SEO Health Score (không phải điểm Google).
+- [x] Làm mới nội dung qua Writer + fact-check + SEO Audit + Publisher, không ghi đè bài sửa trên WordPress; theo dõi trước/sau (không phải A/B).
+- [x] SEO Agent: pipeline 8 bước, 7 tool, mức 0–3 (mặc định 1), policy engine phía server, bộ nhớ có hạn, queue/retry/hủy/tạm dừng/idempotency/timeout/ngân sách, lịch theo múi giờ site không trùng run, dừng khẩn cấp + kill switch.
+- [x] Copilot chỉ đọc dữ liệu tenant; báo cáo tuần/tháng/tùy chọn, CSV, email chỉ tới thành viên.
+- [x] 23 màn hình khách hàng + trang Super Admin; dữ liệu demo gắn nhãn DEMO.
 
-## Phase 9 — Search Console & làm mới nội dung
-- OAuth GSC theo site, đồng bộ số liệu, dashboard hiệu quả, phát hiện bài suy giảm, đề xuất cập nhật.
+**Nghiệm thu**: số liệu khớp GSC (đối chiếu mẫu với tài khoản thật — **chưa làm được**, cần credentials Google); cơ hội luôn có bằng chứng; Agent không thể tự đăng khi chưa bật mức 3; dừng khẩn cấp hủy run; scheduler chạy hai lần chỉ tạo một run; thu hồi kết nối Google xóa token; cross-tenant 404.
 
-**Nghiệm thu**: số liệu khớp GSC (đối chiếu mẫu); đề xuất có bằng chứng số liệu; thu hồi kết nối Google xóa token.
+## Phase 9
+Nội dung do chủ dự án xác định. **Không tự bắt đầu.**
 
 ## Phase 10 — Agency & sẵn sàng thương mại
 - Workspace agency, quyền theo site, white-label báo cáo, client portal duyệt bài.

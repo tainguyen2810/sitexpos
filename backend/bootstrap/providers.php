@@ -1,7 +1,9 @@
 <?php
 
 use SiteXPost\Kernel\KernelServiceProvider;
+use SiteXPost\Modules\Agent\AgentServiceProvider;
 use SiteXPost\Modules\AiGateway\AiGatewayServiceProvider;
+use SiteXPost\Modules\Analytics\AnalyticsServiceProvider;
 use SiteXPost\Modules\Audit\AuditServiceProvider;
 use SiteXPost\Modules\Billing\BillingServiceProvider;
 use SiteXPost\Modules\Identity\IdentityServiceProvider;
@@ -30,4 +32,6 @@ return [
     SeoServiceProvider::class,
     PublishingServiceProvider::class,
     BillingServiceProvider::class,
+    AnalyticsServiceProvider::class,
+    AgentServiceProvider::class,
 ];

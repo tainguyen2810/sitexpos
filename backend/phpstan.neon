@@ -11,7 +11,9 @@ parameters:
     tmpDir: storage/framework/cache/phpstan
     treatPhpDocTypesAsCertain: false
     databaseMigrationsPath:
+        - app/Modules/Agent/Database/Migrations
         - app/Modules/AiGateway/Database/Migrations
+        - app/Modules/Analytics/Database/Migrations
         - app/Modules/Billing/Database/Migrations
         - app/Modules/Audit/Database/Migrations
         - app/Modules/Identity/Database/Migrations
