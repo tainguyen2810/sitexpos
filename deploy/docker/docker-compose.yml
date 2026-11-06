@@ -48,11 +48,29 @@ services:
   horizon:
     <<: *app
     command: ["horizon"]
+    # Start after app: concurrent containers initialising the same new named volume
+    # race ("mkdir ... file exists"); app also runs the upgrade pre-flight first.
+    depends_on:
+      app:
+        condition: service_started
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     stop_grace_period: 90s
 
   scheduler:
     <<: *app
     command: ["scheduler"]
+    # Start after app: concurrent containers initialising the same new named volume
+    # race ("mkdir ... file exists"); app also runs the upgrade pre-flight first.
+    depends_on:
+      app:
+        condition: service_started
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   mysql:
     image: mysql:8.4
