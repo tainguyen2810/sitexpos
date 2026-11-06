@@ -180,13 +180,6 @@ Kết quả thực tế: xem `PHASE3-REPORT.md` (đã chạy với fake provider
 
 **Nghiệm thu**: không có search volume/KD nào hiển thị mà không có provider + thời điểm thu thập ("Chưa có dữ liệu" nếu thiếu); mọi ý tưởng truy được bằng chứng; đối thủ tuân thủ robots, không lưu nội dung; chạy lại không tạo trùng; cách ly tenant. Checklist chi tiết: `PHASE4-REPORT.md` §7.
 
-## Phase tiếp theo — Gói dịch vụ, quota, credit, thanh toán (dời từ Phase 4 theo ADR-016)
-- Plans/prices/limits, subscription, trial, usage ledger + counters (reserve/commit/release), credit wallet — tái sử dụng cơ chế reservation của AI Gateway.
-- Adapter cổng thanh toán (chờ quyết định cổng), webhook an toàn, hóa đơn.
-- Admin: quản lý plan, credit pack, cấp credit, xem hóa đơn.
-
-**Nghiệm thu**: không thể vượt quota dưới tải đồng thời (test race); webhook lặp không kích hoạt hai lần; webhook sai chữ ký bị từ chối; hết hạn gói → chặn tác vụ tốn quota với 402.
-
 ## Phase 5 — AI Content Writer, Evidence Research & Fact-check ✦ (đã triển khai, chờ nghiệm thu)
 Nhánh `feature/phase5-ai-writer`. Gộp phần "Pipeline viết bài & kiểm chứng" trước đây dự kiến cho Phase 6. Xem `PHASE5-IMPLEMENTATION.md`, `PHASE5-TEST-REPORT.md`.
 - Wizard 17 bước / 10 loại nội dung, Writing Preset (brand voice có provenance), nghiên cứu dựa trên bằng chứng, brief, dàn ý, viết từng section qua AI Gateway.
@@ -204,18 +197,18 @@ Nhánh `claude/project-thread-i3nn1q` (tách từ `feature/phase5-ai-writer`). X
 
 **Nghiệm thu**: ảnh AI không thể gắn làm ảnh sản phẩm thật (API + UI); bài chưa duyệt / còn claim CRITICAL-HIGH / SEO BLOCKED không thể đăng (cả UI và API, kiểm tra lại ngay trước khi gửi); đăng lặp và timeout không tạo bài trùng; bài sửa tay trên WordPress không bao giờ bị ghi đè tự động; lỡ lịch không tự đăng muộn; nhãn "không bảo đảm thứ hạng" hiển thị.
 
-## Phase 7 trở đi
-Nội dung Phase 7–9 do chủ dự án xác định. Các mục dưới là kế hoạch ban đầu, giữ để tham khảo (phần Media/SEO và Duyệt/xuất bản đã làm ở Phase 6).
+## Phase 7 — Billing, Subscription, AI Credits & Payments ✦ (đã triển khai, chờ nghiệm thu)
+Nhánh `claude/project-thread-cz2bqq` (tách từ `main` sau khi merge Phase 2–6). Xem `PHASE7-IMPLEMENTATION.md`, `PHASE7-TEST-REPORT.md`, `BILLING-ARCHITECTURE.md`, `CREDIT-LEDGER.md`, `PAYMENT-RECONCILIATION.md`, `SUBSCRIPTION-LIFECYCLE.md`. Phần "gói/thanh toán" dời từ Phase 4 (ADR-016).
+- [x] Gói có version (không xóa khi đang dùng), trial chống lạm dụng không tự trừ tiền, 8 trạng thái subscription, nâng/hạ cấp + proration tùy chọn, gia hạn bằng scheduler.
+- [x] Entitlement engine (9 tài nguyên, 7 tính năng) nối vào Sites/Workspace/Research/Writer/Media/Publishing — `enforcement` tắt mặc định.
+- [x] Ví credit + sổ cái append-only, reserve → settle idempotent với AI Gateway, chính sách quy đổi versioned, hết hạn FIFO.
+- [x] Đơn thanh toán, VietQR, adapter `manual_bank` / `signed_webhook`, đối soát + duyệt thủ công, hoàn tiền, biên nhận nội bộ.
+- [x] Báo cáo doanh thu / chi phí / lợi nhuận (chỉ cảnh báo), UI khách hàng + Super Admin, dữ liệu demo có nhãn `[MẪU]`.
 
-## Phase 7 — Media & SEO
-- Ảnh stock (license), ảnh AI (gắn nhãn), infographic, alt text; metadata, schema, internal link, SEO checklist.
+**Nghiệm thu**: webhook lặp không kích hoạt hai lần; webhook sai chữ ký/quá hạn bị từ chối; client không thể tự đánh dấu đã trả; retry AI không trừ credit hai lần; số dư không âm; ledger `verify()` khớp; gói đang dùng không xóa được; version đã publish không sửa được; hết hạn gói không xóa dữ liệu; cross-tenant 404.
 
-**Nghiệm thu**: ảnh AI không thể gắn làm ảnh sản phẩm thật; mọi ảnh stock có license/attribution; nhãn "không bảo đảm thứ hạng" hiển thị.
-
-## Phase 8 — Duyệt & xuất bản
-- Approval workflow, lịch đăng, auto-publish có điều kiện, đẩy bài + ảnh + SEO meta lên WP, đồng bộ trạng thái, retry.
-
-**Nghiệm thu**: bài chưa qua kiểm chứng không thể lên lịch (cả UI và API); đăng lặp không tạo bài trùng (idempotency); lỗi WP hiển thị rõ và retry được.
+## Phase 8 trở đi
+Nội dung Phase 8–9 do chủ dự án xác định. Kế hoạch ban đầu cho "Media & SEO" và "Duyệt & xuất bản" đã làm ở Phase 6.
 
 ## Phase 9 — Search Console & làm mới nội dung
 - OAuth GSC theo site, đồng bộ số liệu, dashboard hiệu quả, phát hiện bài suy giảm, đề xuất cập nhật.
@@ -232,8 +225,8 @@ Nội dung Phase 7–9 do chủ dự án xác định. Các mục dưới là k�
 
 | # | Câu hỏi | Cần trước |
 |---|---|---|
-| Q1 | Cổng thanh toán: Stripe, PayOS, VNPay, MoMo? Có xuất hóa đơn VAT điện tử? | Phase 4 |
+| Q1 | Dịch vụ báo giao dịch ngân hàng cho adapter `signed_webhook` (PayOS/Casso/SePay…) và Stripe quốc tế? Có xuất hóa đơn VAT điện tử? | Bật thanh toán thật (Phase 7 đã có adapter chung) |
 | Q2 | Domain chính thức (`app.`, `admin.`, `api.`)? | Deploy staging |
 | Q3 | Nhà cung cấp dữ liệu từ khóa/SERP (DataForSEO đề xuất) và tìm kiếm web (Brave/Tavily) | Phase 5 |
-| Q4 | Giá và giới hạn từng gói | Phase 4 |
+| Q4 | Giá và giới hạn từng gói (Phase 7 chỉ có gói demo `[MẪU]`; Super Admin nhập giá thật) | Mở bán |
 | Q5 | Chính sách lưu giữ dữ liệu, xóa tài khoản | Phase 10 |

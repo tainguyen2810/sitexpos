@@ -122,7 +122,7 @@ export interface RevenueReport {
   from: string
   to: string
   cash: { gross_minor: number; discounts_minor: number; refunds_minor: number; net_minor: number; subscription_minor: number; credits_minor: number }
-  recognized: { subscription_minor: number; credits_minor: number; total_minor: number }
+  recognized: { subscription_minor: number; credits_minor: number; refunds_minor: number; total_minor: number }
   deferred_subscription_minor: number
   credit_liability_minor: number
   credits_consumed_mc: number

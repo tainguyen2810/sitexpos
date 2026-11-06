@@ -158,7 +158,7 @@ function lim(n: number | undefined) {
             <AppButton v-if="p.status === 'active'" size="sm" variant="secondary" :disabled="busy" @click="setStatus(p.id, 'hidden')">{{ t('billAdmin.plans.statuses.hidden') }}</AppButton>
             <AppButton v-if="p.status !== 'archived'" size="sm" variant="ghost" :disabled="busy" @click="setStatus(p.id, 'archived')">{{ t('billAdmin.plans.statuses.archived') }}</AppButton>
             <AppButton size="sm" variant="secondary" @click="openVersion(p.id, p.versions[0] ?? null)">{{ t('billAdmin.plans.newVersion') }}</AppButton>
-            <AppButton size="sm" variant="danger" @click="toDelete = { id: p.id, name: p.name }">{{ t('billAdmin.plans.delete') }}</AppButton>
+            <AppButton v-if="!p.live_subscriptions" size="sm" variant="danger" @click="toDelete = { id: p.id, name: p.name }">{{ t('billAdmin.plans.delete') }}</AppButton>
           </div>
           <div class="overflow-x-auto">
             <table class="min-w-full text-sm">

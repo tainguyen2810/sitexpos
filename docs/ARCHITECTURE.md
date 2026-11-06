@@ -271,6 +271,17 @@ Quy tắc cứng:
 - **Scheduler**: `sitex:publishing:dispatch` mỗi phút (lịch đến hạn, lỡ lịch, job kẹt), `sitex:publishing:auto` mỗi giờ.
 - **Queue**: `media` (xử lý ảnh, ảnh AI, đồng bộ Media Library), `default` (đăng bài, kiểm tra link, kiểm tra đồng bộ).
 
+## 8e. Billing, credit & thanh toán (Phase 7 — `app/Modules/Billing`, xem `BILLING-ARCHITECTURE.md`, `PHASE7-IMPLEMENTATION.md`)
+
+- **Catalog có version**: `plans` → `plan_versions` (bất biến sau publish) → `plan_entitlements`; `credit_packages`, `credit_policies` (versioned). Không hardcode giá gói, giá credit hay giá AI (giá vốn vẫn ở `ai_model_prices` Phase 3).
+- **Subscription**: 8 trạng thái với bảng chuyển hợp lệ, mỗi chuyển ghi `subscription_events`; trial chống lạm dụng theo người chủ; nâng cấp áp ngay (proration tùy chọn), hạ cấp cuối kỳ; không auto-debit (`SUBSCRIPTION-LIFECYCLE.md`).
+- **Entitlement**: `Billing\Contracts\Entitlements` được Sites, Workspace, Research, Writer, Media, Publishing gọi trước tác vụ tốn tài nguyên. `enforcement = off` mặc định → chỉ ghi nhận, không đổi hành vi Phase 1–6.
+- **Credit AI** (`CREDIT-LEDGER.md`): sổ cái append-only, ví là projection; AI Gateway gọi `AiGateway\Contracts\UsageMeter` (Billing bind `CreditUsageMeter`) reserve → settle/release cùng khóa idempotency với `BudgetManager`; timeout không chắc chắn tính theo ước tính + cần duyệt.
+- **Thanh toán** (`PAYMENT-RECONCILIATION.md`): đơn có mã `SXP…`, VietQR EMVCo; xác nhận chỉ qua webhook ký HMAC (chống replay) hoặc Billing Admin duyệt; `PaymentConfirmation` là nơi duy nhất chuyển `PAID`. Không scraping Internet Banking.
+- **Kế toán**: biên nhận nội bộ (không phải hóa đơn GTGT); doanh thu tiền mặt/ghi nhận/hoãn lại; `cost_records` gộp từ `ai_requests`; báo cáo lợi nhuận chỉ cảnh báo.
+- **Ranh giới** (kiểm bằng `ArchitectureTest`): `Billing\{Credits,Payments,Subscriptions,Entitlements}` chỉ dùng trong Billing (và seeder demo); module khác chỉ dùng `Billing\Contracts`.
+- **Scheduler**: `sitex:billing:lifecycle` (15'), `sitex:billing:expire-credits` (5'), `sitex:billing:aggregate-costs --days=2` (1h), `sitex:billing:verify-ledger` (03:15).
+
 ## 9. Dịch vụ dữ liệu bên ngoài (adapter, cấu hình qua .env)
 
 | Nhu cầu | Adapter dự kiến | Ghi chú |
@@ -280,7 +291,7 @@ Quy tắc cứng:
 | Hiệu quả thực tế | Google Search Console API (OAuth theo site) | Nguồn số liệu thứ hạng/clicks thật |
 | Ảnh thật | Pexels / Unsplash (lưu license, tác giả) + ảnh do khách tải lên | |
 | Ảnh AI | Provider ảnh qua AI Gateway | Luôn gắn `is_ai_generated=true` |
-| Thanh toán | Adapter: Stripe (quốc tế) + cổng nội địa (PayOS/VNPay/MoMo) — **chờ quyết định** | |
+| Thanh toán | Phase 7: adapter `manual_bank` (VietQR + đối soát thủ công) và `signed_webhook` (dịch vụ báo giao dịch ký HMAC). Cổng cụ thể (PayOS/Casso/SePay/Stripe…) **chờ quyết định** | Không scraping Internet Banking |
 | Email | SMTP hoặc Brevo (Laravel mailer) | |
 
 ## 10. Queue (Phase 3)
@@ -368,3 +379,5 @@ Bất biến thời gian: timeout job (300 s) < `retry_after` của Redis (330 s
 | ADR-017 | Ý tưởng chủ đề sinh từ bằng chứng bằng quy tắc; AI chỉ mở rộng gợi ý từ khóa và diễn đạt tiêu đề, có kiểm tra lạc đề | Đảm bảo hệ thống hữu ích cả khi AI lỗi/tắt, mọi ý tưởng truy được nguồn, và không có số liệu do AI bịa. Đánh đổi: tiêu đề theo quy tắc kém tự nhiên hơn |
 | ADR-018 | Phase 6 = Media + SEO Audit + WordPress Publisher (gộp "Media & SEO" và "Duyệt & xuất bản" của kế hoạch ban đầu) | Theo yêu cầu Phase 6 của chủ dự án; cần sửa P0 Phase 2 (ghi đè sửa tay) trước khi cho phép cập nhật bài. Phase 7–9 do chủ dự án xác định lại |
 | ADR-019 | Không bao giờ tự ghi đè bài đã bị sửa trên WordPress: Cloud kiểm tra state có ký trước khi ghi, plugin kiểm tra lại nguyên tử (409), ghi đè chỉ sau quyết định của người kèm `expected.content_hash` | Kiểm tra một phía có race (sửa giữa lúc kiểm tra và lúc ghi). Đánh đổi: bài ghi trước plugin 1.1.0 chỉ so được theo thời điểm sửa |
+| ADR-020 | Phase 7 Billing: credit đo bằng milli-credit trên sổ cái append-only; AI Gateway chỉ biết contract `UsageMeter`; xác nhận thanh toán chỉ qua webhook ký hoặc người duyệt; `enforcement` tắt mặc định | Không làm tròn mất tiền ở lời gọi nhỏ, không trừ hai lần khi retry (khóa chung với `BudgetManager`), không tin client; bật cưỡng chế là quyết định vận hành để không đổi hành vi khách đang dùng. Đánh đổi: khi `off` khách dùng AI không bị trừ credit |
+| ADR-021 | Audit billing dùng chung `audit_logs` (action `billing.*`), chứng từ là biên nhận nội bộ (không phải hóa đơn GTGT), không auto-debit | Tránh bảng audit trùng; chưa có tích hợp hóa đơn điện tử; QR không hỗ trợ trừ tiền tự động. Đánh đổi: gia hạn cần khách thao tác, có ân hạn và nhắc trước |

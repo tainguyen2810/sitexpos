@@ -49,6 +49,7 @@ export default {
       noPlan: 'Workspace chưa có gói',
       noPlanHint: 'Chọn một gói để bắt đầu. Dữ liệu của bạn luôn được giữ nguyên.',
       choosePlan: 'Xem bảng giá',
+      changePlan: 'Đổi gói',
       currentPlan: 'Gói hiện tại',
       period: 'Kỳ hiện tại',
       renewsOn: 'Hết kỳ vào',

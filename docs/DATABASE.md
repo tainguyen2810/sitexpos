@@ -117,50 +117,59 @@ Ràng buộc nghiệp vụ: mỗi workspace có **đúng một** OWNER active (k
 
 **system_settings**: key UNIQUE, value JSON, updated_by — cấu hình toàn cục do Super Admin quản lý (không chứa API key; API key nằm trong `.env`).
 
-### 3.4 Billing
+### 3.4–3.5 Billing, credit & usage ✦ Phase 7 (đã triển khai — thay thiết kế `plans/plan_prices/plan_limits/invoices/payments/webhook_events/credit_packs/usage_counters/credit_ledger` dự kiến trước đây)
 
-**plans**: id, code UNIQUE (`starter`, `pro`, `agency`...), name (JSON đa ngôn ngữ), is_public, is_active, sort_order, trial_days.
+Migration `app/Modules/Billing/Database/Migrations/2026_11_12_000100_create_billing_tables.php` (28 bảng). Thiết kế chi tiết: `BILLING-ARCHITECTURE.md`, `CREDIT-LEDGER.md`, `PAYMENT-RECONCILIATION.md`, `SUBSCRIPTION-LIFECYCLE.md`. Tiền `*_minor`, giá vốn µUSD, credit milli-credit `*_mc` (BIGINT, 1 credit = 1000 mc). Bảng có `workspace_id` là bảng tenant (model dùng `BelongsToWorkspace`); bảng catalog/provider/setting là cấp nền tảng.
 
-**plan_prices**: id, plan_id, interval (`month`/`year`), currency, amount_minor, gateway_price_ref (null), is_active.
+**Catalog (nền tảng)**
+| Bảng | Cột chính | Ràng buộc |
+|---|---|---|
+| `billing_settings` | key, value JSON, updated_by | key PK; giá trị mặc định trong `BillingSettings::DEFAULTS` |
+| `plans` | code, name, description, status (draft/active/hidden/archived), is_free, is_demo, display_order, current_version_id | code UNIQUE; không xóa khi có subscription |
+| `plan_versions` | plan_id, version, status, currency, monthly/yearly_price_minor (null = không bán), trial_days, trial_credits_mc, included_credits_mc, support_level, feature_flags JSON, notes, published_at | UNIQUE(plan_id, version); bất biến sau publish |
+| `plan_entitlements` | plan_version_id, resource_key, limit_value (-1 = không giới hạn), period (total/month) | UNIQUE(plan_version_id, resource_key) |
+| `credit_packages` | code, name, credits_mc, bonus_credits_mc, price_minor, currency, validity_days, status, is_demo | code UNIQUE |
+| `credit_policies` | version, micro_usd_per_credit, markup_bps, min_charge_mc, effective_from | version UNIQUE |
+| `payment_provider_configs` | code, adapter (manual_bank/signed_webhook), name, is_enabled, settings JSON, credentials (encrypted) | code UNIQUE; credentials không bao giờ trả qua API |
 
-**plan_limits**: id, plan_id, limit_key, limit_value (int, -1 = không giới hạn), period (`month`, `lifetime`). Limit keys: `sites`, `seats`, `articles`, `images_ai`, `images_stock`, `research_runs`, `keyword_lookups`, `refresh_suggestions`.
+**Subscription (tenant)**
+| Bảng | Cột chính | Ràng buộc |
+|---|---|---|
+| `subscriptions` | plan_id, plan_version_id, status (8), interval, price_minor, currency, started_at, current_period_start/end, trial_ends_at, grace_ends_at, cancelled_at, ended_at, status_before_hold, renewal_reminders, live_key, lock_version | `live_key` UNIQUE → một subscription đang sống / workspace |
+| `subscription_events` | event, from_status, to_status, plan_version_id, payment_order_id, actor_type, actor_id, reason, data | append-only |
+| `subscription_changes` | kind (upgrade/downgrade), from/to_version_id, to_interval, status (scheduled/pending_payment/applied/cancelled), effective_at, amount_minor, quote JSON, payment_order_id | |
+| `trial_redemptions` | user_id, email_hash, workspace_id, plan_id | UNIQUE(user_id), UNIQUE(email_hash) — một người một trial |
+| `usage_meters` | resource_key, period_start, used | UNIQUE(workspace_id, resource_key, period_start) |
+| `usage_events` | resource_key, period_start, amount (âm khi hoàn), idempotency_key | idempotency_key UNIQUE |
 
-**subscriptions**
-| Cột | Ghi chú |
-|---|---|
-| id, workspace_id | một subscription `active`/`trialing` tại một thời điểm |
-| plan_id, plan_price_id | |
-| status | `trialing`, `active`, `past_due`, `canceled`, `expired` |
-| gateway, gateway_subscription_ref | |
-| current_period_start, current_period_end | chu kỳ quota |
-| cancel_at_period_end, canceled_at | |
+**Credit (tenant)** — xem `CREDIT-LEDGER.md`
+| Bảng | Cột chính | Ràng buộc |
+|---|---|---|
+| `credit_wallets` | balance_mc, held_mc (projection), overdraft_limit_mc, low_balance_threshold_mc | UNIQUE(workspace_id) |
+| `credit_grants` | wallet_id, source, amount_mc, remaining_mc, expires_at, source_ref, price_minor, expired_at | UNIQUE(workspace_id, source_ref) |
+| `credit_reservations` | idempotency_key, purpose, category, policy_id, estimate_micro_usd, amount_mc, status, actual_micro_usd, charged_mc, uncollected_mc, needs_review, expires_at, settled_at | idempotency_key UNIQUE |
+| `credit_ledger_entries` (BIGINT PK) | wallet_id, grant_id, entry_type, amount_mc (có dấu), balance_after_mc, idempotency_key, reference_type/id, reverses_entry_id, description, actor_id | append-only; idempotency_key UNIQUE |
+| `credit_adjustments` | amount_mc, kind, reason, expires_at, ledger_entry_id, created_by | |
 
-**invoices**: id, workspace_id, subscription_id null, number UNIQUE, status (`draft`,`open`,`paid`,`void`,`refunded`), currency, subtotal_minor, tax_minor, total_minor, gateway, gateway_invoice_ref, issued_at, paid_at, line_items JSON, billing_snapshot JSON.
+**Thanh toán** — xem `PAYMENT-RECONCILIATION.md`
+| Bảng | Cột chính | Ràng buộc |
+|---|---|---|
+| `payment_orders` (tenant) | purpose, plan_version_id, interval, credit_package_id, subscription_id, subscription_change_id, description, amount_minor, currency, provider, reference, status (8), paid/refunded_amount_minor, fee_minor, idempotency_key, snapshot, expires_at, paid_at, fulfilled_at | reference UNIQUE; UNIQUE(workspace_id, idempotency_key) |
+| `payment_webhook_events` (nền tảng) | provider, event_id, signature_valid, payload_hash, payload (đã rút gọn), status, error | UNIQUE(provider, event_id) — chống replay |
+| `payment_transactions` (nền tảng; workspace_id gán khi khớp) | provider, external_id, direction, amount_minor, currency, description, counterparty, occurred_at, match_status, match_reason, payment_order_id, webhook_event_id, recorded_by | UNIQUE(provider, external_id) |
+| `payment_reconciliations` | payment_transaction_id, payment_order_id, result, difference_minor, reviewed_by, note | append-only |
+| `refunds` (tenant) | payment_order_id, amount_minor, credits_reversed_mc, status (requested/processing/succeeded/failed), reason, external_ref, failure_reason | |
 
-**payments**: id, workspace_id, invoice_id, gateway, gateway_payment_ref UNIQUE(gateway, ref), amount_minor, currency, status, raw_payload_hash.
+**Chứng từ & kế toán**
+| Bảng | Cột chính | Ràng buộc |
+|---|---|---|
+| `billing_profiles` (tenant) | company_name, tax_code, address, contact_name, email, phone | UNIQUE(workspace_id) |
+| `billing_documents` (tenant) | type (receipt/refund_record), number, payment_order_id, refund_id, amount_minor, snapshot, issued_at, source_key | number UNIQUE, source_key UNIQUE; **không phải hóa đơn GTGT** |
+| `billing_notifications` (tenant) | type, dedupe_key, data, sent_at | dedupe_key UNIQUE |
+| `revenue_records` (tenant) | kind, payment_order_id, refund_id, plan_id, amount_minor, discount_minor, service_start/end, credit_grant_id, occurred_at, source_key | source_key UNIQUE |
+| `cost_records` (tenant) | day, category, provider, model, requests, cost_micro_usd, uncertain_micro_usd | UNIQUE(workspace_id, day, category, provider, model) — gộp từ `ai_requests` trước khi prune |
 
-**webhook_events**: id, provider, event_id, UNIQUE(provider, event_id), signature_valid, received_at, processed_at, status, payload JSON (đã che dữ liệu nhạy cảm) — chống xử lý trùng/replay.
-
-**credit_packs**: id, code, credits, price_minor, currency, is_active.
-
-### 3.5 Usage
-
-**usage_events** (BIGINT PK, append-only)
-| Cột | Ghi chú |
-|---|---|
-| workspace_id, site_id null | |
-| metric | trùng limit_key |
-| quantity | int (âm khi hoàn) |
-| state | `reserved`, `committed`, `released` |
-| reservation_id | ULID, nhóm reserve→commit/release |
-| source_type, source_id | ví dụ `article`, id |
-| period_start | chu kỳ áp dụng |
-| idempotency_key | UNIQUE(workspace_id, idempotency_key) |
-| created_at | |
-
-**usage_counters**: (workspace_id, metric, period_start) UNIQUE, reserved, committed — bảng tổng hợp cập nhật trong transaction với `SELECT ... FOR UPDATE` để kiểm tra quota không race.
-
-**credit_ledger** (append-only): id, workspace_id, delta (int), balance_after, reason (`purchase`, `grant`, `consume`, `refund`, `expire`), reference_type, reference_id, expires_at null, created_by.
+Audit billing dùng chung `audit_logs` (action `billing.*`), không tạo bảng audit riêng.
 
 ### 3.6 Sites (WordPress) ✦ Phase 2
 

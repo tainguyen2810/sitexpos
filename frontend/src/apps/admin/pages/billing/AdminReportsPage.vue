@@ -65,6 +65,7 @@ const maxTrend = computed(() => Math.max(1, ...(costs.data.value?.trend.map((x) 
         <dl class="grid gap-2 text-sm sm:grid-cols-2">
           <div class="flex justify-between"><dt class="text-ink-muted">{{ t('billAdmin.reports.subscriptions') }}</dt><dd class="tabular-nums">{{ formatMoney(revenue.data.value.recognized.subscription_minor, revenue.data.value.currency) }}</dd></div>
           <div class="flex justify-between"><dt class="text-ink-muted">{{ t('billAdmin.reports.creditsRev') }}</dt><dd class="tabular-nums">{{ formatMoney(revenue.data.value.recognized.credits_minor, revenue.data.value.currency) }}</dd></div>
+          <div class="flex justify-between"><dt class="text-ink-muted">{{ t('billAdmin.reports.refunds') }}</dt><dd class="tabular-nums">{{ formatMoney(revenue.data.value.recognized.refunds_minor, revenue.data.value.currency) }}</dd></div>
           <div class="flex justify-between"><dt class="text-ink-muted">{{ t('billAdmin.reports.gross') }}</dt><dd class="tabular-nums">{{ formatMoney(revenue.data.value.cash.gross_minor, revenue.data.value.currency) }}</dd></div>
           <div class="flex justify-between"><dt class="text-ink-muted">{{ t('billAdmin.reports.fees') }}</dt><dd class="tabular-nums">{{ formatMoney(revenue.data.value.costs.payment_fees_minor, revenue.data.value.currency) }}</dd></div>
         </dl>
@@ -88,7 +89,9 @@ const maxTrend = computed(() => Math.max(1, ...(costs.data.value?.trend.map((x) 
         </div>
         <AppCard :title="t('billAdmin.reports.trend')">
           <div class="flex h-40 items-end gap-1" role="img" :aria-label="t('billAdmin.reports.trend')">
-            <div v-for="d in costs.data.value.trend" :key="d.day" class="flex-1 rounded-t bg-brand-500" :style="{ height: `${Math.max(2, (d.cost_micro_usd / maxTrend) * 100)}%` }" :title="`${d.day}: ${formatMicroUsd(d.cost_micro_usd)}`" />
+            <div v-for="d in costs.data.value.trend" :key="d.day" class="flex h-full min-w-2 max-w-12 flex-1 flex-col justify-end" :title="`${d.day}: ${formatMicroUsd(d.cost_micro_usd)}`">
+              <div class="w-full rounded-t bg-brand-500" :style="{ height: `${Math.max(2, (d.cost_micro_usd / maxTrend) * 100)}%` }" />
+            </div>
           </div>
         </AppCard>
       </template>
@@ -107,7 +110,7 @@ const maxTrend = computed(() => Math.max(1, ...(costs.data.value?.trend.map((x) 
         <EmptyState v-if="!profit.data.value.tenants.length" icon="chart" :title="t('bill.common.noData')" />
         <div v-else class="overflow-x-auto">
           <table class="min-w-full text-sm">
-            <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('billAdmin.reports.tenant') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.recognized') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.aiCost') }}</th><th class="px-4 py-2 text-right">Credits</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.profit') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.margin') }}</th><th class="px-4 py-2">{{ t('billAdmin.reports.alerts') }}</th></tr></thead>
+            <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('billAdmin.reports.tenant') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.recognized') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.aiCost') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.creditsRev') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.profit') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.margin') }}</th><th class="px-4 py-2">{{ t('billAdmin.reports.alerts') }}</th></tr></thead>
             <tbody class="divide-y divide-line">
               <tr v-for="r in profit.data.value.tenants" :key="r.workspace_id">
                 <td class="px-4 py-2"><RouterLink :to="`/workspaces/${r.workspace_id}`" class="hover:underline">{{ r.workspace_name ?? r.workspace_id }}</RouterLink><span class="block text-xs text-ink-muted">{{ r.plan_code ?? '—' }}</span></td>

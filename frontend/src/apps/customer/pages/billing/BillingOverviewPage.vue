@@ -112,7 +112,7 @@ async function setReminders(on: boolean) {
 
         <div v-if="canManage" class="mt-4 flex flex-wrap gap-2 border-t border-line pt-4">
           <AppButton v-if="sub.price_minor > 0 && ['ACTIVE', 'PAST_DUE', 'GRACE_PERIOD'].includes(sub.status)" :loading="busy" data-testid="renew" @click="renew">{{ t('bill.overview.renew') }}</AppButton>
-          <AppButton variant="secondary" @click="router.push({ name: 'billing-plans', params: { workspaceId } })">{{ t('bill.plans.change') }}</AppButton>
+          <AppButton variant="secondary" @click="router.push({ name: 'billing-plans', params: { workspaceId } })">{{ t('bill.overview.changePlan') }}</AppButton>
           <AppButton v-if="sub.status === 'CANCELLED'" variant="secondary" :loading="busy" @click="act(() => billingApi.resume(workspaceId), 'bill.overview.resumed')">{{ t('bill.overview.resume') }}</AppButton>
           <AppButton v-else-if="['ACTIVE', 'TRIALING', 'PAST_DUE', 'GRACE_PERIOD'].includes(sub.status)" variant="ghost" data-testid="cancel-sub" @click="confirmCancel = true">{{ t('bill.overview.cancel') }}</AppButton>
         </div>

@@ -34,9 +34,11 @@ final class Reports
         $currency = (string) $this->settings->get('currency');
         $records = DB::table('revenue_records')->where('currency', $currency)->where('occurred_at', '<=', $to)
             ->when($workspaceId !== null, fn ($q) => $q->where('workspace_id', $workspaceId))
-            ->get(['workspace_id', 'kind', 'amount_minor', 'discount_minor', 'service_start', 'service_end', 'occurred_at', 'credit_grant_id', 'plan_id']);
+            ->get(['workspace_id', 'kind', 'amount_minor', 'discount_minor', 'service_start', 'service_end', 'occurred_at', 'credit_grant_id', 'plan_id', 'refund_id', 'payment_order_id']);
+        $unrecognisedRefund = $this->refundedCreditValue($records);
 
         $gross = 0;
+        $refundsRecognized = 0;
         $discounts = 0;
         $refunds = 0;
         $subscriptionCash = 0;
@@ -50,6 +52,7 @@ final class Reports
             if ($inRange) {
                 if ($r->kind === 'refund') {
                     $refunds += $amount;
+                    $refundsRecognized += $amount + ($unrecognisedRefund[(string) $r->refund_id] ?? 0);
                 } else {
                     $gross += $amount;
                     $discounts += (int) $r->discount_minor;
@@ -68,9 +71,11 @@ final class Reports
         $fees = (int) DB::table('payment_orders')->where('currency', $currency)->whereNotNull('paid_at')->whereBetween('paid_at', [$from, $to])
             ->when($workspaceId !== null, fn ($q) => $q->where('workspace_id', $workspaceId))->sum('fee_minor');
 
-        $recognized = $recognizedSub + $credit['recognized_minor'];
+        // Refunds reduce recognised revenue, except the part paid back for credits
+        // that were never consumed (that only lowers the credit liability).
+        $recognized = $recognizedSub + $credit['recognized_minor'] + $refundsRecognized;
         $aiCostMinor = $this->toCurrency($costs['total_micro_usd']);
-        $profit = $aiCostMinor !== null ? $recognized + $refunds - $aiCostMinor - $fees : null;
+        $profit = $aiCostMinor !== null ? $recognized - $aiCostMinor - $fees : null;
 
         return [
             'currency' => $currency,
@@ -81,7 +86,7 @@ final class Reports
                 'subscription_minor' => $subscriptionCash, 'credits_minor' => $creditCash,
             ],
             'recognized' => [
-                'subscription_minor' => $recognizedSub, 'credits_minor' => $credit['recognized_minor'], 'total_minor' => $recognized,
+                'subscription_minor' => $recognizedSub, 'credits_minor' => $credit['recognized_minor'], 'refunds_minor' => $refundsRecognized, 'total_minor' => $recognized,
             ],
             'deferred_subscription_minor' => $deferred,
             'credit_liability_minor' => $credit['liability_minor'],
@@ -127,7 +132,8 @@ final class Reports
         $currency = (string) $this->settings->get('currency');
         $revenue = [];
         $records = DB::table('revenue_records')->where('currency', $currency)->where('occurred_at', '<=', $to)
-            ->get(['workspace_id', 'kind', 'amount_minor', 'service_start', 'service_end', 'occurred_at']);
+            ->get(['workspace_id', 'kind', 'amount_minor', 'service_start', 'service_end', 'occurred_at', 'refund_id', 'payment_order_id']);
+        $unrecognisedRefund = $this->refundedCreditValue($records);
         foreach ($records as $r) {
             $ws = (string) $r->workspace_id;
             $revenue[$ws] ??= ['cash' => 0, 'recognized' => 0];
@@ -138,7 +144,7 @@ final class Reports
             if ($r->kind === 'subscription') {
                 $revenue[$ws]['recognized'] += self::recognize((int) $r->amount_minor, $r->service_start, $r->service_end, $at, $from, $to)[0];
             } elseif ($r->kind === 'refund' && $at->greaterThanOrEqualTo($from)) {
-                $revenue[$ws]['recognized'] += (int) $r->amount_minor;
+                $revenue[$ws]['recognized'] += (int) $r->amount_minor + ($unrecognisedRefund[(string) $r->refund_id] ?? 0);
             }
         }
         foreach ($this->creditRevenueByWorkspace($from, $to, $currency) as $ws => $v) {
@@ -269,6 +275,45 @@ final class Reports
         foreach ($rows as $r) {
             $ws = (string) $r->workspace_id;
             $out[$ws] = ($out[$ws] ?? 0) + intdiv((int) $r->price_minor * -(int) $r->amount_mc, max(1, (int) $r->grant_mc));
+        }
+
+        return $out;
+    }
+
+    /**
+     * For each refund record: the value (in money) of the purchased credits the
+     * refund took back. Those credits were never recognised as revenue (they sat
+     * in the credit liability), so that part of the refund must not reduce
+     * recognised revenue again.
+     *
+     * @param  iterable<object>  $records
+     * @return array<string, int> refund id => minor units
+     */
+    private function refundedCreditValue(iterable $records): array
+    {
+        $refundIds = [];
+        foreach ($records as $r) {
+            if ($r->kind === 'refund' && $r->refund_id !== null) {
+                $refundIds[] = (string) $r->refund_id;
+            }
+        }
+        if ($refundIds === []) {
+            return [];
+        }
+        $refunds = DB::table('refunds')->whereIn('id', $refundIds)->where('credits_reversed_mc', '>', 0)->get(['id', 'payment_order_id', 'amount_minor', 'credits_reversed_mc']);
+        if ($refunds->isEmpty()) {
+            return [];
+        }
+        $grants = DB::table('credit_grants')->whereIn('source_ref', $refunds->map(fn ($r) => 'order:'.$r->payment_order_id)->all())
+            ->get(['source_ref', 'amount_mc', 'price_minor'])->keyBy('source_ref');
+        $out = [];
+        foreach ($refunds as $r) {
+            $g = $grants['order:'.$r->payment_order_id] ?? null;
+            if ($g === null || (int) $g->amount_mc <= 0) {
+                continue;
+            }
+            $value = intdiv((int) $g->price_minor * (int) $r->credits_reversed_mc, (int) $g->amount_mc);
+            $out[(string) $r->id] = min((int) $r->amount_minor, $value);
         }
 
         return $out;

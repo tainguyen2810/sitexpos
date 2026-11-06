@@ -47,7 +47,7 @@ Query: `?cursor=...&per_page=25` (tối đa 100), `?sort=-created_at`, `?filter[
 | 403 | `email_not_verified`, `two_factor_required` | |
 | 404 | `not_found` | Không tồn tại **hoặc thuộc tenant khác** |
 | 409 | `conflict`, `invalid_state_transition` | Xung đột trạng thái |
-| 402 | `quota_exceeded`, `subscription_inactive`, `insufficient_credits` | Hết quota/gói |
+| 402 | `quota_exceeded`, `subscription_required`, `subscription_inactive`, `plan_limit_reached`, `feature_unavailable`, `insufficient_credits` | Hết quota/gói/credit (Phase 7, chỉ khi Billing `enforcement = enforce`) |
 | 419 | `csrf_mismatch` | CSRF hết hạn |
 | 422 | `validation_failed` | Validate thất bại |
 | 429 | `rate_limited` | Có header `Retry-After` |
@@ -191,17 +191,34 @@ Thao tác 202 trên site chưa kết nối → `409 not_connected`.
 
 HTTP không bao giờ gọi provider AI trực tiếp: tác vụ chạy trên queue (`writing`/`research`/`factcheck` theo route). Lỗi nghiệp vụ AI trả qua `error_code` của run, ví dụ `budget_exceeded`, `no_model_available`, `rate_limited`, `server_error`, `connect_failed`, `response_timeout`, `invalid_output`, `refused`, `input_too_large`, `interrupted_paid_call`, `duplicate_call`, `deadline_exceeded`.
 
-### 2.4b Billing & Usage (Phase 4 — chưa triển khai)
-| Method | Path | Quyền |
+### 2.4b Billing, credit & thanh toán (Phase 7) ✦
+Tiền tố `/workspaces/{ws}/billing`. Quyền: `billing.view` (mọi thành viên) cho GET; `billing.manage` (chỉ **O**wner) cho mọi thao tác ghi. Tiền `*_minor` + `currency`, credit `*_mc` (1 credit = 1000 mc). Endpoint tạo đơn/trial/đổi gói cần email đã xác minh và giới hạn `throttle:billing-orders`. Trạng thái thanh toán **không bao giờ** nhận từ client. Chi tiết: `BILLING-ARCHITECTURE.md`.
+
+| Method | Path | Mô tả |
 |---|---|---|
-| GET | `/plans` | công khai |
-| GET | `/workspaces/{ws}/subscription` | OA |
-| POST | `/workspaces/{ws}/subscription/checkout` | O — `{plan_price_id, gateway}` → `{checkout_url}` |
-| POST | `/workspaces/{ws}/subscription/cancel` | O |
-| GET | `/workspaces/{ws}/invoices` · `/invoices/{id}/pdf` | O |
-| GET | `/workspaces/{ws}/usage` | OAEV — quota theo metric: `{metric, limit, used, reserved, period_end}` |
-| POST | `/workspaces/{ws}/credits/checkout` | O — `{credit_pack_id}` |
-| GET | `/workspaces/{ws}/credits/ledger` | O |
+| GET | `/plans` | Gói đang bán (version hiện hành, giới hạn, tính năng, `trial.eligible/reason`, `is_demo`) + `providers[]` thanh toán đang bật |
+| GET | `/subscription` | Gói hiện tại, `effective` (nguồn giới hạn, `enforcing`, limits, features, `paid_usage_allowed`), thay đổi đã lên lịch, đơn đang chờ |
+| GET | `/subscription/history` | `subscription_events` (phân trang) |
+| POST | `/subscription/trial` | `{plan_code}` → 201. Lỗi: `trial_disabled`, `trial_already_used`, `trial_not_eligible`, `already_subscribed` |
+| POST | `/subscription/free` | `{plan_code}` — chỉ gói `is_free` (`payment_required` nếu không) |
+| POST | `/subscription/checkout` | `{plan_code, interval: month\|year, provider?, idempotency_key?}` → 201 đơn `PENDING` kèm `instructions` (VietQR). Cùng khóa → cùng đơn |
+| POST | `/subscription/quote` | `{plan_code, interval}` → `{kind: upgrade\|downgrade, amount_minor, effective_at, new_period_end, proration?, credits_policy}` |
+| POST · DELETE | `/subscription/change` | Đổi gói theo quote (nâng cấp có tiền → `order`); DELETE hủy thay đổi đã lên lịch |
+| POST | `/subscription/cancel` · `/subscription/resume` | Hủy cuối kỳ / bỏ hủy |
+| POST | `/subscription/renew` | Tạo đơn gia hạn (`cannot_renew` nếu không áp dụng) |
+| PATCH | `/subscription/settings` | `{renewal_reminders: bool}` |
+| GET | `/usage` | Giới hạn & đã dùng theo tài nguyên + chi phí/credit AI theo kỳ |
+| GET | `/credits` | `{wallet: {balance_mc, held_mc, available_mc, expiring_soon[]…}, grants[]}` |
+| GET | `/credits/transactions` | Sổ cái credit (phân trang, lọc `entry_type`) |
+| GET | `/credits/packages` | Gói credit đang bán |
+| POST | `/credits/purchase` | `{package_code, provider?, idempotency_key?}` → 201 đơn |
+| GET | `/orders` · `/orders/{id}` | Đơn thanh toán; chi tiết kèm `instructions` (ngân hàng, số TK, tên, số tiền, `memo` = mã `SXP…`, `qr_payload`, `confirmation`) |
+| POST | `/orders/{id}/transferred` | Khách báo đã chuyển → `PROCESSING` (không kích hoạt gì) |
+| POST | `/orders/{id}/cancel` | Hủy đơn chưa trả |
+| GET | `/documents` · `/documents/{id}` | Chứng từ nội bộ (biên nhận, chứng từ hoàn tiền) — `is_tax_invoice: false` |
+| GET · PUT | `/profile` | Hồ sơ thanh toán (công ty, MST, địa chỉ, email nhận chứng từ) |
+
+`workspace_id` trong body → 422; đơn/chứng từ của workspace khác → 404.
 
 ### 2.5 SEO Planner (Phase 4) ✦
 
@@ -393,6 +410,29 @@ Yêu cầu `platform_role` + 2FA đã xác nhận. User thường nhận **404**
 | GET | `/publishing/overview` | `platform.jobs.manage` — job theo trạng thái, lỗi, xung đột mở |
 | GET · PUT | `/publishing/limits` | `platform.jobs.manage` — kill switch `publishing_enabled`, `auto_publish_allowed`, giới hạn; có audit |
 
+**Phase 7 — Billing** (`/api/admin/v1/billing`, quyền `platform.billing.manage`: SUPER_ADMIN, BILLING_ADMIN; mọi thao tác ghi có audit `billing.*`, thao tác nhạy cảm bắt buộc `reason`/`note`)
+| Method | Path | Mô tả |
+|---|---|---|
+| GET · POST | `/plans` | Danh sách (kèm versions, `live_subscriptions`) / tạo gói |
+| PATCH · DELETE | `/plans/{id}` | Sửa / xóa (409 `plan_in_use` nếu có subscription) |
+| POST | `/plans/{id}/versions` | Tạo version nháp (giá, trial, credit, tính năng, giới hạn) |
+| PATCH | `/plan-versions/{id}` · POST `/plan-versions/{id}/publish` | Sửa nháp (409 `version_immutable` sau publish) / publish |
+| GET · POST · PATCH | `/credit-packages[/{id}]` | Gói credit |
+| GET · POST | `/credit-policies` | Chính sách quy đổi credit (versioned, không sửa) |
+| GET | `/subscriptions` · `/subscriptions/{id}` | Lọc theo trạng thái/gói/workspace; chi tiết kèm events |
+| POST | `/subscriptions/{id}/actions` | `{action: pause\|resume\|suspend\|unsuspend\|extend\|cancel, reason, days?}` |
+| GET | `/orders` · `/orders/{id}` | Chi tiết kèm refunds, transactions, reconciliations |
+| POST | `/orders/{id}/manual-payment` | `{bank_reference (UNIQUE), amount_minor, note}` → 201; trùng → 409 |
+| POST | `/orders/{id}/cancel` · `/orders/{id}/refunds` | Hủy đơn / yêu cầu hoàn `{amount_minor, reason}` |
+| GET | `/transactions` | Giao dịch ngân hàng theo `match_status` |
+| POST | `/transactions/{id}/approve` · `/reject` | `{order_id?, note}` / `{note}` |
+| GET | `/refunds` · POST `/refunds/{id}/complete` | `{succeeded, external_ref?, failure_reason?}` |
+| GET | `/workspaces/{ws}/wallet` · POST `/workspaces/{ws}/credit-adjustments` | Ví + sổ cái; điều chỉnh `{amount_mc, kind, reason, expires_at?}` (không cho âm ví) |
+| GET | `/credit-adjustments` · `/uncertain-usage` | Lịch sử điều chỉnh; lời gọi AI `needs_review` |
+| GET | `/reports/revenue` · `/reports/costs` · `/reports/profitability` | `?from&to` — tiền mặt / ghi nhận / hoãn lại / nợ credit; chi phí AI; lợi nhuận theo tenant/gói + cảnh báo (không tự khóa) |
+| GET · PUT | `/settings` | Cài đặt billing (`enforcement`, trial, ân hạn, proration, hết hạn đơn, nhắc gia hạn, tỷ giá, thông tin bên bán…) |
+| GET · PUT | `/providers[/{code}]` | Cấu hình cổng; `credentials` ghi-một-chiều, chỉ trả `credentials_set[]` |
+
 ## 4. Connector API trên Cloud (`/connector/v1`) — plugin gọi (Phase 2) ✦
 
 | Method | Path | Xác thực | Mô tả |
@@ -457,9 +497,14 @@ SEO meta: Yoast (`_yoast_wpseo_*`), Rank Math (`rank_math_*`) nếu đang bật;
 
 Idempotency: Cloud lưu `site_publications (site_id, idempotency_key) → wp_post_id` (Phase 2, đăng thử) và `wordpress_post_mappings` (Phase 6); plugin lưu `_sitex_post_idempotency_key` + khóa tạm, nên kể cả khi Cloud mất response và gửi lại, WordPress vẫn chỉ có một bài.
 
-## 6. Webhooks (`/webhooks/{provider}`) — Phase 4
+## 6. Webhooks thanh toán (Phase 7) ✦
 
-`POST /webhooks/stripe`, `/webhooks/payos`, ... Luôn trả `200` nhanh sau khi xác minh chữ ký và lưu `webhook_events`; xử lý trong queue. Chữ ký sai → `400`, không lưu payload.
+`POST /api/v1/billing/webhooks/{provider}` — công khai, không session/CSRF, `throttle:billing-webhook` (theo IP). Chỉ provider dùng adapter `signed_webhook` và đang bật (không thì 404 / `webhook_not_supported`).
+
+- Header: `X-SiteX-Timestamp: <unix giây>`, `X-SiteX-Signature: sha256=<hex HMAC-SHA256(secret, timestamp + "." + raw_body)>`. Lệch > ±300 s, sai/thiếu chữ ký → `401 webhook_rejected` (không xử lý, chỉ log lý do + SHA-256 payload).
+- Body: `{"event_id": "...", "transactions": [{"id", "amount", "currency", "direction": "in|out", "description", "counterparty?", "occurred_at"}]}`.
+- `(provider, event_id)` UNIQUE: gửi lại → `200 {"data": {"status": "duplicate"}}`. Hợp lệ → xử lý đồng bộ, `200 {"data": {"status": "processed", "results": [{external_id, match_status, reason}]}}`.
+- Quy tắc khớp: `PAYMENT-RECONCILIATION.md §4`.
 
 ## 7. Versioning & tương thích
 

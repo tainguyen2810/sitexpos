@@ -57,8 +57,13 @@ const monthly = computed(() => RESOURCES.filter((r) => data.value?.entitlements[
 
       <AppCard :title="t('bill.usage.daily')" class="lg:col-span-2">
         <EmptyState v-if="!data.daily.length" icon="chart" :title="t('bill.usage.empty')" />
-        <div v-else class="flex h-40 items-end gap-1" role="img" :aria-label="t('bill.usage.daily')">
-          <div v-for="d in data.daily" :key="d.day" class="flex-1 rounded-t bg-brand-500" :style="{ height: `${Math.max(2, (d.charged_mc / maxDaily) * 100)}%` }" :title="`${formatDate(d.day)}: ${formatCredits(d.charged_mc)}`" />
+        <div v-else class="flex h-48 items-end gap-1 overflow-x-auto" role="img" :aria-label="t('bill.usage.daily')">
+          <!-- Bars keep a fixed maximum width so a single day doesn't fill the whole card. -->
+          <div v-for="d in data.daily" :key="d.day" class="flex h-full min-w-6 max-w-12 flex-1 flex-col items-center justify-end gap-1" :title="`${formatDate(d.day)}: ${formatCredits(d.charged_mc)}`">
+            <span class="text-[10px] tabular-nums text-ink-muted">{{ formatCredits(d.charged_mc) }}</span>
+            <div class="w-full rounded-t bg-brand-500" :style="{ height: `${Math.max(2, (d.charged_mc / maxDaily) * 75)}%` }" />
+            <span class="text-[10px] tabular-nums text-ink-muted">{{ d.day.slice(8, 10) }}</span>
+          </div>
         </div>
       </AppCard>
     </div>

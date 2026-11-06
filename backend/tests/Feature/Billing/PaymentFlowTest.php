@@ -169,6 +169,27 @@ it('refunds: success reverses purchased credits and revenue; failure changes not
     $this->artisan('sitex:billing:verify-ledger')->assertSuccessful();
 });
 
+it('does not count a refund of unused credits against recognised revenue', function () {
+    $p = new CreditPackage;
+    $p->forceFill(['code' => 'c100', 'name' => 'Test 100', 'credits_mc' => 100_000, 'price_minor' => 50_000, 'currency' => 'VND', 'validity_days' => null])->save();
+    $order = $this->actingAs($this->t['owner'])->postJson(billingUrl($this->t['workspace'], 'credits/purchase'), ['package_code' => 'c100'])->json('data');
+    signedWebhook(['event_id' => 'u1', 'transactions' => [bankTx('u-1', 50_000, $order['reference'])]])->assertOk();
+
+    $staff = User::factory()->platform(PlatformRole::BillingAdmin)->create();
+    $refund = $this->actingAs($staff)->postJson('/api/admin/v1/billing/orders/'.$order['id'].'/refunds', ['amount_minor' => 50_000, 'reason' => 'Hoàn toàn bộ'])->json('data.id');
+    $this->actingAs($staff)->postJson('/api/admin/v1/billing/refunds/'.$refund.'/complete', ['succeeded' => true, 'external_ref' => 'RF-1'])->assertOk();
+
+    // Nothing was consumed: cash nets to 0, nothing recognised, no liability left — and no "loss".
+    $rev = $this->actingAs($staff)->getJson('/api/admin/v1/billing/reports/revenue')->assertOk()->json('data');
+    expect($rev['cash']['net_minor'])->toBe(0)
+        ->and($rev['recognized']['total_minor'])->toBe(0)
+        ->and($rev['recognized']['refunds_minor'])->toBe(0)
+        ->and($rev['credit_liability_minor'])->toBe(0);
+    $row = collect($this->actingAs($staff)->getJson('/api/admin/v1/billing/reports/profitability')->json('data.tenants'))
+        ->firstWhere('workspace_id', $this->t['workspace']->id);
+    expect($row['recognized_minor'])->toBe(0)->and($row['flags'])->not->toContain('loss_making');
+});
+
 it('lets only the owner create orders; members can view; other tenants get 404', function () {
     foreach (['admin', 'editor', 'viewer'] as $role) {
         $this->actingAs($this->t[$role])->postJson(billingUrl($this->t['workspace'], 'subscription/checkout'), ['plan_code' => 'pro', 'interval' => 'month'])->assertForbidden();
