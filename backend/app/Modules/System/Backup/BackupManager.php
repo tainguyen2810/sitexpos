@@ -108,6 +108,18 @@ final class BackupManager
     }
 
     /**
+     * The first bytes of database.sql: mysqldump writes "-- MySQL dump", the MariaDB client
+     * (mariadb-dump, used by the Docker image) writes "-- MariaDB dump".
+     */
+    public static function looksLikeDatabaseDump(string $head): bool
+    {
+        return str_contains($head, 'MySQL dump')
+            || str_contains($head, 'MariaDB dump')
+            || str_starts_with($head, 'SQLite format 3')
+            || str_contains($head, '-- SiteX SQLite copy');
+    }
+
+    /**
      * Decrypts, checks every checksum in the manifest and the dump header.
      * With $restoreDatabase, also loads the dump into a SCRATCH database whose
      * name must end with "_restore_test" and differ from the live database.
@@ -137,7 +149,7 @@ final class BackupManager
                 $checks['sha256:'.$name] = is_file($work.'/x/'.$name) && hash_file('sha256', $work.'/x/'.$name) === ($meta['sha256'] ?? '');
             }
             $head = (string) @file_get_contents($work.'/x/database.sql', false, null, 0, 200);
-            $checks['database_dump'] = str_contains($head, 'MySQL dump') || str_starts_with($head, 'SQLite format 3') || str_contains($head, '-- SiteX SQLite copy');
+            $checks['database_dump'] = self::looksLikeDatabaseDump($head);
 
             if ($restoreDatabase !== null) {
                 $tables = $this->restoreToScratch($work.'/x/database.sql', $restoreDatabase);
