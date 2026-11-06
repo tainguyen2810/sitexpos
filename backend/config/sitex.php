@@ -155,7 +155,7 @@ return [
 
     // Phase 9 — release version of this code (compared with the version recorded in the
     // database to detect a pending upgrade). Bump together with CHANGELOG.md.
-    'version' => '1.0.1',
+    'version' => '1.0.2',
 
     // Phase 9 — web installer (INSTALLATION-WIZARD.md, INSTALLER-SECURITY.md)
     'installer' => [

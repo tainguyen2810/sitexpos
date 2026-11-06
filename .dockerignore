@@ -22,5 +22,9 @@ wordpress-plugin/scripts
 wordpress-plugin/tests
 docs
 scripts
-deploy
+# deploy/: only update.sh is shipped (update.sh refreshes itself from the image).
+deploy/supervisor
+deploy/docker/*.yml
+deploy/docker/env.example
+deploy/docker/.env
 *.log

@@ -94,11 +94,11 @@ Kiểm tra: `https://api.<domain>/up` trả trang "Application up"; `https://app
 Sau đó cập nhật máy chủ bằng một lệnh SSH:
 
 ```bash
-sudo /opt/sitexpost/update.sh 1.1.0     # lên phiên bản 1.1.0
-sudo /opt/sitexpost/update.sh           # tải bản mới nhất của tag đang dùng (vd. latest)
+sudo /opt/sitexpost/update.sh           # lên bản phát hành mới nhất (đọc phiên bản của image :latest)
+sudo /opt/sitexpost/update.sh 1.1.0     # lên (hoặc quay về) đúng phiên bản 1.1.0
 ```
 
-`update.sh` (lấy từ `deploy/docker/update.sh`, đặt cạnh `docker-compose.yml`) làm lần lượt: sao lưu mã hóa + kiểm tra (bắt buộc khi đã đặt khóa sao lưu; sao lưu lỗi thì dừng, không đổi gì) → ghi `SITEX_VERSION` → `docker compose pull` (lỗi thì trả lại phiên bản cũ) → `docker compose up -d` → chờ pre-flight/migration → báo kết quả. Nếu bản mới bị chặn, script in đúng lệnh quay lại, ví dụ `sudo /opt/sitexpost/update.sh 1.0.0`. Script không xóa volume, không sửa `.env` của Laravel.
+`update.sh` (lấy từ `deploy/docker/update.sh`, đặt cạnh `docker-compose.yml`) làm lần lượt: (không ghi phiên bản thì tải `:latest`, đọc phiên bản trong nhãn image; đang ở bản đó rồi thì dừng) → sao lưu mã hóa + kiểm tra (bắt buộc khi đã đặt khóa sao lưu; sao lưu lỗi thì dừng, không đổi gì) → ghi `SITEX_VERSION` → `docker compose pull` (lỗi thì trả lại phiên bản cũ) → `docker compose up -d` → chờ pre-flight/migration → báo kết quả. Nếu bản mới bị chặn, script in đúng lệnh quay lại, ví dụ `sudo /opt/sitexpost/update.sh 1.0.0`. Script không xóa volume, không sửa `.env` của Laravel. Image có kèm `update.sh`; sau khi nâng cấp thành công, script trên máy chủ tự thay bằng bản mới đi kèm image.
 
 Làm tay (tương đương):
 

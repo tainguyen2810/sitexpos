@@ -86,6 +86,7 @@ jobs:
             test -f /var/www/html/frontend/dist/customer/index.html
             test -f /var/www/html/frontend/dist/admin/index.html
             test ! -f /var/www/html/backend/.env
+            test -s /usr/local/share/sitex/update.sh
             cd /var/www/html/backend && php artisan --version'
 
       - name: Stack test (pull request)
