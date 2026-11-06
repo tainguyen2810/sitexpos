@@ -33,7 +33,7 @@ Công cụ: `scripts/perf/bench-inprocess.php` — khởi động ứng dụng m
 | # | Mức | Phát hiện | Bằng chứng | Đề xuất |
 |---|---|---|---|---|
 | PERF-1 | P2 | `analytics/overview` và `analytics/queries` gom nhóm toàn workspace trên `search_query_metrics` mất ~290 ms + ~250 ms mỗi truy vấn với 148k dòng; sẽ tăng tuyến tính theo dữ liệu (GSC giữ 16 tháng, site lớn có hàng triệu dòng) | Log truy vấn chậm; `EXPLAIN`: MySQL chọn index khóa ngoại `(workspace_id, site_id)`, quét ~73k dòng, `Using temporary; Using filesort` | Thử nghiệm: thêm index `(workspace_id, search_type, date)` + `FORCE INDEX` → 57–81 ms (giảm ~5 lần). Không có `FORCE INDEX` thì optimizer vẫn chọn index cũ, nên **chưa** đưa vào code; làm ở bản sau cùng với bảng tổng hợp theo ngày/tuần hoặc cache 5–15 phút cho dashboard |
-| PERF-2 | P3 | `media/assets` chạy 33 truy vấn cho một trang (N+1) | Đếm truy vấn | Eager-load quan hệ trong resource |
+| PERF-2 | P3 | `media/assets` chạy 33 truy vấn cho một trang (N+1): mỗi ảnh một truy vấn kiểm tra bản đã xử lý | Đếm truy vấn | **Đã sửa**: cờ `has_variant` lấy bằng subquery trong truy vấn danh sách (`MediaLibraryQuery::withVariantFlag`), test `MediaTest` khẳng định không còn truy vấn theo từng ảnh. Chưa đo lại p50 |
 | PERF-3 | P3 | Test làm rơi 3.361 file vào `storage/app/private/media` thật, làm sao lưu `storage/app` chậm từ ~2 s lên ~49 s | Thời gian test BackupTest | **Đã sửa**: test dùng disk giả (`tests/TestCase.php`) |
 | PERF-4 | Thông tin | Rate limiter `throttle:api` trả 429 khi một người gọi > giới hạn trong 1 phút — đúng thiết kế, nhưng màn hình analytics gọi nhiều endpoint song song | Bench lần 1 bị 429 | Theo dõi khi có người dùng thật; nâng giới hạn cho nhóm GET nếu cần |
 
