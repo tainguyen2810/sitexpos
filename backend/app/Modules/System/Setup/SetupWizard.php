@@ -28,6 +28,9 @@ final class SetupWizard
         'fact_check' => 'verification.claims',
         'seo_audit' => 'writer.seo_review',
         'image' => 'media.image',
+        // Phase 8
+        'seo_agent' => 'agent.plan',
+        'copilot' => 'copilot.answer',
     ];
 
     public const STEPS = ['general', 'ai_providers', 'ai_models', 'email', 'plans', 'payments', 'credits', 'google', 'wordpress', 'queue', 'security', 'final'];

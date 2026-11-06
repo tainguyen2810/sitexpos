@@ -56,7 +56,7 @@ export default {
         intro: 'Khóa API được nhập ở trang Cấu hình AI và lưu mã hóa; không bao giờ hiển thị lại.',
         provider: 'Nhà cung cấp', hasKey: 'Có khóa API', keySource: 'Nguồn khóa', circuit: 'Circuit breaker', ready: 'Sẵn sàng',
         task: 'Tác vụ', primary: 'Model chính', readyModels: 'Model sẵn sàng', blocked: 'Cần ít nhất một nhà cung cấp AI sẵn sàng trước.',
-        tasks: { topic_discovery: 'Gợi ý chủ đề', research: 'Phân tích nguồn', outline: 'Dàn ý', writing: 'Viết bài', fact_check: 'Kiểm chứng', seo_audit: 'Rà soát SEO', image: 'Tạo ảnh' },
+        tasks: { topic_discovery: 'Gợi ý chủ đề', research: 'Phân tích nguồn', outline: 'Dàn ý', writing: 'Viết bài', fact_check: 'Kiểm chứng', seo_audit: 'Rà soát SEO', image: 'Tạo ảnh', seo_agent: 'SEO Agent lập kế hoạch', copilot: 'SEO Copilot trả lời' },
       },
       email: {
         source: 'Nguồn cấu hình', sourceEnv: 'Theo file .env', sourceSettings: 'Theo cài đặt trong trang quản trị', activeMailer: 'Mailer đang dùng',
@@ -121,8 +121,8 @@ export default {
       ],
     },
     backups: {
-      subtitle: 'Bản sao lưu được mã hóa AES-256-GCM bằng khóa riêng (BACKUP_ENCRYPTION_KEY), khác APP_KEY.',
-      notConfigured: 'Chưa có BACKUP_ENCRYPTION_KEY trong .env. Tạo khóa bằng "php artisan sitex:backup:key" rồi lưu khóa ở nơi an toàn ngoài máy chủ.',
+      subtitle: 'Bản sao lưu được mã hóa AES-256-GCM bằng khóa riêng (SITEX_BACKUP_ENCRYPTION_KEY), khác APP_KEY.',
+      notConfigured: 'Chưa có SITEX_BACKUP_ENCRYPTION_KEY trong .env. Tạo khóa bằng "php artisan sitex:backup:key" rồi lưu khóa ở nơi an toàn ngoài máy chủ.',
       offsite: 'Lưu trữ ngoài máy chủ', offsiteNone: 'Chưa cấu hình — chỉ lưu trên máy chủ này.', retention: 'Giữ trong {days} ngày',
       schedule: 'Lịch sao lưu tự động', enabled: 'Bật sao lưu hằng ngày', time: 'Giờ chạy (HH:mm, múi giờ máy chủ)',
       runNow: 'Sao lưu ngay', runTitle: 'Tạo bản sao lưu', runBody: 'Nhập lại mật khẩu để tạo bản sao lưu mới.', started: 'Đã bắt đầu sao lưu.',

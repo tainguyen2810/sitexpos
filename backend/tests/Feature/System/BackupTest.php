@@ -107,3 +107,10 @@ it('flags destructive pending migrations but not drops inside down()', function 
     // Every migration shipped so far is additive in up().
     expect(collect($s->files())->filter(fn ($p) => $s->isDestructive($p))->keys()->all())->toBe([]);
 });
+
+it('prints a new backup key without writing .env', function () {
+    $env = base_path('.env');
+    $before = is_file($env) ? hash_file('sha256', $env) : null;
+    $this->artisan('sitex:backup:key')->expectsOutputToContain('SITEX_BACKUP_ENCRYPTION_KEY=base64:')->assertSuccessful();
+    expect(is_file($env) ? hash_file('sha256', $env) : null)->toBe($before);
+});

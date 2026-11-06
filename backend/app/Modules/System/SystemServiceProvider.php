@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\System;
 
 use SiteXPost\Kernel\Modules\ModuleServiceProvider;
 use SiteXPost\Modules\System\Console\BackupDecrypt;
+use SiteXPost\Modules\System\Console\BackupKey;
 use SiteXPost\Modules\System\Console\BackupPrune;
 use SiteXPost\Modules\System\Console\BackupRun;
 use SiteXPost\Modules\System\Console\BackupVerify;
@@ -29,7 +30,7 @@ final class SystemServiceProvider extends ModuleServiceProvider
     protected function bootModule(): void
     {
         if ($this->app->runningInConsole()) {
-            $this->commands([Heartbeat::class, Monitor::class, BackupRun::class, BackupVerify::class, BackupPrune::class, BackupDecrypt::class]);
+            $this->commands([Heartbeat::class, Monitor::class, BackupRun::class, BackupVerify::class, BackupPrune::class, BackupDecrypt::class, BackupKey::class]);
         }
 
         // Settings saved in the Setup Wizard (SMTP, Google OAuth) override .env.
