@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\AiGateway\Providers\FakeProvider;
@@ -94,4 +95,26 @@ it('serves media files only through signed, expiring URLs', function () {
     auth()->forgetGuards();
     $file = $this->get($signed)->assertOk();
     expect($file->headers->get('X-Content-Type-Options'))->toBe('nosniff');
+});
+
+it('lists media with signed previews for processed files and a constant number of queries (no N+1)', function () {
+    $t = publishingTenant();
+    for ($i = 0; $i < 3; $i++) {
+        $this->actingAs($t['editor'])->post(p6url($t['workspace'], 'media/assets'), ['file' => pngUpload("anh{$i}.png", (string) $i), 'license' => 'owned'], ['Accept' => 'application/json'])->assertStatus(202);
+    }
+    app(TenantContext::class)->runAs($t['workspace'], null, fn () => (new MediaAsset)->forceFill([
+        'source_type' => 'url', 'status' => 'pending', 'source_url' => 'https://example.com/a.jpg', 'license' => 'owned',
+    ])->save());
+
+    DB::enableQueryLog();
+    $rows = $this->actingAs($t['editor'])->getJson(p6url($t['workspace'], 'media/assets'))->assertOk()->json('data');
+    // the variant check is a subquery of the list query, never one query per asset
+    $perAsset = collect(DB::getQueryLog())->pluck('query')
+        ->filter(fn (string $q) => str_contains($q, 'media_versions') && ! str_contains($q, 'media_assets'))->count();
+
+    $byStatus = collect($rows)->groupBy('status');
+    expect($rows)->toHaveCount(4)
+        ->and($byStatus['ready']->pluck('preview_url')->every(fn ($u) => str_contains((string) $u, 'signature=')))->toBeTrue()
+        ->and($byStatus['pending']->first()['preview_url'])->toBe('https://example.com/a.jpg')
+        ->and($perAsset)->toBe(0);
 });

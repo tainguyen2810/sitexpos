@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SiteXPost\Modules\AiGateway\Gateway;
 
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use SiteXPost\Kernel\Logging\SecretRedactor;
@@ -208,7 +209,7 @@ final class AiGateway
 
                 $latency = (int) ((hrtime(true) - $started) / 1_000_000);
 
-                return $this->complete($task, $route, $model, $price, $response, $key, $attemptNo, $isFallback, $downgraded, $promptHash, $latency, $attempts, $calledAt);
+                return $this->complete($task, $route, $model, $price, $response, $key, $attemptNo, $isFallback, $downgraded, $promptHash, $latency, $attempts, $calledAt, $estimate);
             }
         }
 
@@ -221,11 +222,18 @@ final class AiGateway
     /**
      * @param  list<array<string, mixed>>  $attempts
      */
-    private function complete(AiTask $task, AiTaskRoute $route, AiModel $model, AiModelPrice $price, ProviderResponse $response, string $key, int $attemptNo, bool $isFallback, bool $downgraded, string $promptHash, int $latency, array $attempts, ?CarbonInterface $calledAt = null): AiResult
+    private function complete(AiTask $task, AiTaskRoute $route, AiModel $model, AiModelPrice $price, ProviderResponse $response, string $key, int $attemptNo, bool $isFallback, bool $downgraded, string $promptHash, int $latency, array $attempts, ?CarbonInterface $calledAt = null, int $estimate = 0): AiResult
     {
-        $cost = $this->costs->cost($price, $response->usage, $calledAt);
-        $this->budgets->commit($key, $cost);
-        $this->meter->settle($key, $cost);
+        // A successful answer without any usage numbers (some custom/OpenAI-compatible
+        // providers omit `usage`) must never be free: charge the reservation estimate
+        // and flag the call as billing-uncertain so it shows up in cost reports.
+        $usageMissing = self::usageMissing($response->usage);
+        $cost = $usageMissing ? $estimate : $this->costs->cost($price, $response->usage, $calledAt);
+        $this->budgets->commit($key, $cost, $usageMissing ? 'uncertain' : 'committed');
+        $this->meter->settle($key, $cost, $usageMissing ? 'uncertain' : 'settled');
+        if ($usageMissing) {
+            Log::warning('ai.usage_missing', ['provider' => $model->provider->code, 'model' => $model->model_key, 'task' => $task->taskKey, 'charged_estimate_micro_usd' => $estimate]);
+        }
         $this->circuit->recordSuccess($model->provider);
 
         $json = null;
@@ -239,7 +247,7 @@ final class AiGateway
             }
         }
 
-        $row = $this->log($task, $model, $price, $attemptNo, $isFallback, 'succeeded', $promptHash, $response->usage, $cost, $latency, finish: $response->finishReason, providerRequestId: $response->providerRequestId);
+        $row = $this->log($task, $model, $price, $attemptNo, $isFallback, 'succeeded', $promptHash, $response->usage, $cost, $latency, estimate: $estimate, finish: $response->finishReason, providerRequestId: $response->providerRequestId, usageMissing: $usageMissing);
         $attempts[] = ['model_key' => $model->model_key, 'status' => 'succeeded'];
 
         return new AiResult(
@@ -259,6 +267,11 @@ final class AiGateway
         );
     }
 
+    private static function usageMissing(Usage $usage): bool
+    {
+        return array_sum($usage->toArray()) === 0;
+    }
+
     private function backoff(int $try, ?int $retryAfter): void
     {
         $max = max(1, (int) config('sitex.ai.max_backoff_seconds', 8));
@@ -269,7 +282,7 @@ final class AiGateway
     private function log(
         AiTask $task, AiModel $model, ?AiModelPrice $price, int $attempt, bool $isFallback, string $status, string $promptHash,
         ?Usage $usage = null, int $cost = 0, int $latency = 0, ?ProviderException $error = null, int $estimate = 0,
-        ?string $finish = null, ?string $providerRequestId = null,
+        ?string $finish = null, ?string $providerRequestId = null, bool $usageMissing = false,
     ): AiRequest {
         $row = new AiRequest;
         $row->forceFill([
@@ -286,7 +299,7 @@ final class AiGateway
             'error_code' => $error?->errorCode,
             'error_message' => $error !== null ? SecretRedactor::redact($error->getMessage()) : null,
             'http_status' => $error?->httpStatus,
-            'billing_uncertain' => $error !== null && $error->billingUncertain,
+            'billing_uncertain' => ($error !== null && $error->billingUncertain) || $usageMissing,
             'input_tokens' => $usage->inputTokens ?? 0,
             'cached_input_tokens' => $usage->cachedInputTokens ?? 0,
             'cache_write_tokens' => $usage->cacheWriteTokens ?? 0,

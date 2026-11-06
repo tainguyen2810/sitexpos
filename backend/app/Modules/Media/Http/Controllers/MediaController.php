@@ -23,6 +23,7 @@ use SiteXPost\Modules\Media\Http\Requests\UpdateMediaRequest;
 use SiteXPost\Modules\Media\Http\Requests\UploadMediaRequest;
 use SiteXPost\Modules\Media\Jobs\MediaJob;
 use SiteXPost\Modules\Media\Jobs\SyncRemoteMedia;
+use SiteXPost\Modules\Media\Queries\MediaLibraryQuery;
 use SiteXPost\Modules\Media\Support\MediaLimits;
 use SiteXPost\Modules\Media\Support\MediaStorage;
 use SiteXPost\Modules\Sites\Contracts\SiteDirectory;
@@ -40,7 +41,7 @@ final class MediaController
     public function index(Request $request, Workspace $workspace): JsonResponse
     {
         Gate::authorize('viewAny', MediaAsset::class);
-        $q = MediaAsset::query();
+        $q = MediaLibraryQuery::withVariantFlag(MediaAsset::query());
         foreach (['site_id', 'source_type', 'status', 'license'] as $f) {
             $v = $request->query($f);
             if (is_string($v) && $v !== '') {
