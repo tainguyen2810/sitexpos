@@ -28,7 +28,7 @@ Image chỉ chứa mã nguồn, `vendor/` (không có gói dev) và hai SPA đã
 1. Máy chủ Linux có Docker + Docker Compose v2 (aaPanel → **App Store → Docker**). Còn trống ≥ 2 GB RAM (cả bộ dùng khoảng 1–1,5 GB) và ≥ 5 GB đĩa.
 2. Một tên miền với 3 bản ghi A trỏ về IP máy chủ, ví dụ `api.staging.tenmien.com`, `app.staging.tenmien.com`, `admin.staging.tenmien.com`.
 3. Image:
-   - **Từ GHCR (khuyến nghị):** tạo tag `v1.0.0` trên GitHub → workflow *Docker image* build và đẩy `ghcr.io/tainguyen2810/sitexpos:1.0.0` và `:latest`. Muốn thử bản `main` chưa gắn tag: GitHub → Actions → *Docker image* → *Run workflow* → image `:edge`.
+   - **Từ GHCR (khuyến nghị):** merge PR tăng phiên bản (hoặc tạo tag `v1.0.0` trên GitHub) → workflow build và đẩy `ghcr.io/tainguyen2810/sitexpos:1.0.0` và `:latest`. Muốn thử bản `main` chưa gắn tag: GitHub → Actions → *Docker image* → *Run workflow* → image `:edge`.
      Repo private nên image cũng private. Trên máy chủ đăng nhập một lần bằng Personal Access Token (classic) chỉ có quyền `read:packages`:
      `echo <TOKEN> | docker login ghcr.io -u tainguyen2810 --password-stdin`
    - **Build ngay trên máy chủ:** `git clone` repo rồi dùng thêm file `docker-compose.build.yml` (mục 7).
@@ -89,7 +89,9 @@ Kiểm tra: `https://api.<domain>/up` trả trang "Application up"; `https://app
 
 ## 4. Nâng cấp
 
-Một lệnh SSH:
+**Phát hành tự động:** khi một PR có tăng `version` trong `backend/config/sitex.php` (kèm mục mới trong `backend/CHANGELOG.md`) được merge vào `main`, workflow *Release* tự tạo tag + GitHub release `v<version>` (ghi chú lấy từ CHANGELOG), rồi build và đẩy image `:<version>` và `:latest` (khoảng 5 phút). Không cần tạo release bằng tay; tạo bằng tay vẫn được, workflow sẽ bỏ qua tag đã có. Theo dõi ở GitHub → Actions → *Release*.
+
+Sau đó cập nhật máy chủ bằng một lệnh SSH:
 
 ```bash
 sudo /opt/sitexpost/update.sh 1.1.0     # lên phiên bản 1.1.0
