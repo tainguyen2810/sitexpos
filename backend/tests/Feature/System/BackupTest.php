@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use SiteXPost\Modules\System\Backup\BackupCrypto;
 use SiteXPost\Modules\System\Backup\BackupManager;
@@ -128,6 +129,16 @@ it('reports upgrade pre-flight with exit codes for the deploy script', function 
     file_put_contents($dir.'/2099_01_01_000000_drop_things.php', "<?php return new class { public function up(): void { Schema::dropIfExists('users'); } };");
     app('migrator')->path($dir);
     $this->artisan('sitex:upgrade:check')->assertExitCode(2);
+});
+
+it('pre-flight ignores a stale cached settings snapshot (version written by another process)', function () {
+    config(['sitex.installer.required_extensions' => array_values(array_filter((array) config('sitex.installer.required_extensions'), 'extension_loaded'))]);
+    // The installer records the version (another process)…
+    app(SystemSettings::class)->set('system.version', (string) config('sitex.version'));
+    // …while the shared cache still holds a snapshot taken before (e.g. by a request during installation).
+    Cache::put('sitex:system_settings:v1', [], 300);
+    app()->forgetInstance(SystemSettings::class);
+    $this->artisan('sitex:upgrade:check')->assertExitCode(1);
 });
 
 it('records the version after a CLI upgrade only when nothing is pending', function () {

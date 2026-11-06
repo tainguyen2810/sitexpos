@@ -30,6 +30,11 @@ final class UpgradeInspector
     public function status(): array
     {
         $code = (string) config('sitex.version');
+        // Read the recorded version from the database, never from a cached snapshot:
+        // another process (installer, web container, another worker) may have written it
+        // through a different cache store, and a stale snapshot would keep the workers
+        // waiting for an upgrade that already happened.
+        $this->settings->flush();
         $db = $this->settings->string('system.version');
         $pending = $this->migrations->pending();
         $destructive = array_values(array_filter($pending, fn (array $m) => $m['destructive']));
