@@ -34,6 +34,8 @@ jobs:
           extensions: bcmath, intl, pdo_mysql, redis, sodium, pcntl
           coverage: none
       - run: composer install --no-interaction --prefer-dist
+      # phpdotenv reads .env on every boot; without one, Pest 4 reports a warning on every test
+      - run: cp .env.example .env
       - run: vendor/bin/pint --test
       - run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
       - name: Pest (SQLite)

@@ -169,9 +169,10 @@ it('creates draft Free/Starter/Pro/Business plans once, without prices', functio
 });
 
 it('refuses to complete setup while required steps are missing', function () {
-    $this->actingAs(sysStaff())->postJson(SYS.'/setup/complete')
-        ->assertStatus(422)->assertJsonPath('error.code', 'setup_not_ready')
-        ->assertJsonFragment(['blocking' => ['general', 'ai_providers', 'ai_models', 'email', 'plans', 'payments', 'credits', 'queue', 'security']]);
+    $r = $this->actingAs(sysStaff())->postJson(SYS.'/setup/complete')
+        ->assertStatus(422)->assertJsonPath('error.code', 'setup_not_ready');
+    // `security` depends on the host (.env permissions, HTTPS, APP_DEBUG), so it is not asserted here.
+    expect($r->json('error.details.blocking'))->toContain('general', 'ai_providers', 'ai_models', 'email', 'plans', 'payments', 'credits', 'queue');
     expect(app(SystemSettings::class)->get('setup.completed_at'))->toBeNull();
 });
 
