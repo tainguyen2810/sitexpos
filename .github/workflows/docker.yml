@@ -4,6 +4,7 @@ name: Docker image
 # - Pull requests touching the image: build only (no push) to catch Dockerfile errors.
 # - Tags v*: build and push ghcr.io/<owner>/<repo>:<version> and :latest.
 # - Manual run: build and push :edge (for staging tests from main).
+# - Called by release.yml with `version`: build and push :<version> and :latest.
 on:
   pull_request:
     paths:
@@ -19,6 +20,12 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        description: Release version without the v prefix (e.g. 1.0.2)
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -46,9 +53,9 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{version}},value=${{ inputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.version }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') || inputs.version != '' }}
             type=raw,value=edge,enable=${{ github.event_name == 'workflow_dispatch' }}
             type=sha,format=short
 
