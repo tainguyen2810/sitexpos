@@ -1,3 +1,4 @@
+import { apiBaseUrl } from '@/shared/config/runtime'
 import { api } from './client'
 import type { Envelope, Paginated } from './types'
 
@@ -137,4 +138,9 @@ export async function waitForJob(
     run = await load()
   }
   return run
+}
+
+/** Public download of the WordPress plugin, pre-configured with this Cloud's URL. */
+export function pluginDownloadUrl(): string {
+  return `${apiBaseUrl()}/api/v1/plugin/sitex-post.zip`
 }

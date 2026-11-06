@@ -44,8 +44,9 @@ describe('PairingCodePanel', () => {
     const w = mount(PairingCodePanel, { props: { code: 'ABCD-EFGH', expiresAt: '2026-11-05T10:15:00Z', siteUrl: 'https://blog.example.com/' }, global })
     expect(w.get('[data-testid=pairing-code]').text()).toBe('ABCD-EFGH')
     expect(w.text()).toContain('15:00')
-    expect(w.get('a').attributes('href')).toBe('https://blog.example.com/wp-admin/admin.php?page=sitex-post')
-    expect(w.get('a').attributes('rel')).toContain('noopener')
+    const admin = w.get('a[href="https://blog.example.com/wp-admin/admin.php?page=sitex-post"]')
+    expect(admin.attributes('rel')).toContain('noopener')
+    expect(w.get('[data-testid=plugin-download]').attributes('href')).toMatch(/\/api\/v1\/plugin\/sitex-post\.zip$/)
     expect(w.find('input[type=password]').exists()).toBe(false)
   })
 

@@ -34,6 +34,9 @@ final class SitesServiceProvider extends ModuleServiceProvider
         RateLimiter::for('connector-pairing', static fn (Request $request): Limit => Limit::perHour((int) config('sitex.connector.pairing_per_hour_ip', 10))
             ->by('pair:'.$request->ip()));
 
+        RateLimiter::for('plugin-download', static fn (Request $request): Limit => Limit::perMinute((int) config('sitex.plugin.downloads_per_minute_ip', 20))
+            ->by('plugin:'.$request->ip()));
+
         RateLimiter::for('connector-site', static fn (Request $request): Limit => Limit::perMinute((int) config('sitex.connector.requests_per_minute_site', 60))
             ->by('connector:'.substr((string) $request->header('X-SiteX-Key-Id', (string) $request->ip()), 0, 40)));
 

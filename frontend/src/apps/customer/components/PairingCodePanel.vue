@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppButton from '@/shared/ui/AppButton.vue'
+import { pluginDownloadUrl } from '@/shared/api/sites'
 
 /**
  * Shows a one-time pairing code with the steps to enter it in the WordPress
@@ -42,7 +43,10 @@ const pluginAdmin = computed(() => (props.siteUrl ? `${props.siteUrl.replace(/\/
       <AppButton v-if="!expired" class="mt-3" size="sm" variant="secondary" @click="copy">{{ copied ? t('sites.pairing.copied') : t('sites.pairing.copy') }}</AppButton>
     </div>
     <ol class="list-decimal space-y-2 pl-5 text-sm text-ink">
-      <li>{{ t('sites.pairing.step1') }}</li>
+      <li>
+        {{ t('sites.pairing.step1') }}
+        <a :href="pluginDownloadUrl()" download class="text-brand-600 hover:underline" data-testid="plugin-download">{{ t('sites.pairing.download') }}</a>
+      </li>
       <li>
         {{ t('sites.pairing.step2') }}
         <a v-if="pluginAdmin" :href="pluginAdmin" target="_blank" rel="noopener noreferrer" class="text-brand-600 hover:underline">{{ t('sites.pairing.openPlugin') }}</a>
