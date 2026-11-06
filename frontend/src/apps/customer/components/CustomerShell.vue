@@ -40,7 +40,7 @@ const nav = computed<NavItem[]>(() => {
     { label: t('nav.members'), to: `${base}/members`, icon: 'users' },
     { label: t('nav.audit'), to: `${base}/audit`, icon: 'list' },
     { label: t('nav.settings'), to: `${base}/settings`, icon: 'settings' },
-    { label: t('nav.billing'), icon: 'card', soon: true },
+    { label: t('nav.billing'), to: `${base}/billing`, icon: 'card' },
   ]
   // UI hint only: the API enforces audit.view on its own.
   const current = ws.current?.id === id ? ws.current : null

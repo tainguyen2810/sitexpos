@@ -141,7 +141,8 @@ final class AdminOperationsController
     public function approveTransaction(ReviewTransactionRequest $request, string $transaction, Reconciliation $reconciliation): JsonResponse
     {
         $t = PaymentTransaction::query()->findOrFail($transaction);
-        $orderId = (string) $request->validated('order_id');
+        // Defaults to the order the reference already matched (mismatch queue).
+        $orderId = (string) ($request->validated('order_id') ?? $t->payment_order_id ?? '');
         if ($orderId === '') {
             throw new ApiException(422, 'order_required', __('billing.errors.order_required'));
         }

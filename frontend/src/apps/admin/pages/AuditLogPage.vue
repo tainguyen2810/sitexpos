@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { adminApi } from '@/shared/api/admin'
 import { useCursorList } from '@/shared/composables/useCursorList'
 import AuditLogTable from '@/shared/components/AuditLogTable.vue'
@@ -10,7 +11,8 @@ import EmptyState from '@/shared/ui/EmptyState.vue'
 import LoadingState from '@/shared/ui/LoadingState.vue'
 import ErrorState from '@/shared/ui/ErrorState.vue'
 
-const action = ref('')
+// `?action=billing.` deep-links the billing audit trail (prefix match on the API).
+const action = ref(typeof useRoute().query.action === 'string' ? String(useRoute().query.action) : '')
 const workspaceId = ref('')
 const list = useCursorList((cursor) =>
   adminApi.auditLogs({ cursor, workspace_id: workspaceId.value.trim() || undefined, 'filter[action]': action.value.trim() || undefined }),

@@ -2,6 +2,7 @@
 import writer from './writer.vi'
 import writerAdmin from './writerAdmin.vi'
 import p6 from './phase6.vi'
+import billing from './billing.vi'
 export default {
   common: {
     appName: 'SiteX Post',
@@ -946,4 +947,5 @@ export default {
   writer,
   writerAdmin,
   p6,
+  ...billing,
 } as const

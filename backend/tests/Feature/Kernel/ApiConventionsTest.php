@@ -28,7 +28,8 @@ it('seeds demo data in development only', function () {
     $this->seed(DemoSeeder::class);
 
     expect(User::query()->where('email', 'owner@'.DemoSeeder::DOMAIN)->exists())->toBeTrue()
-        ->and(Workspace::query()->where('is_demo', true)->count())->toBe(2);
+        ->and(Workspace::query()->where('is_demo', true)->whereIn('name', ['Cửa hàng A (Demo)', 'Agency B (Demo)'])->count())->toBe(2)
+        ->and(Workspace::query()->where('is_demo', true)->count())->toBe(50); // + 48 sample billing customers (Phase 7)
 });
 
 it('refuses to seed demo data in production', function () {

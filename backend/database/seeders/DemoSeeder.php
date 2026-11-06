@@ -63,6 +63,8 @@ class DemoSeeder extends Seeder
         $this->call(WriterDemoSeeder::class);
         // Phase 6 — media, SEO audits, publishing jobs and conflicts (DEMO-labelled, nothing sent to WordPress).
         $this->call(Phase6DemoSeeder::class);
+        // Phase 7 — sample plans ("[MẪU]", is_demo), subscriptions, orders, credits, refunds.
+        $this->call(BillingDemoSeeder::class);
 
         $this->command?->table(['Email', 'Mật khẩu', 'Vai trò'], [
             ['owner@'.self::DOMAIN, self::PASSWORD, 'OWNER — Cửa hàng A'],

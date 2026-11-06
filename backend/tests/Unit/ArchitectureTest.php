@@ -192,4 +192,4 @@ arch('billing API requests extend the base ApiRequest (workspace_id is never acc
 
 arch('only the Billing module knows billing internals; others use its contracts')
     ->expect(['SiteXPost\Modules\Billing\Credits', 'SiteXPost\Modules\Billing\Payments', 'SiteXPost\Modules\Billing\Subscriptions', 'SiteXPost\Modules\Billing\Entitlements'])
-    ->toOnlyBeUsedIn('SiteXPost\Modules\Billing');
+    ->toOnlyBeUsedIn(['SiteXPost\Modules\Billing', 'Database\Seeders']); // + the dev-only demo seeder
