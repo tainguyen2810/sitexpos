@@ -15,6 +15,7 @@
     "check:no-demo": "node scripts/assert-no-demo.mjs",
     "build:customer": "cross-env SITEX_APP=customer vite build",
     "build:admin": "cross-env SITEX_APP=admin vite build",
+    "build:installer-css": "node scripts/build-installer-css.mjs",
     "typecheck": "vue-tsc --noEmit -p tsconfig.app.json",
     "lint": "eslint .",
     "test": "vitest run",
