@@ -84,7 +84,7 @@ Test bị bỏ qua (1): test đồng thời nhiều tiến trình chỉ chạy t
 
 ### 3.3 Chạy lại trên MySQL sau các sửa cuối
 
-(điền sau khi chạy)
+MySQL 8.0.46 cục bộ, các bộ test bị ảnh hưởng bởi sửa cuối (AiGateway, Phase6, Security, System, Analytics, Billing): `Tests: 173 passed (12071 assertions)`, 218,95 s. Gồm cả test đồng thời nhiều tiến trình (bị bỏ qua trên SQLite).
 
 ## 4. Rủi ro còn lại
 
