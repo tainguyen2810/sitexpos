@@ -19,7 +19,7 @@ final class EnvWriter
     {
         $configured = (string) config('sitex.installer.env_path');
 
-        return $configured !== '' ? $configured : base_path('.env');
+        return $configured !== '' ? $configured : app()->environmentFilePath();
     }
 
     public function currentAppKey(): ?string

@@ -166,7 +166,24 @@ return [
         'min_php' => '8.3.0',
         'required_extensions' => ['pdo', 'pdo_mysql', 'mbstring', 'openssl', 'tokenizer', 'xml', 'ctype', 'json', 'bcmath', 'fileinfo', 'curl', 'gd', 'intl'],
         'min_free_disk_mb' => 1024,
+        // Pre-filled form values (the Docker image sets these; docs/DOCKER.md).
+        // Only hints for the operator: every value is still tested and confirmed.
+        'defaults' => [
+            'db_host' => env('SITEX_INSTALLER_DB_HOST'),
+            'db_port' => env('SITEX_INSTALLER_DB_PORT'),
+            'db_database' => env('SITEX_INSTALLER_DB_DATABASE'),
+            'db_username' => env('SITEX_INSTALLER_DB_USERNAME'),
+            'redis_host' => env('SITEX_INSTALLER_REDIS_HOST'),
+            'redis_port' => env('SITEX_INSTALLER_REDIS_PORT'),
+            'app_url' => env('SITEX_PUBLIC_API_URL'),
+            'frontend_url' => env('SITEX_PUBLIC_APP_URL'),
+            'admin_url' => env('SITEX_PUBLIC_ADMIN_URL'),
+        ],
     ],
+
+    // How this installation is run: 'server' (aaPanel/Nginx/Supervisor, DEPLOYMENT.md)
+    // or 'docker' (docker compose, DOCKER.md). Only changes operator hints.
+    'deployment' => env('SITEX_DEPLOYMENT', 'server') === 'docker' ? 'docker' : 'server',
 
     // Phase 9 — operations (SYSTEM HEALTH, BACKUP-RESTORE.md, MONITORING-RUNBOOK.md)
     'system' => [

@@ -230,3 +230,46 @@ it('keeps installer files private', function () {
     expect(substr(sprintf('%o', fileperms($storage->path('x.json'))), -4))->toBe('0600')
         ->and(is_file($storage->dir().'/.htaccess'))->toBeTrue();
 });
+
+it('serves Docker hints (deployment, pre-filled defaults, no aaPanel templates) without exposing secrets', function () {
+    config([
+        'sitex.deployment' => 'docker',
+        'sitex.installer.defaults' => [
+            'db_host' => 'mysql', 'db_port' => '3306', 'db_database' => 'sitexpost', 'db_username' => 'sitexpost',
+            'redis_host' => 'redis', 'redis_port' => '6379', 'app_url' => 'https://api.example.vn',
+            'frontend_url' => null, 'admin_url' => '',
+        ],
+    ]);
+
+    $this->get('/install')->assertOk()->assertSee('data-deployment="docker"', false);
+    $r = $this->getJson('/install/api/state', $this->h)->assertOk()
+        ->assertJsonPath('data.deployment', 'docker')
+        ->assertJsonPath('data.templates', [])
+        ->assertJsonPath('data.defaults.db_host', 'mysql')
+        ->assertJsonPath('data.defaults.redis_host', 'redis');
+    // Empty hints are dropped; nothing password-like is ever part of the defaults.
+    expect($r->json('data.defaults'))->not->toHaveKey('frontend_url')->not->toHaveKey('admin_url')
+        ->and(implode(',', array_keys($r->json('data.defaults'))))->not->toContain('password');
+});
+
+it('keeps aaPanel templates and no defaults on a classic server install', function () {
+    config(['sitex.deployment' => 'server']);
+    $this->get('/install')->assertOk()->assertSee('data-deployment="server"', false);
+    $r = $this->getJson('/install/api/state', $this->h)->assertOk()->assertJsonPath('data.deployment', 'server');
+    expect($r->json('data.templates'))->toContain('supervisor-horizon')
+        ->and($r->json('data.defaults'))->toBe([]);
+});
+
+it('writes .env where the application reads it (Docker: SITEX_ENV_DIR volume)', function () {
+    config(['sitex.installer.env_path' => null]);
+    $original = app()->environmentPath();
+    try {
+        app()->useEnvironmentPath($this->dir);
+        $writer = app(EnvWriter::class);
+        expect($writer->path())->toBe($this->dir.'/.env');
+        $writer->write(['APP_NAME' => 'SiteX Docker', 'SITEX_INSTALLED' => true]);
+        expect((string) file_get_contents($this->dir.'/.env'))->toContain('SITEX_INSTALLED=true');
+    } finally {
+        app()->useEnvironmentPath($original);
+    }
+});

@@ -57,8 +57,8 @@ final class BackupManager
             $this->archiveStorage($storageFile);
             $contents[] = 'storage';
 
-            if (is_file(base_path('.env'))) {
-                copy(base_path('.env'), $work.'/env');
+            if (is_file(app()->environmentFilePath())) {
+                copy(app()->environmentFilePath(), $work.'/env');
                 $contents[] = 'config';
             }
 

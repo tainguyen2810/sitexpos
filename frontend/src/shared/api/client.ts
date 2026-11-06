@@ -3,6 +3,8 @@
  * - Sanctum SPA auth: session cookie + XSRF-TOKEN header (no tokens in storage).
  * - Errors are normalized from the API envelope into ApiError.
  */
+import { apiBaseUrl } from '@/shared/config/runtime'
+
 export interface ApiErrorBody {
   error?: { code?: string; message?: string; details?: Record<string, string[]>; request_id?: string }
   message?: string
@@ -50,7 +52,7 @@ interface Config {
 }
 
 const config: Config = {
-  baseUrl: (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, ''),
+  baseUrl: apiBaseUrl(),
   locale: () => 'vi',
 }
 

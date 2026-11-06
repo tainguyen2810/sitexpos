@@ -1,0 +1,23 @@
+# Keep the build context small and never ship local secrets or state.
+.git
+.github
+**/node_modules
+**/.DS_Store
+backend/vendor
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/storage/*.key
+backend/storage/app/*
+backend/storage/framework/cache/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/storage/framework/testing
+backend/storage/logs/*
+backend/bootstrap/cache/*.php
+frontend/dist
+wordpress-plugin
+docs
+scripts
+deploy
+*.log

@@ -1,0 +1,98 @@
+name: Docker image
+
+# Builds the SiteX Post image (docs/DOCKER.md).
+# - Pull requests touching the image: build only (no push) to catch Dockerfile errors.
+# - Tags v*: build and push ghcr.io/<owner>/<repo>:<version> and :latest.
+# - Manual run: build and push :edge (for staging tests from main).
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - docker/**
+      - deploy/docker/**
+      - backend/composer.lock
+      - frontend/package-lock.json
+      - .github/workflows/docker.yml
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=edge,enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=sha,format=short
+
+      - name: Build (and push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: ${{ github.event_name == 'pull_request' && 'sitexpost:ci' || steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            SITEX_IMAGE_VERSION=${{ steps.meta.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test (pull request)
+        if: github.event_name == 'pull_request'
+        run: |
+          docker run --rm --entrypoint sh sitexpost:ci -c '
+            set -e
+            php -v
+            for e in bcmath gd intl pcntl pdo_mysql redis zip; do php -m | grep -qi "^$e$" || { echo "missing $e"; exit 1; }; done
+            nginx -t
+            php-fpm -t
+            mariadb-dump --version
+            test -f /usr/lib/mariadb/plugin/caching_sha2_password.so
+            test -f /var/www/html/frontend/dist/customer/index.html
+            test -f /var/www/html/frontend/dist/admin/index.html
+            test ! -f /var/www/html/backend/.env
+            cd /var/www/html/backend && php artisan --version'
+
+      - name: Stack test (pull request)
+        if: github.event_name == 'pull_request'
+        run: |
+          cat > deploy/docker/.env <<ENV
+          SITEX_IMAGE=sitexpost
+          SITEX_VERSION=ci
+          SITEX_PUBLIC_API_URL=http://localhost:8080
+          SITEX_PUBLIC_APP_URL=http://localhost:8081
+          SITEX_PUBLIC_ADMIN_URL=http://localhost:8082
+          MYSQL_PASSWORD=ci-app-password
+          MYSQL_ROOT_PASSWORD=ci-root-password
+          ENV
+          scripts/e2e/docker-stack.sh deploy/docker
+      - name: Stack logs
+        if: failure() && github.event_name == 'pull_request'
+        working-directory: deploy/docker
+        run: docker compose logs --no-color --tail=200

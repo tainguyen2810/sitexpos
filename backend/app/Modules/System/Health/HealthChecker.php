@@ -384,7 +384,7 @@ final class HealthChecker
             'secure_cookies' => (bool) config('session.secure') || ! $prod,
             'session_http_only' => (bool) config('session.http_only', true),
             'installer_locked' => $this->installation->isInstalled(),
-            'env_not_world_readable' => ! is_file(base_path('.env')) || (fileperms(base_path('.env')) & 0004) === 0,
+            'env_not_world_readable' => ! is_file(app()->environmentFilePath()) || (fileperms(app()->environmentFilePath()) & 0004) === 0,
             'scheduler_running' => $this->checkScheduler()['status'] === 'ok',
             'backup_configured' => (string) config('sitex.system.backup.encryption_key') !== '' && (bool) $this->settings->get('backup.schedule_enabled'),
             'super_admin_2fa' => ! DB::table('users')->where('platform_role', 'SUPER_ADMIN')->whereNull('two_factor_confirmed_at')->exists(),
