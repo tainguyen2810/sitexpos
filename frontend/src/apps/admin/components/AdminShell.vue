@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSessionStore } from '@/shared/stores/session'
 import ShellLayout, { type NavItem } from '@/shared/layouts/ShellLayout.vue'
 import UserMenu from '@/shared/ui/UserMenu.vue'
 import AppBadge from '@/shared/ui/AppBadge.vue'
+import { systemApi } from '@/shared/api/system'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -28,8 +29,20 @@ const nav = computed<NavItem[]>(() => {
     { label: t('nav.analyticsAdmin'), to: '/analytics', icon: 'chart', permission: 'platform.jobs.manage' },
     { label: t('nav.audit'), to: '/audit', icon: 'list' },
     { label: t('nav.billing'), to: '/billing/plans', icon: 'card', permission: 'platform.billing.manage' },
+    { label: t('nav.system'), to: '/system/health', icon: 'server', permission: 'platform.system.view' },
   ]
   return items.filter((i) => (!i.permission || perms.includes(i.permission)) && (!i.anyOf || i.anyOf.some((p) => perms.includes(p))))
+})
+
+// Super Admins see a reminder until the post-install setup is marked complete (the setup page can be reopened any time).
+const setupPending = ref(false)
+onMounted(async () => {
+  if (!session.user?.platform_permissions.includes('platform.system.manage')) return
+  try {
+    setupPending.value = (await systemApi.setup()).completed_at === null
+  } catch {
+    setupPending.value = false
+  }
 })
 
 async function logout() {
@@ -47,6 +60,10 @@ async function logout() {
       <AppBadge v-if="session.user?.platform_role" tone="brand">{{ $t(`roles.${session.user.platform_role}`) }}</AppBadge>
       <UserMenu v-if="session.user" :name="session.user.name" :email="session.user.email" account-to="/account" @logout="logout" />
     </template>
+    <div v-if="setupPending && router.currentRoute.value.name !== 'setup'" class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand-50 px-4 py-2 text-sm text-brand-700" data-testid="setup-banner">
+      <span>{{ $t('sys.setup.banner') }}</span>
+      <RouterLink to="/setup" class="font-medium underline">{{ $t('sys.setup.bannerAction') }}</RouterLink>
+    </div>
     <RouterView />
   </ShellLayout>
 </template>
