@@ -30,6 +30,7 @@ enum PlatformRole: string
                 PlatformPermission::Impersonate,
                 PlatformPermission::AuditView,
                 PlatformPermission::JobsManage,
+                PlatformPermission::SystemView,
             ],
             self::BillingAdmin => [
                 PlatformPermission::DashboardView,

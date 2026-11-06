@@ -44,3 +44,9 @@ Schedule::command('sitex:analytics:refresh-tick')->everyFiveMinutes()->withoutOv
 Schedule::command('sitex:analytics:prune')->dailyAt('03:40')->onOneServer();
 Schedule::command('sitex:agent:schedule')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('sitex:agent:recover')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+
+// Phase 9 — operations: heartbeat, monitoring/alerts, backups
+Schedule::command('sitex:system:heartbeat')->everyMinute();
+Schedule::command('sitex:system:monitor')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('sitex:backup:run --scheduled --verify')->everyFifteenMinutes()->withoutOverlapping(120);
+Schedule::command('sitex:backup:prune')->dailyAt('04:30');

@@ -19,4 +19,7 @@ enum PlatformPermission: string
     case AiManage = 'platform.ai.manage';
     case AiCostsView = 'platform.ai.view_costs';
     case JobsManage = 'platform.jobs.manage';
+    // Phase 9 — System Health (view) and installation/upgrade/backup/settings (manage).
+    case SystemView = 'platform.system.view';
+    case SystemManage = 'platform.system.manage';
 }

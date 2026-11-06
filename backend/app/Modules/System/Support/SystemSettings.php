@@ -68,6 +68,8 @@ final class SystemSettings
         'system.installation_id' => [null, false],
         'system.version' => [null, false],
         'system.heartbeat_at' => [null, false],
+        'system.ssl' => [null, false],
+        'monitor.state' => [[], false],
         // Setup wizard
         'setup.completed_at' => [null, false],
         'setup.acknowledged' => [[], false],
@@ -202,7 +204,7 @@ final class SystemSettings
             return $this->rows;
         }
         if (! self::available()) {
-            return $this->rows = [];
+            return []; // not memoised: the table may be created later in this process (installer, tests)
         }
 
         $load = static fn (): array => SystemSetting::query()->get()

@@ -107,7 +107,7 @@ CONF,
     {
         if (function_exists('posix_geteuid') && function_exists('posix_getpwuid')) {
             $info = posix_getpwuid(posix_geteuid());
-            if (is_array($info) && ($info['name'] ?? '') !== '' && $info['name'] !== 'root') {
+            if (is_array($info) && $info['name'] !== '' && $info['name'] !== 'root') {
                 return (string) $info['name'];
             }
         }

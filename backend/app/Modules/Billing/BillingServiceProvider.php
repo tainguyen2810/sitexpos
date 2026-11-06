@@ -15,10 +15,12 @@ use SiteXPost\Modules\Billing\Console\AggregateCosts;
 use SiteXPost\Modules\Billing\Console\ExpireCredits;
 use SiteXPost\Modules\Billing\Console\RunLifecycle;
 use SiteXPost\Modules\Billing\Console\VerifyLedger;
+use SiteXPost\Modules\Billing\Contracts\BillingReadiness;
 use SiteXPost\Modules\Billing\Contracts\CreditMeter;
 use SiteXPost\Modules\Billing\Contracts\Entitlements;
 use SiteXPost\Modules\Billing\Credits\CreditUsageMeter;
 use SiteXPost\Modules\Billing\Entitlements\EntitlementEngine;
+use SiteXPost\Modules\Billing\Support\BillingReadinessReport;
 use SiteXPost\Modules\Identity\Domain\User;
 use SiteXPost\Modules\Workspace\Enums\Permission;
 
@@ -30,6 +32,8 @@ final class BillingServiceProvider extends ModuleServiceProvider
     public function register(): void
     {
         $this->app->bind(Entitlements::class, EntitlementEngine::class);
+        // Phase 9 — read-only readiness for the Setup Wizard / System Health.
+        $this->app->bind(BillingReadiness::class, BillingReadinessReport::class);
         $this->app->bind(CreditMeter::class, CreditUsageMeter::class);
         // Replaces the AI Gateway's NullUsageMeter: AI calls reserve/settle credits.
         $this->app->bind(UsageMeter::class, CreditUsageMeter::class);

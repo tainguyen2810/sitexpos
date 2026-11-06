@@ -32,7 +32,8 @@ final class DatabaseProbe
         }
 
         $result['connected'] = true;
-        $version = (string) $pdo->query('SELECT VERSION()')?->fetchColumn();
+        $q = $pdo->query('SELECT VERSION()');
+        $version = $q !== false ? (string) $q->fetchColumn() : '';
         $result['server_version'] = $version;
         $numeric = preg_replace('/[^0-9.].*$/', '', $version) ?? '';
         $isMaria = stripos($version, 'mariadb') !== false;
@@ -47,7 +48,8 @@ final class DatabaseProbe
 
         // CREATE privilege on the target schema (needed by migrations).
         try {
-            $grants = implode("\n", $pdo->query('SHOW GRANTS FOR CURRENT_USER()')?->fetchAll(PDO::FETCH_COLUMN) ?: []);
+            $g = $pdo->query('SHOW GRANTS FOR CURRENT_USER()');
+            $grants = implode("\n", $g !== false ? $g->fetchAll(PDO::FETCH_COLUMN) : []);
             $result['can_create'] = (bool) preg_match('/GRANT (ALL PRIVILEGES|.*\bCREATE\b.*) ON (\*|`?'.preg_quote($c['database'], '/').'`?)\.\*/i', $grants);
         } catch (PDOException) {
             $result['can_create'] = false;
