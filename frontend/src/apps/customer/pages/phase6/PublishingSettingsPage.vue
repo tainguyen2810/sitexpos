@@ -104,9 +104,9 @@ function toggleType(type: SchemaType) {
     <LoadingState v-if="sites.loading.value || loading" />
     <ErrorState v-else-if="sites.error.value || error" :error="sites.error.value || error" @retry="load" />
     <EmptyState v-else-if="!sites.sites.value.length" icon="globe" :title="t('p6.common.noSite')" />
-    <div v-else-if="policy && seo" class="grid gap-6 lg:grid-cols-2">
+    <div v-else-if="policy && seo" class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <AppCard :title="t('p6.pub.settings.connection')">
-        <dl class="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+        <dl class="">
           <dt class="text-ink-muted">{{ t('p6.pub.settings.timezone') }}</dt><dd>{{ policy.site.timezone }}</dd>
           <dt class="text-ink-muted">{{ t('p6.pub.settings.canPublish') }}</dt><dd><AppBadge :tone="policy.site.can_publish ? 'success' : 'danger'">{{ policy.site.can_publish ? t('common.yes') : t('common.no') }}</AppBadge></dd>
           <dt class="text-ink-muted">{{ t('p6.pub.settings.seoPlugin') }}</dt><dd>{{ policy.site.yoast ? 'Yoast SEO' : policy.site.rank_math ? 'Rank Math' : t('p6.pub.settings.native') }}</dd>
@@ -128,7 +128,7 @@ function toggleType(type: SchemaType) {
       </AppCard>
 
       <AppCard :title="t('p6.pub.settings.policy')" class="lg:col-span-2">
-        <form class="grid gap-4 md:grid-cols-2" @submit.prevent="save()">
+        <form class="grid grid-cols-1 gap-4 md:grid-cols-2" @submit.prevent="save()">
           <div class="space-y-1">
             <AppSelect v-model="form.default_mode" :label="t('p6.pub.settings.defaultMode')" :options="[{ value: 'manual', label: t('p6.pub.settings.modeManual') }, { value: 'wp_draft', label: t('p6.pub.mode.wp_draft') }]" :disabled="!canManageSites" />
             <Toggle v-model="form.require_seo_pass" :label="t('p6.pub.settings.requireSeo')" :description="t('p6.pub.settings.requireSeoHint')" :disabled="!canManageSites" />
@@ -142,7 +142,7 @@ function toggleType(type: SchemaType) {
               <p class="text-xs text-ink-muted">{{ t('p6.pub.settings.daysHint') }}</p>
             </div>
           </div>
-          <div class="grid grid-cols-2 gap-3">
+          <div class="">
             <AppInput v-for="k in NUMS" :key="k" v-model="form.nums[k]" type="number" :label="t(`p6.pub.settings.num.${k}`)" :disabled="!canManageSites" />
           </div>
           <div v-if="canManageSites" class="md:col-span-2 flex justify-end"><AppButton type="submit" :loading="saving" data-testid="save-policy">{{ t('common.save') }}</AppButton></div>
@@ -151,7 +151,7 @@ function toggleType(type: SchemaType) {
 
       <AppCard :title="t('p6.pub.settings.schema')" :subtitle="t('p6.pub.settings.schemaHint')" class="lg:col-span-2">
         <p v-if="seo.yoast || seo.rank_math" class="mb-3 rounded bg-brand-50 px-3 py-2 text-xs text-brand-700">{{ t('p6.pub.settings.pluginSchema') }}</p>
-        <div class="grid gap-4 md:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div class="space-y-1">
             <Toggle v-model="seoForm.injection_enabled" :label="t('p6.pub.settings.injection')" :description="t('p6.pub.settings.injectionHint')" :disabled="!canManageSites" />
             <Toggle v-model="seoForm.breadcrumbs_supported" :label="t('p6.pub.settings.breadcrumbs')" :disabled="!canManageSites" />

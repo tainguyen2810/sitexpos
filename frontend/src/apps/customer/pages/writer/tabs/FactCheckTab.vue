@@ -124,7 +124,7 @@ const reviewer = (r: { reviewer_type: string; reviewer_model: string | null }) =
 </script>
 
 <template>
-  <div class="grid gap-4 xl:grid-cols-[1fr_22rem]">
+  <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_22rem]">
     <div class="min-w-0 space-y-4">
       <AppCard v-if="latestRun">
         <div class="flex flex-wrap items-center gap-2 text-sm">

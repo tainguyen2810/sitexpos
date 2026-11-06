@@ -62,7 +62,7 @@ async function accept() {
         <p v-if="acceptError" class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">{{ acceptError }}</p>
         <AppButton block :loading="accepting" @click="accept">{{ $t('invitation.accept') }}</AppButton>
       </template>
-      <div v-else class="grid gap-2 sm:grid-cols-2">
+      <div v-else class="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <RouterLink :to="{ name: 'login', query: { redirect: here } }" class="rounded-lg bg-brand-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-brand-700">{{ $t('invitation.loginToAccept') }}</RouterLink>
         <RouterLink :to="{ name: 'register', query: { redirect: here, email: invitation.email } }" class="rounded-lg border border-line px-4 py-2 text-center text-sm font-medium hover:bg-surface-muted">{{ $t('invitation.registerToAccept') }}</RouterLink>
       </div>

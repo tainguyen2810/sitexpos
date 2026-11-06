@@ -68,7 +68,7 @@ const emailError = () => errors.value.emails ?? Object.entries(errors.value).fin
     <ErrorState v-else-if="view.error.value" :error="view.error.value" @retry="view.run" />
     <div v-else-if="view.data.value" class="space-y-6">
       <AppCard>
-        <form class="grid gap-4 md:grid-cols-2" @submit.prevent="save()">
+        <form class="grid grid-cols-1 gap-4 md:grid-cols-2" @submit.prevent="save()">
           <AppInput v-model="form.emails" :label="t('sys.alerts.emails')" :error="emailError()" class="md:col-span-2" data-testid="alert-emails" />
           <AppInput v-model="form.cooldown" type="number" :label="t('sys.alerts.cooldown')" :error="errors.cooldown_minutes" />
           <div />

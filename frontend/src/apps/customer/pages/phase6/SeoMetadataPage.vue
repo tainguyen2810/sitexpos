@@ -94,7 +94,7 @@ function toggleType(type: SchemaType) {
     <EmptyState v-if="!articleId" icon="file" :title="t('p6.common.pickArticleFirst')" />
     <LoadingState v-else-if="loading" />
     <ErrorState v-else-if="error" :error="error" @retry="load(articleId)" />
-    <div v-else-if="meta" class="grid gap-6 lg:grid-cols-3">
+    <div v-else-if="meta" class="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <AppCard :title="t('p6.seo.meta.fields')" class="lg:col-span-2">
         <form class="space-y-3" @submit.prevent="save">
           <div>

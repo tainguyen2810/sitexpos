@@ -37,7 +37,7 @@ onSite(run)
         <RouterLink :to="{ name: 'analytics-connections', params: { workspaceId } }" class="text-sm font-medium text-brand-700 hover:underline">{{ t('an.overview.connect') }}</RouterLink>
       </EmptyState>
       <template v-else>
-        <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard :label="t('an.metrics.clicks')" :value="num(data.data.totals.clicks)" icon="activity" :delta="data.data.change.clicks" />
           <StatCard :label="t('an.metrics.impressions')" :value="num(data.data.totals.impressions)" icon="eye" :delta="data.data.change.impressions" />
           <StatCard :label="t('an.metrics.ctr')" :value="pct(data.data.totals.ctr)" icon="target" />
@@ -49,7 +49,7 @@ onSite(run)
             :to="`/w/${workspaceId}/analytics/opportunities`"
           />
         </div>
-        <div class="grid gap-6 lg:grid-cols-3">
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <AppCard :title="t('an.overview.trend')" :subtitle="`${formatDate(data.data.period.from)} – ${formatDate(data.data.period.to)}`" class="lg:col-span-2">
             <TrendChart :series="data.data.series" />
           </AppCard>

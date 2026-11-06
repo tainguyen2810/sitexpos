@@ -55,7 +55,7 @@ function select(key: string) {
         <p v-if="overview.data.value.completed_at" class="mt-3 text-sm text-success-600">{{ t('sys.setup.completedAt', { time: formatTime(overview.data.value.completed_at) }) }}</p>
       </AppCard>
 
-      <div class="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
         <nav :aria-label="t('sys.nav.setup')">
           <ol class="space-y-1">
             <li v-for="(s, i) in steps" :key="s.key">

@@ -70,7 +70,7 @@ const siteName = (sid: string) => sites.data.value?.find((s) => s.id === sid)?.n
     </PageHeader>
     <WriterNav active="library" />
 
-    <div v-if="overview.data.value" class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div v-if="overview.data.value" class=" ">
       <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
         <p class="text-sm text-ink-muted">{{ t('writer.overview.quota') }}</p>
         <p class="mt-2 text-2xl font-semibold tabular-nums">{{ overview.data.value.quota.used }}<span class="text-base text-ink-muted">/{{ overview.data.value.quota.limit }}</span></p>

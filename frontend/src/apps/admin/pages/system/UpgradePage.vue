@@ -51,7 +51,7 @@ async function start(password: string) {
     <LoadingState v-if="status.loading.value && !s" />
     <ErrorState v-else-if="status.error.value" :error="status.error.value" @retry="status.run" />
     <div v-else-if="s" class="space-y-6">
-      <div class="grid gap-4 md:grid-cols-3">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
         <AppCard>
           <p class="text-sm text-ink-muted">{{ t('sys.upgrade.current') }}</p>
           <p class="mt-1 font-mono text-xl font-semibold" data-testid="upgrade-current">{{ s.current_version ?? t('sys.upgrade.notRecorded') }}</p>

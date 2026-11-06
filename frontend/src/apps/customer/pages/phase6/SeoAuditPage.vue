@@ -119,7 +119,7 @@ const catOpts = computed(() => [{ value: '', label: t('common.all') }, ...AUDIT_
         </div>
       </div>
       <EmptyState v-if="!run" icon="search" :title="t('p6.seo.audit.noRun')" />
-      <div v-else class="grid gap-6 lg:grid-cols-3">
+      <div v-else class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div class="space-y-6">
           <AppCard :title="t('p6.seo.audit.score')">
             <p class="text-4xl font-semibold tabular-nums" data-testid="audit-score">{{ run.score }}<span class="text-base text-ink-muted">/100</span></p>

@@ -120,7 +120,7 @@ const budgets = computed(() => usage.data.value?.budgets ?? [])
       <p class="mt-1 text-sm text-ink-muted">{{ $t('ai.subtitle') }}</p>
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-3">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <AppCard v-if="canRun" :title="$t('ai.newTask')" class="lg:col-span-2">
         <form id="ai-task-form" class="space-y-4" novalidate @submit.prevent="submit">
           <p v-if="formError" class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">{{ formError }}</p>

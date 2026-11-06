@@ -61,9 +61,9 @@ function reset() {
     <AnalyticsNav active="settings" :site-select="false" />
     <LoadingState v-if="loading && !data" />
     <ErrorState v-else-if="error" :error="error" @retry="run" />
-    <form v-else-if="data" class="grid gap-6 lg:grid-cols-2" @submit.prevent="save">
+    <form v-else-if="data" class="grid grid-cols-1 gap-6 lg:grid-cols-2" @submit.prevent="save">
       <AppCard :title="t('an.settings.thresholds')" :subtitle="t('an.settings.thresholdsHint')">
-        <div class="grid gap-3 sm:grid-cols-2">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label v-for="(_, k) in thresholds" :key="k" class="flex flex-col gap-1 text-sm">
             <span class="text-xs text-ink-muted">{{ t(`an.settings.t.${k}`, String(k)) }}</span>
             <input v-model="thresholds[k]" type="number" step="any" :disabled="!canConfigure" class="rounded-lg border border-line bg-surface px-2 py-1.5" />
@@ -73,7 +73,7 @@ function reset() {
       </AppCard>
       <div class="space-y-6">
         <AppCard :title="t('an.settings.weights')" :subtitle="t('an.health.disclaimer')">
-          <div class="grid gap-3 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label v-for="(_, k) in weights" :key="k" class="flex flex-col gap-1 text-sm">
               <span class="text-xs text-ink-muted">{{ t(`an.health.c.${k}`, String(k)) }}</span>
               <input v-model="weights[k]" type="number" min="0" max="100" :disabled="!canConfigure" class="rounded-lg border border-line bg-surface px-2 py-1.5" />
@@ -81,7 +81,7 @@ function reset() {
           </div>
         </AppCard>
         <AppCard :title="t('an.settings.data')">
-          <div class="grid gap-3 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label class="flex flex-col gap-1 text-sm">
               <span class="text-xs text-ink-muted">{{ t('an.settings.backfill') }}</span>
               <input v-model="backfill" type="number" min="7" max="480" :disabled="!canConfigure" class="rounded-lg border border-line bg-surface px-2 py-1.5" />

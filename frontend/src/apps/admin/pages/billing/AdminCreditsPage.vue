@@ -58,7 +58,7 @@ async function adjust() {
   <div>
     <PageHeader :title="t('billAdmin.title')" :description="t('billAdmin.credits.subtitle')" />
     <AdminBillingNav active="credits" />
-    <div class="grid gap-6 lg:grid-cols-2">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <AppCard :title="t('billAdmin.credits.adjust')">
         <form class="space-y-3" @submit.prevent="adjust">
           <div class="flex items-end gap-2"><AppInput v-model="form.workspaceId" class="flex-1" :label="t('billAdmin.credits.workspaceId')" required /><AppButton variant="secondary" @click="lookup">{{ t('billAdmin.credits.lookup') }}</AppButton></div>
@@ -72,7 +72,7 @@ async function adjust() {
       <AppCard :title="t('bill.nav.credits')">
         <p v-if="!wallet" class="text-sm text-ink-muted">{{ t('billAdmin.credits.lookup') }}…</p>
         <template v-else>
-          <dl class="mb-3 grid grid-cols-3 gap-2 text-sm">
+          <dl class=" ">
             <div><dt class="text-ink-muted">{{ t('bill.credits.balance') }}</dt><dd class="font-semibold tabular-nums">{{ formatCredits(wallet.wallet.balance_mc) }}</dd></div>
             <div><dt class="text-ink-muted">{{ t('bill.credits.available') }}</dt><dd class="font-semibold tabular-nums">{{ formatCredits(wallet.wallet.available_mc) }}</dd></div>
             <div><dt class="text-ink-muted">{{ t('bill.credits.held') }}</dt><dd class="font-semibold tabular-nums">{{ formatCredits(wallet.wallet.held_mc) }}</dd></div>
@@ -87,37 +87,41 @@ async function adjust() {
         <LoadingState v-if="adjustments.loading.value" />
         <ErrorState v-else-if="adjustments.error.value" :error="adjustments.error.value" @retry="adjustments.reload" />
         <EmptyState v-else-if="!adjustments.items.value.length" icon="coins" :title="t('billAdmin.common.empty')" />
-        <table v-else class="min-w-full text-sm">
-          <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('bill.orders.created') }}</th><th class="px-4 py-2">{{ t('billAdmin.common.workspace') }}</th><th class="px-4 py-2">{{ t('billAdmin.credits.kind') }}</th><th class="px-4 py-2 text-right">Credits</th><th class="px-4 py-2">{{ t('billAdmin.common.reason') }}</th></tr></thead>
-          <tbody class="divide-y divide-line">
-            <tr v-for="a in adjustments.items.value" :key="a.id">
-              <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ formatDateTime(a.created_at) }}</td>
-              <td class="px-4 py-2 font-mono text-xs"><RouterLink :to="`/workspaces/${a.workspace_id}`" class="hover:underline">{{ a.workspace_id }}</RouterLink></td>
-              <td class="px-4 py-2">{{ t(`billAdmin.credits.kinds.${a.kind}`) }}</td>
-              <td class="px-4 py-2 text-right tabular-nums">{{ formatCredits(a.amount_mc) }}</td>
-              <td class="px-4 py-2">{{ a.reason }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-else class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('bill.orders.created') }}</th><th class="px-4 py-2">{{ t('billAdmin.common.workspace') }}</th><th class="px-4 py-2">{{ t('billAdmin.credits.kind') }}</th><th class="px-4 py-2 text-right">Credits</th><th class="px-4 py-2">{{ t('billAdmin.common.reason') }}</th></tr></thead>
+            <tbody class="divide-y divide-line">
+              <tr v-for="a in adjustments.items.value" :key="a.id">
+                <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ formatDateTime(a.created_at) }}</td>
+                <td class="px-4 py-2 font-mono text-xs"><RouterLink :to="`/workspaces/${a.workspace_id}`" class="hover:underline">{{ a.workspace_id }}</RouterLink></td>
+                <td class="px-4 py-2">{{ t(`billAdmin.credits.kinds.${a.kind}`) }}</td>
+                <td class="px-4 py-2 text-right tabular-nums">{{ formatCredits(a.amount_mc) }}</td>
+                <td class="px-4 py-2">{{ a.reason }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </AppCard>
 
       <AppCard :title="t('billAdmin.credits.uncertain')" :subtitle="t('billAdmin.credits.uncertainHint')" :padded="false" class="lg:col-span-2">
         <LoadingState v-if="uncertain.loading.value" />
         <ErrorState v-else-if="uncertain.error.value" :error="uncertain.error.value" @retry="uncertain.reload" />
         <EmptyState v-else-if="!uncertain.items.value.length" icon="check" :title="t('billAdmin.common.empty')" />
-        <table v-else class="min-w-full text-sm">
-          <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('bill.orders.created') }}</th><th class="px-4 py-2">Task</th><th class="px-4 py-2">{{ t('bill.orders.status') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.credits.estimate') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.credits.charged') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.credits.uncollected') }}</th></tr></thead>
-          <tbody class="divide-y divide-line">
-            <tr v-for="u in uncertain.items.value" :key="u.id">
-              <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ formatDateTime(u.created_at) }}</td>
-              <td class="px-4 py-2">{{ u.purpose }}</td>
-              <td class="px-4 py-2">{{ u.status }}</td>
-              <td class="px-4 py-2 text-right tabular-nums">{{ formatMicroUsd(u.estimate_micro_usd) }}</td>
-              <td class="px-4 py-2 text-right tabular-nums">{{ formatCredits(u.charged_mc) }}</td>
-              <td class="px-4 py-2 text-right tabular-nums">{{ formatCredits(u.uncollected_mc) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-else class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('bill.orders.created') }}</th><th class="px-4 py-2">Task</th><th class="px-4 py-2">{{ t('bill.orders.status') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.credits.estimate') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.credits.charged') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.credits.uncollected') }}</th></tr></thead>
+            <tbody class="divide-y divide-line">
+              <tr v-for="u in uncertain.items.value" :key="u.id">
+                <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ formatDateTime(u.created_at) }}</td>
+                <td class="px-4 py-2">{{ u.purpose }}</td>
+                <td class="px-4 py-2">{{ u.status }}</td>
+                <td class="px-4 py-2 text-right tabular-nums">{{ formatMicroUsd(u.estimate_micro_usd) }}</td>
+                <td class="px-4 py-2 text-right tabular-nums">{{ formatCredits(u.charged_mc) }}</td>
+                <td class="px-4 py-2 text-right tabular-nums">{{ formatCredits(u.uncollected_mc) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </AppCard>
     </div>
   </div>

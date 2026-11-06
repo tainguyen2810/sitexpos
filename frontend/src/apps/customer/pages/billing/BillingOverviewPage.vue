@@ -79,7 +79,7 @@ async function setReminders(on: boolean) {
       <p v-if="ent && !ent.enforcing" class="rounded-lg bg-surface-muted px-4 py-2 text-sm text-ink-muted" data-testid="no-enforcement">{{ t('bill.overview.noEnforcement') }}</p>
       <p v-if="ent && ent.applies && !ent.paid_usage_allowed" class="rounded-lg bg-warning-50 px-4 py-2 text-sm text-warning-600" data-testid="paid-blocked">{{ t('bill.overview.paidUsageBlocked') }}</p>
 
-      <div class="grid gap-4 sm:grid-cols-3">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard :label="t('bill.overview.currentPlan')" :value="sub?.plan?.name ?? ent?.plan_name ?? '—'" icon="card" :hint="sub ? t(`bill.status.${sub.status}`) : ent?.source === 'default_plan' ? t('bill.overview.defaultPlan') : undefined" />
         <StatCard :label="t('bill.overview.wallet')" :value="formatCredits(data.wallet.available_mc)" icon="coins" :hint="data.wallet.held_mc ? `${t('bill.overview.held')}: ${formatCredits(data.wallet.held_mc)}` : t('bill.common.credits')" />
         <StatCard :label="t('bill.overview.renewsOn')" :value="sub ? formatDate(sub.current_period_end) : '—'" icon="calendar" :hint="sub?.trial_ends_at ? `${t('bill.overview.trialEnds')}: ${formatDate(sub.trial_ends_at)}` : sub?.grace_ends_at ? `${t('bill.overview.graceEnds')}: ${formatDate(sub.grace_ends_at)}` : undefined" />
@@ -96,7 +96,7 @@ async function setReminders(on: boolean) {
           <AppBadge :tone="statusTone(sub.status)" data-testid="sub-status">{{ t(`bill.status.${sub.status}`) }}</AppBadge>
           <AppBadge v-if="sub.plan?.is_demo" tone="warning">{{ t('bill.common.demo') }}</AppBadge>
         </template>
-        <dl class="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+        <dl class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
           <div class="flex justify-between gap-3"><dt class="text-ink-muted">{{ t('bill.overview.price') }}</dt><dd>{{ sub.price_minor ? `${formatMoney(sub.price_minor, sub.currency)} · ${t(`bill.interval.${sub.interval}`)}` : t('bill.overview.free') }}</dd></div>
           <div class="flex justify-between gap-3"><dt class="text-ink-muted">{{ t('bill.overview.period') }}</dt><dd>{{ formatDate(sub.current_period_start) }} – {{ formatDate(sub.current_period_end) }}</dd></div>
         </dl>
@@ -121,7 +121,7 @@ async function setReminders(on: boolean) {
         </div>
       </AppCard>
 
-      <div class="grid gap-6 lg:grid-cols-2">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <AppCard :title="t('bill.overview.limits')">
           <p v-if="!limitRows.length" class="text-sm text-ink-muted">{{ t('bill.common.noData') }}</p>
           <ul v-else class="space-y-3">
@@ -137,7 +137,7 @@ async function setReminders(on: boolean) {
           </ul>
         </AppCard>
         <AppCard :title="t('bill.overview.features')">
-          <ul class="grid grid-cols-2 gap-2 text-sm">
+          <ul class="">
             <li v-for="(on, key) in ent?.features ?? {}" :key="key" class="flex items-center gap-2">
               <AppBadge :tone="on ? 'success' : 'neutral'">{{ on ? '✓' : '—' }}</AppBadge>{{ t(`bill.features.${key}`) }}
             </li>

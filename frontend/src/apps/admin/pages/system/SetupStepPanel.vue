@@ -100,7 +100,7 @@ const blocking = computed(() => (Array.isArray(d.value.blocking) ? (d.value.bloc
 <template>
   <AppCard :title="t(`sys.setup.steps.${step.key}`)" :data-testid="`setup-panel-${step.key}`">
     <!-- 1. General -->
-    <form v-if="step.key === 'general'" class="grid gap-4 md:grid-cols-2" @submit.prevent="saveGeneral">
+    <form v-if="step.key === 'general'" class="grid grid-cols-1 gap-4 md:grid-cols-2" @submit.prevent="saveGeneral">
       <AppInput v-model="general.brand_name" :label="t('sys.setup.general.brandName')" :error="errors.brand_name" required />
       <AppInput v-model="general.support_email" type="email" :label="t('sys.setup.general.supportEmail')" :error="errors.support_email" required />
       <AppSelect v-model="general.default_locale" :label="t('sys.setup.general.locale')" :options="[{ value: 'vi', label: 'Tiếng Việt' }, { value: 'en', label: 'English' }]" />
@@ -168,7 +168,7 @@ const blocking = computed(() => (Array.isArray(d.value.blocking) ? (d.value.bloc
     <!-- 4. Email -->
     <div v-else-if="step.key === 'email'" class="space-y-4">
       <p class="text-sm text-ink-muted">{{ t('sys.setup.email.source') }}: {{ d.source === 'settings' ? t('sys.setup.email.sourceSettings') : t('sys.setup.email.sourceEnv') }} · {{ t('sys.setup.email.activeMailer') }}: <span class="font-mono">{{ str(d.active_mailer) }}</span></p>
-      <form class="grid gap-4 md:grid-cols-2" @submit.prevent="saveMail">
+      <form class="grid grid-cols-1 gap-4 md:grid-cols-2" @submit.prevent="saveMail">
         <AppSelect v-model="mail.mailer" class="md:col-span-2" :label="t('sys.setup.email.source')" :options="[{ value: 'env', label: t('sys.setup.email.useEnv') }, { value: 'smtp', label: t('sys.setup.email.useSmtp') }]" />
         <template v-if="mail.mailer === 'smtp'">
           <AppInput v-model="mail.host" :label="t('sys.setup.email.host')" :error="errors.host" required />
@@ -237,7 +237,7 @@ const blocking = computed(() => (Array.isArray(d.value.blocking) ? (d.value.bloc
     <!-- 8. Google OAuth -->
     <div v-else-if="step.key === 'google'" class="space-y-4">
       <p class="text-sm text-ink-muted">{{ t('sys.setup.google.intro') }}</p>
-      <form class="grid gap-4 md:grid-cols-2" @submit.prevent="saveGoogle">
+      <form class="grid grid-cols-1 gap-4 md:grid-cols-2" @submit.prevent="saveGoogle">
         <AppInput v-model="google.client_id" :label="t('sys.setup.google.clientId')" :error="errors.client_id" autocomplete="off" />
         <AppInput v-model="google.client_secret" type="password" autocomplete="new-password" :label="t('sys.setup.google.clientSecret')" :hint="d.client_secret_configured ? t('sys.common.secretKept') : undefined" :error="errors.client_secret" />
         <Toggle v-model="google.ga4_enabled" :label="t('sys.setup.google.ga4')" class="md:col-span-2" />

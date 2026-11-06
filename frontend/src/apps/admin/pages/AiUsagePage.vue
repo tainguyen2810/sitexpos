@@ -46,7 +46,7 @@ const statusTone = (s: AiRequestLog['status']) => ({ succeeded: 'success', faile
     <LoadingState v-if="report.loading.value && !d" :rows="3" />
     <ErrorState v-else-if="report.error.value" :error="report.error.value" @retry="report.run" />
     <template v-else-if="d">
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="usage-totals">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="usage-totals">
         <AppCard><p class="text-sm text-ink-muted">{{ $t('aiAdmin.totalCost') }}</p><p class="mt-1 text-3xl font-bold">{{ formatUsd(d.totals.cost_micro_usd) }}</p></AppCard>
         <AppCard><p class="text-sm text-ink-muted">{{ $t('aiAdmin.totalRequests') }}</p><p class="mt-1 text-3xl font-bold">{{ d.totals.requests }}</p></AppCard>
         <AppCard><p class="text-sm text-ink-muted">{{ $t('aiAdmin.tokensInOut') }}</p><p class="mt-1 text-xl font-bold">{{ formatTokens(d.totals.input_tokens + d.totals.cached_input_tokens) }} / {{ formatTokens(d.totals.output_tokens) }}</p></AppCard>
@@ -62,42 +62,50 @@ const statusTone = (s: AiRequestLog['status']) => ({ succeeded: 'success', faile
         </div>
       </AppCard>
 
-      <div class="grid gap-6 lg:grid-cols-2">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <AppCard :title="$t('aiAdmin.byProvider')" :padded="false">
-          <table class="w-full text-sm">
-            <tbody class="divide-y divide-line">
-              <tr v-for="r in d.by_provider ?? []" :key="r.provider"><td class="px-5 py-2 font-medium">{{ r.provider }}</td><td class="px-5 py-2 text-right">{{ r.requests }}</td><td class="px-5 py-2 text-right">{{ formatUsd(r.cost_micro_usd) }}</td></tr>
-              <tr v-if="!(d.by_provider ?? []).length"><td class="px-5 py-3 text-ink-muted">{{ $t('aiAdmin.noData') }}</td></tr>
-            </tbody>
-          </table>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <tbody class="divide-y divide-line">
+                <tr v-for="r in d.by_provider ?? []" :key="r.provider"><td class="px-5 py-2 font-medium">{{ r.provider }}</td><td class="px-5 py-2 text-right">{{ r.requests }}</td><td class="px-5 py-2 text-right">{{ formatUsd(r.cost_micro_usd) }}</td></tr>
+                <tr v-if="!(d.by_provider ?? []).length"><td class="px-5 py-3 text-ink-muted">{{ $t('aiAdmin.noData') }}</td></tr>
+              </tbody>
+            </table>
+          </div>
         </AppCard>
         <AppCard :title="$t('aiAdmin.byTask')" :padded="false">
-          <table class="w-full text-sm">
-            <tbody class="divide-y divide-line">
-              <tr v-for="r in d.by_task" :key="r.task_key"><td class="px-5 py-2 font-mono text-xs">{{ r.task_key }}</td><td class="px-5 py-2 text-right">{{ r.requests }}</td><td class="px-5 py-2 text-right">{{ formatUsd(r.cost_micro_usd) }}</td></tr>
-              <tr v-if="!d.by_task.length"><td class="px-5 py-3 text-ink-muted">{{ $t('aiAdmin.noData') }}</td></tr>
-            </tbody>
-          </table>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <tbody class="divide-y divide-line">
+                <tr v-for="r in d.by_task" :key="r.task_key"><td class="px-5 py-2 font-mono text-xs">{{ r.task_key }}</td><td class="px-5 py-2 text-right">{{ r.requests }}</td><td class="px-5 py-2 text-right">{{ formatUsd(r.cost_micro_usd) }}</td></tr>
+                <tr v-if="!d.by_task.length"><td class="px-5 py-3 text-ink-muted">{{ $t('aiAdmin.noData') }}</td></tr>
+              </tbody>
+            </table>
+          </div>
         </AppCard>
         <AppCard :title="$t('aiAdmin.byModel')" :padded="false">
-          <table class="w-full text-sm">
-            <tbody class="divide-y divide-line">
-              <tr v-for="r in d.by_model" :key="r.provider + r.model">
-                <td class="px-5 py-2"><span class="text-ink-muted">{{ r.provider }}/</span>{{ r.model }}</td>
-                <td class="px-5 py-2 text-right text-xs">{{ formatTokens(r.input_tokens) }} / {{ formatTokens(r.output_tokens) }}</td>
-                <td class="px-5 py-2 text-right">{{ formatUsd(r.cost_micro_usd) }}</td>
-              </tr>
-              <tr v-if="!d.by_model.length"><td class="px-5 py-3 text-ink-muted">{{ $t('aiAdmin.noData') }}</td></tr>
-            </tbody>
-          </table>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <tbody class="divide-y divide-line">
+                <tr v-for="r in d.by_model" :key="r.provider + r.model">
+                  <td class="px-5 py-2"><span class="text-ink-muted">{{ r.provider }}/</span>{{ r.model }}</td>
+                  <td class="px-5 py-2 text-right text-xs">{{ formatTokens(r.input_tokens) }} / {{ formatTokens(r.output_tokens) }}</td>
+                  <td class="px-5 py-2 text-right">{{ formatUsd(r.cost_micro_usd) }}</td>
+                </tr>
+                <tr v-if="!d.by_model.length"><td class="px-5 py-3 text-ink-muted">{{ $t('aiAdmin.noData') }}</td></tr>
+              </tbody>
+            </table>
+          </div>
         </AppCard>
         <AppCard :title="$t('aiAdmin.byWorkspace')" :padded="false">
-          <table class="w-full text-sm">
-            <tbody class="divide-y divide-line">
-              <tr v-for="r in d.by_workspace ?? []" :key="r.workspace_id ?? 'none'"><td class="px-5 py-2">{{ r.workspace_name ?? '—' }}</td><td class="px-5 py-2 text-right">{{ r.requests }}</td><td class="px-5 py-2 text-right">{{ formatUsd(r.cost_micro_usd) }}</td></tr>
-              <tr v-if="!(d.by_workspace ?? []).length"><td class="px-5 py-3 text-ink-muted">{{ $t('aiAdmin.noData') }}</td></tr>
-            </tbody>
-          </table>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <tbody class="divide-y divide-line">
+                <tr v-for="r in d.by_workspace ?? []" :key="r.workspace_id ?? 'none'"><td class="px-5 py-2">{{ r.workspace_name ?? '—' }}</td><td class="px-5 py-2 text-right">{{ r.requests }}</td><td class="px-5 py-2 text-right">{{ formatUsd(r.cost_micro_usd) }}</td></tr>
+                <tr v-if="!(d.by_workspace ?? []).length"><td class="px-5 py-3 text-ink-muted">{{ $t('aiAdmin.noData') }}</td></tr>
+              </tbody>
+            </table>
+          </div>
         </AppCard>
       </div>
 

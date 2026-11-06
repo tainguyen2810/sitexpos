@@ -111,7 +111,7 @@ function confirmChange() {
       <p v-if="!canManage" class="mb-4 text-sm text-ink-muted">{{ t('bill.common.ownerOnly') }}</p>
 
       <EmptyState v-if="!data.plans.plans.length" icon="card" :title="t('bill.plans.noPlans')" :description="t('bill.plans.noPlansHint')" />
-      <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div v-else class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <AppCard v-for="p in data.plans.plans" :key="p.id" :class="isCurrent(p) ? 'ring-2 ring-brand-500' : ''" :data-testid="`plan-${p.code}`">
           <div class="flex items-start justify-between gap-2">
             <h3 class="text-lg font-semibold">{{ p.name }}</h3>
@@ -153,7 +153,7 @@ function confirmChange() {
         <p class="font-medium">{{ current?.plan?.name }} → {{ quote.plan.name }} ({{ t(`bill.interval.${interval}`) }})</p>
         <p v-if="quote.quote.kind === 'upgrade'">{{ t('bill.plans.upgradeNow') }}</p>
         <p v-else>{{ t('bill.plans.downgradeLater', { date: formatDate(quote.quote.effective_at) }) }}</p>
-        <dl v-if="quote.quote.kind === 'upgrade'" class="grid grid-cols-2 gap-2">
+        <dl v-if="quote.quote.kind === 'upgrade'" class="">
           <dt class="text-ink-muted">{{ t('bill.plans.amountDue') }}</dt><dd class="text-right text-lg font-semibold tabular-nums" data-testid="quote-amount">{{ formatMoney(quote.quote.amount_minor, quote.quote.currency) }}</dd>
           <dt class="text-ink-muted">{{ t('bill.plans.newPeriodEnd') }}</dt><dd class="text-right">{{ formatDate(quote.quote.new_period_end) }}</dd>
         </dl>

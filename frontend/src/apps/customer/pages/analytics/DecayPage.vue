@@ -60,42 +60,46 @@ function metric(o: Record<string, unknown> | null | undefined, k: string): strin
       <LoadingState v-if="loading && !data" />
       <ErrorState v-else-if="error" :error="error" @retry="run" />
       <EmptyState v-else-if="!data?.data.length" icon="trending" :title="t('an.decay.empty')" />
-      <table v-else class="min-w-full text-sm">
-        <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
-          <tr>
-            <th class="px-4 py-2">{{ t('an.metrics.page') }}</th>
-            <th class="px-4 py-2">{{ t('an.common.status') }}</th>
-            <th class="px-4 py-2 text-right">{{ t('an.decay.decline') }}</th>
-            <th class="px-4 py-2">{{ t('an.decay.detected') }}</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-line">
-          <tr v-for="d in data.data" :key="d.id" class="cursor-pointer hover:bg-surface-muted" @click="selected = d">
-            <td class="max-w-md truncate px-4 py-2">{{ d.page_url }} <AppBadge v-if="d.is_demo">DEMO</AppBadge></td>
-            <td class="px-4 py-2"><AppBadge :tone="decayTone(d.status)">{{ t(`an.decay.status.${d.status}`) }}</AppBadge></td>
-            <td class="px-4 py-2 text-right tabular-nums text-danger-600">{{ num(d.decline_pct, 1) }}%</td>
-            <td class="px-4 py-2">{{ formatDateTime(d.detected_at) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
+            <tr>
+              <th class="px-4 py-2">{{ t('an.metrics.page') }}</th>
+              <th class="px-4 py-2">{{ t('an.common.status') }}</th>
+              <th class="px-4 py-2 text-right">{{ t('an.decay.decline') }}</th>
+              <th class="px-4 py-2">{{ t('an.decay.detected') }}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            <tr v-for="d in data.data" :key="d.id" class="cursor-pointer hover:bg-surface-muted" @click="selected = d">
+              <td class="max-w-md truncate px-4 py-2">{{ d.page_url }} <AppBadge v-if="d.is_demo">DEMO</AppBadge></td>
+              <td class="px-4 py-2"><AppBadge :tone="decayTone(d.status)">{{ t(`an.decay.status.${d.status}`) }}</AppBadge></td>
+              <td class="px-4 py-2 text-right tabular-nums text-danger-600">{{ num(d.decline_pct, 1) }}%</td>
+              <td class="px-4 py-2">{{ formatDateTime(d.detected_at) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </AppCard>
 
     <Drawer :open="!!selected" :title="t('an.decay.detail')" :subtitle="selected?.page_url" @close="selected = null">
       <div v-if="selected" class="space-y-4 text-sm">
         <p class="rounded-lg bg-surface-muted p-3 text-xs text-ink-muted">{{ t('an.decay.hypothesis') }}</p>
-        <table class="min-w-full text-sm">
-          <thead class="text-left text-xs uppercase text-ink-muted">
-            <tr><th /><th class="text-right">{{ t('an.decay.recent') }}</th><th class="text-right">{{ t('an.decay.previous') }}</th><th class="text-right">{{ t('an.decay.baseline') }}</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="k in ['clicks', 'impressions', 'position']" :key="k">
-              <td class="py-1 text-ink-muted">{{ t(`an.metrics.${k}`) }}</td>
-              <td class="text-right tabular-nums">{{ metric(selected.recent, k) }}</td>
-              <td class="text-right tabular-nums">{{ metric(selected.previous, k) }}</td>
-              <td class="text-right tabular-nums">{{ metric(selected.baseline, k) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="text-left text-xs uppercase text-ink-muted">
+              <tr><th /><th class="text-right">{{ t('an.decay.recent') }}</th><th class="text-right">{{ t('an.decay.previous') }}</th><th class="text-right">{{ t('an.decay.baseline') }}</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="k in ['clicks', 'impressions', 'position']" :key="k">
+                <td class="py-1 text-ink-muted">{{ t(`an.metrics.${k}`) }}</td>
+                <td class="text-right tabular-nums">{{ metric(selected.recent, k) }}</td>
+                <td class="text-right tabular-nums">{{ metric(selected.previous, k) }}</td>
+                <td class="text-right tabular-nums">{{ metric(selected.baseline, k) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div v-for="block in ['signals', 'seasonal', 'query_changes', 'url_changes', 'content_changes'] as const" :key="block">
           <h3 class="mb-1 font-medium">{{ t(`an.decay.blocks.${block}`) }}</h3>
           <pre v-if="selected[block] && (Array.isArray(selected[block]) ? (selected[block] as unknown[]).length : Object.keys(selected[block] as object).length)" class="max-h-48 overflow-auto rounded-lg bg-surface-muted p-3 text-xs">{{ JSON.stringify(selected[block], null, 2) }}</pre>

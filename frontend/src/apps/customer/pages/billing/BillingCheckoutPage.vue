@@ -109,7 +109,7 @@ async function cancel() {
     <LoadingState v-if="loading" />
     <EmptyState v-else-if="notFound" icon="receipt" :title="t('bill.checkout.notFound')" />
     <ErrorState v-else-if="error" :error="error" @retry="load()" />
-    <div v-else-if="order" class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div v-else-if="order" class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <AppCard>
         <div class="mb-4 flex flex-wrap items-center gap-2">
           <AppBadge :tone="statusTone(order.status)" data-testid="order-status">{{ t(`bill.orderStatus.${order.status}`) }}</AppBadge>
@@ -129,7 +129,7 @@ async function cancel() {
 
         <template v-else-if="order.instructions">
           <p v-if="!order.instructions.configured" class="rounded-lg bg-warning-50 px-4 py-3 text-sm text-warning-600">{{ t('bill.checkout.notConfigured') }}</p>
-          <div class="grid gap-6 md:grid-cols-[auto_minmax(0,1fr)]">
+          <div class="grid grid-cols-1 gap-6 md:grid-cols-[auto_minmax(0,1fr)]">
             <div v-if="order.instructions.qr_payload" class="flex flex-col items-center gap-2">
               <QrCode :payload="order.instructions.qr_payload" :label="t('bill.checkout.scan')" />
               <p class="max-w-[220px] text-center text-xs text-ink-muted">{{ t('bill.checkout.scan') }}</p>

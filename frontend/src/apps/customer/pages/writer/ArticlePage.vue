@@ -107,7 +107,7 @@ async function saveBudget() {
         </template>
       </PageHeader>
 
-      <div class="mb-4 grid gap-4 lg:grid-cols-[1fr_18rem]">
+      <div class="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_18rem]">
         <AppCard>
           <WorkflowProgress v-if="article.workflow" :workflow="article.workflow" compact />
           <p v-else class="text-sm text-ink-muted">{{ t('writer.article.noWorkflow') }}</p>

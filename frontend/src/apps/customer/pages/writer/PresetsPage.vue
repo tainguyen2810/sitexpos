@@ -143,7 +143,7 @@ const provTone = (p: Provenance) => (p === 'ai_inferred' ? 'warning' : p === 'so
     </AppCard>
 
     <AppModal :open="open" :title="editing ? editing.name : t('writer.presets.new')" width="xl" @close="open = false">
-      <form id="preset-form" class="grid gap-4 sm:grid-cols-2" novalidate @submit.prevent="save">
+      <form id="preset-form" class="grid grid-cols-1 gap-4 sm:grid-cols-2" novalidate @submit.prevent="save">
         <p v-if="formError" class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600 sm:col-span-2" role="alert">{{ formError }}</p>
         <AppInput v-model="f.name" :label="t('writer.presets.name')" required :error="errors.name" />
         <AppSelect v-model="f.site_id" :label="t('nav.sites')" :options="formSiteOptions" :error="errors.site_id" />
@@ -155,7 +155,7 @@ const provTone = (p: Provenance) => (p === 'ai_inferred' ? 'warning' : p === 'so
         <div class="sm:col-span-2">
           <p class="text-sm font-medium">{{ t('writer.presets.facts') }}</p>
           <p class="mb-2 text-xs text-ink-muted">{{ t('writer.presets.factHint') }}</p>
-          <div v-for="(x, i) in f.facts" :key="i" class="mb-2 grid gap-2 sm:grid-cols-[1fr_12rem_1fr_auto]">
+          <div v-for="(x, i) in f.facts" :key="i" class="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_12rem_1fr_auto]">
             <AppInput v-model="x.text" :placeholder="t('writer.presets.factText')" :error="errors[`facts.${i}.text`]" />
             <AppSelect v-model="x.provenance" :options="provenanceOptions" />
             <AppInput v-model="x.source_url" :placeholder="t('writer.presets.factSource')" :error="errors[`facts.${i}.source_url`]" />
@@ -167,7 +167,7 @@ const provTone = (p: Provenance) => (p === 'ai_inferred' ? 'warning' : p === 'so
         <AppInput v-model="f.geo" :label="t('writer.presets.geo')" />
         <WTextarea v-model="f.guidelines" class="sm:col-span-2" :rows="4" :label="t('writer.presets.guidelines')" />
         <AppInput v-model="f.cta" class="sm:col-span-2" :label="t('writer.presets.cta')" />
-        <fieldset class="grid gap-3 sm:col-span-2 sm:grid-cols-4">
+        <fieldset class="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-4">
           <legend class="mb-1 text-sm font-medium">{{ t('writer.presets.defaults') }}</legend>
           <AppSelect v-model="f.d_type" :label="t('writer.wizard.steps.contentType')" :options="typeOptions" />
           <AppInput v-model="f.d_words" type="number" :label="t('writer.wizard.targetWords')" :error="errors['defaults.target_words']" />

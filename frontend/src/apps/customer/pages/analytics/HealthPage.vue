@@ -30,7 +30,7 @@ const history = computed(() => [...(data.value?.data.history ?? [])].reverse())
     <LoadingState v-if="loading && !data" />
     <ErrorState v-else-if="error" :error="error" @retry="run" />
     <EmptyState v-else-if="!latest" icon="shield" :title="t('an.common.noData')" :description="t('an.health.empty')" />
-    <div v-else class="grid gap-6 lg:grid-cols-3">
+    <div v-else class="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <AppCard :title="t('an.health.score')" :subtitle="formatDate(latest.date)">
         <div class="flex items-end gap-2">
           <span class="text-5xl font-semibold tabular-nums" data-testid="health-score">{{ latest.score ?? '—' }}</span>

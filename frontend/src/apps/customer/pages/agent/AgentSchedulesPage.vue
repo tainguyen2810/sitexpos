@@ -68,14 +68,14 @@ async function setStatus(s: Schedule, status: Schedule['status']) {
     <LoadingState v-else-if="loading && !data" />
     <ErrorState v-else-if="error" :error="error" @retry="run" />
     <EmptyState v-else-if="!data?.data.length" icon="calendar" :title="t('ag.schedules.empty')" />
-    <div v-else class="grid gap-4 lg:grid-cols-2">
+    <div v-else class="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <AppCard v-for="s in data.data" :key="s.id" :title="t(`ag.kinds.${s.kind}`)" :subtitle="`${t(`ag.frequency.${s.frequency}`)} · ${s.local_time} (${s.timezone})`">
         <div class="mb-3 flex flex-wrap items-center gap-2 text-xs">
           <AppBadge :tone="s.status === 'active' ? 'success' : 'neutral'">{{ t(`ag.schedules.status.${s.status}`) }}</AppBadge>
           <AppBadge v-if="s.consecutive_failures" tone="warning">{{ t('ag.schedules.failures', { n: s.consecutive_failures }) }}</AppBadge>
           <AppBadge v-if="s.is_demo">DEMO</AppBadge>
         </div>
-        <dl class="grid grid-cols-2 gap-y-1 text-sm">
+        <dl class="">
           <dt class="text-ink-muted">{{ t('ag.schedules.next') }}</dt><dd>{{ formatDateTime(s.next_run_at, s.timezone) }}</dd>
           <dt class="text-ink-muted">{{ t('ag.schedules.last') }}</dt><dd>{{ formatDateTime(s.last_run_at, s.timezone) }} <span v-if="s.last_status" class="text-xs text-ink-muted">({{ t(`ag.schedules.lastStatus.${s.last_status}`, s.last_status) }})</span></dd>
         </dl>

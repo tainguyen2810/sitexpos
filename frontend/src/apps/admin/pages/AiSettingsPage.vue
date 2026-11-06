@@ -482,7 +482,7 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
           <AppButton v-if="p.state === 'scheduled'" size="sm" variant="ghost" @click="deletePrice(p)">{{ $t('common.delete') }}</AppButton>
         </li>
       </ul>
-      <form id="price-form" class="mt-4 grid gap-3 sm:grid-cols-2" novalidate @submit.prevent="addPrice">
+      <form id="price-form" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2" novalidate @submit.prevent="addPrice">
         <p v-if="priceForm.formError.value" class="sm:col-span-2 rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">{{ priceForm.formError.value }}</p>
         <AppInput v-model="priceDraft.effective_from" type="datetime-local" :label="$t('aiAdmin.effectiveFrom')" :error="priceForm.errors.effective_from" />
         <AppInput v-model="priceDraft.source_url" :label="$t('aiAdmin.sourceUrl')" :error="priceForm.errors.source_url" />
@@ -535,14 +535,14 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
         <AppSelect v-model="routeDraft.economy" :label="$t('aiAdmin.economy')" :options="[{ value: '', label: $t('aiAdmin.none') }, ...modelOptions]" />
         <fieldset>
           <legend class="text-sm font-medium">{{ $t('aiAdmin.fallbacks') }}</legend>
-          <div class="mt-1 grid max-h-40 gap-1 overflow-y-auto rounded-lg border border-line p-2 sm:grid-cols-2">
+          <div class="mt-1 grid grid-cols-1 max-h-40 gap-1 overflow-y-auto rounded-lg border border-line p-2 sm:grid-cols-2">
             <label v-for="o in modelOptions.filter((o) => o.value !== routeDraft.primary)" :key="o.value" class="flex items-center gap-2 text-xs">
               <input type="checkbox" :checked="routeDraft.fallbacks.includes(o.value)" @change="toggleFallback(o.value)" />
               {{ o.label }}<span v-if="routeDraft.fallbacks.includes(o.value)" class="text-ink-muted">#{{ routeDraft.fallbacks.indexOf(o.value) + 1 }}</span>
             </label>
           </div>
         </fieldset>
-        <div class="grid gap-3 sm:grid-cols-3">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <AppInput v-model="routeDraft.max_output_tokens" type="number" :label="$t('aiAdmin.maxOutput')" :error="routeForm.errors.max_output_tokens" />
           <AppInput v-model="routeDraft.max_attempts" type="number" :label="$t('aiAdmin.maxAttempts')" :error="routeForm.errors.max_attempts" />
           <AppSelect v-model="routeDraft.priority" :label="$t('aiAdmin.priority')" :options="priorityOptions" />
@@ -629,7 +629,7 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
     <AppModal :open="!!editModel" :title="$t('aiAdmin.editModel', { name: editModel?.display_name ?? '' })" @close="editModel = null">
       <form id="edit-model-form" class="space-y-3" novalidate @submit.prevent="saveModel">
         <p v-if="editForm.formError.value" class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">{{ editForm.formError.value }}</p>
-        <div class="grid gap-3 sm:grid-cols-2">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <AppInput v-model="editDraft.model_name" :label="$t('aiAdmin.modelName')" :error="editForm.errors.model_name" />
           <AppInput v-model="editDraft.display_name" :label="$t('aiAdmin.displayName')" :error="editForm.errors.display_name" />
           <AppSelect v-model="editDraft.tier" :label="$t('aiAdmin.tier')" :options="tierOptions" />

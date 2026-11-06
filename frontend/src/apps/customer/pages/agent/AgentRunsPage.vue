@@ -61,32 +61,34 @@ async function start() {
       <LoadingState v-if="loading && !data" />
       <ErrorState v-else-if="error" :error="error" @retry="run" />
       <EmptyState v-else-if="!data?.data.length" icon="cpu" :title="t('ag.runs.empty')" />
-      <table v-else class="min-w-full text-sm">
-        <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
-          <tr>
-            <th class="px-4 py-2">{{ t('ag.runs.kind') }}</th>
-            <th class="px-4 py-2">{{ t('an.common.status') }}</th>
-            <th class="px-4 py-2">{{ t('ag.runs.phase') }}</th>
-            <th class="px-4 py-2">{{ t('ag.runs.level') }}</th>
-            <th class="px-4 py-2 text-right">{{ t('ag.runs.cost') }}</th>
-            <th class="px-4 py-2">{{ t('an.common.createdAt') }}</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-line">
-          <tr v-for="r in data.data" :key="r.id">
-            <td class="px-4 py-2">
-              <RouterLink :to="{ name: 'agent-run', params: { workspaceId, runId: r.id } }" class="font-medium text-brand-700 hover:underline">{{ t(`ag.kinds.${r.kind}`) }}</RouterLink>
-              <span class="ml-1 text-xs text-ink-muted">{{ t(`ag.trigger.${r.trigger}`, r.trigger) }}</span>
-              <AppBadge v-if="r.is_demo" class="ml-1">DEMO</AppBadge>
-            </td>
-            <td class="px-4 py-2"><AppBadge :tone="runTone(r.status)">{{ t(`ag.runStatus.${r.status}`) }}</AppBadge></td>
-            <td class="px-4 py-2">{{ t(`ag.phases.${r.phase}`) }}</td>
-            <td class="px-4 py-2">{{ r.autonomy_level }}</td>
-            <td class="px-4 py-2 text-right tabular-nums">{{ micro(r.actual_cost_micro_usd) }}</td>
-            <td class="px-4 py-2">{{ formatDateTime(r.created_at) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
+            <tr>
+              <th class="px-4 py-2">{{ t('ag.runs.kind') }}</th>
+              <th class="px-4 py-2">{{ t('an.common.status') }}</th>
+              <th class="px-4 py-2">{{ t('ag.runs.phase') }}</th>
+              <th class="px-4 py-2">{{ t('ag.runs.level') }}</th>
+              <th class="px-4 py-2 text-right">{{ t('ag.runs.cost') }}</th>
+              <th class="px-4 py-2">{{ t('an.common.createdAt') }}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            <tr v-for="r in data.data" :key="r.id">
+              <td class="px-4 py-2">
+                <RouterLink :to="{ name: 'agent-run', params: { workspaceId, runId: r.id } }" class="font-medium text-brand-700 hover:underline">{{ t(`ag.kinds.${r.kind}`) }}</RouterLink>
+                <span class="ml-1 text-xs text-ink-muted">{{ t(`ag.trigger.${r.trigger}`, r.trigger) }}</span>
+                <AppBadge v-if="r.is_demo" class="ml-1">DEMO</AppBadge>
+              </td>
+              <td class="px-4 py-2"><AppBadge :tone="runTone(r.status)">{{ t(`ag.runStatus.${r.status}`) }}</AppBadge></td>
+              <td class="px-4 py-2">{{ t(`ag.phases.${r.phase}`) }}</td>
+              <td class="px-4 py-2">{{ r.autonomy_level }}</td>
+              <td class="px-4 py-2 text-right tabular-nums">{{ micro(r.actual_cost_micro_usd) }}</td>
+              <td class="px-4 py-2">{{ formatDateTime(r.created_at) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </AppCard>
   </div>
 </template>

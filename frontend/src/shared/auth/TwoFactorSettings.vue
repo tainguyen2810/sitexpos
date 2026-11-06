@@ -124,7 +124,7 @@ async function onConfirmCode() {
     <div v-if="step === 'codes'" class="space-y-3 rounded-lg border border-warning-600/30 bg-warning-50 p-4">
       <p class="text-sm font-medium">{{ t('account.recoveryCodes') }}</p>
       <p class="text-sm text-ink-muted">{{ t('account.recoveryHelp') }}</p>
-      <ul class="grid grid-cols-1 gap-1 font-mono text-sm sm:grid-cols-2">
+      <ul class=" ">
         <li v-for="c in recovery" :key="c">{{ c }}</li>
       </ul>
       <AppButton size="sm" variant="secondary" @click="step = 'idle'">{{ t('common.close') }}</AppButton>

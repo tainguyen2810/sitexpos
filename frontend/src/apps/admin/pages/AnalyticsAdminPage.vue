@@ -91,14 +91,14 @@ async function save(kill?: boolean) {
     <ErrorState v-else-if="analytics.error.value" :error="analytics.error.value" @retry="analytics.run" />
     <template v-else-if="analytics.data.value">
       <div v-if="!analytics.data.value.data.oauth_configured" class="mb-4 rounded-lg bg-warning-50 p-3 text-sm text-warning-700">{{ t('anAdmin.oauthMissing') }}</div>
-      <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard :label="t('anAdmin.properties')" :value="Object.values(analytics.data.value.data.properties).reduce((a, b) => a + Number(b), 0)" icon="globe" />
         <StatCard :label="t('anAdmin.stale')" :value="analytics.data.value.data.stale" icon="clock" />
         <StatCard :label="t('anAdmin.requests')" :value="num(analytics.data.value.data.api_requests)" icon="server" />
         <StatCard :label="t('anAdmin.rows')" :value="num(analytics.data.value.data.rows_upserted)" icon="layers" />
         <StatCard :label="t('anAdmin.copilot')" :value="`${analytics.data.value.data.copilot.queries} · ${micro(analytics.data.value.data.copilot.cost_micro_usd)}`" icon="sparkles" />
       </div>
-      <div class="mb-8 grid gap-6 lg:grid-cols-3">
+      <div class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <AppCard :title="t('anAdmin.syncRuns')">
           <ul class="space-y-1 text-sm">
             <li v-for="(n, s) in analytics.data.value.data.sync_runs" :key="s" class="flex justify-between"><span>{{ s }}</span><span class="tabular-nums">{{ n }}</span></li>
@@ -129,13 +129,13 @@ async function save(kill?: boolean) {
     <LoadingState v-if="agent.loading.value && !agent.data.value" />
     <ErrorState v-else-if="agent.error.value" :error="agent.error.value" @retry="agent.run" />
     <template v-else-if="agent.data.value">
-      <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard :label="t('anAdmin.activeRuns')" :value="agent.data.value.data.active_runs" icon="cpu" />
         <StatCard :label="t('anAdmin.emergencyStops')" :value="agent.data.value.data.emergency_stops" icon="alert" />
         <StatCard :label="t('anAdmin.estimated')" :value="micro(agent.data.value.data.estimated_cost_micro_usd)" icon="coins" />
         <StatCard :label="t('anAdmin.level3Sites')" :value="agent.data.value.data.levels['3'] ?? 0" icon="shield" />
       </div>
-      <div class="mb-8 grid gap-6 lg:grid-cols-3">
+      <div class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <AppCard :title="t('anAdmin.runs')">
           <ul class="space-y-1 text-sm">
             <li v-for="(n, s) in agent.data.value.data.runs" :key="s" class="flex justify-between"><span>{{ s }}</span><span class="tabular-nums">{{ n }}</span></li>
@@ -147,11 +147,13 @@ async function save(kill?: boolean) {
         </AppCard>
         <AppCard :title="t('anAdmin.byTool')" :padded="false">
           <EmptyState v-if="!agent.data.value.data.tasks_by_tool.length" icon="list" :title="t('anAdmin.noTasks')" />
-          <table v-else class="min-w-full text-xs">
-            <tbody class="divide-y divide-line">
-              <tr v-for="r in agent.data.value.data.tasks_by_tool" :key="r.tool + r.status"><td class="px-4 py-1.5">{{ r.tool }}</td><td class="px-4 py-1.5">{{ r.status }}</td><td class="px-4 py-1.5 text-right tabular-nums">{{ r.n }}</td></tr>
-            </tbody>
-          </table>
+          <div v-else class="overflow-x-auto">
+            <table class="min-w-full text-xs">
+              <tbody class="divide-y divide-line">
+                <tr v-for="r in agent.data.value.data.tasks_by_tool" :key="r.tool + r.status"><td class="px-4 py-1.5">{{ r.tool }}</td><td class="px-4 py-1.5">{{ r.status }}</td><td class="px-4 py-1.5 text-right tabular-nums">{{ r.n }}</td></tr>
+              </tbody>
+            </table>
+          </div>
         </AppCard>
         <AppCard :title="t('anAdmin.failedRuns')" :padded="false">
           <EmptyState v-if="!agent.data.value.data.failed_runs.length" icon="check" :title="t('anAdmin.noFailing')" />
@@ -174,7 +176,7 @@ async function save(kill?: boolean) {
           <AppButton v-else size="sm" variant="secondary" :loading="saving" @click="save(false)">{{ t('anAdmin.killRelease') }}</AppButton>
         </div>
         <label class="flex flex-col gap-1"><span class="text-xs text-ink-muted">{{ t('anAdmin.killReason') }}</span><input v-model="form.kill_reason" maxlength="500" class="rounded-lg border border-line bg-surface px-2 py-1.5" /></label>
-        <div class="grid gap-3 sm:grid-cols-3">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <label class="flex flex-col gap-1"><span class="text-xs text-ink-muted">{{ t('anAdmin.maxLevel') }}</span><input v-model="form.max_autonomy_level" type="number" min="0" max="3" class="rounded-lg border border-line bg-surface px-2 py-1.5" /></label>
           <label class="flex flex-col gap-1"><span class="text-xs text-ink-muted">{{ t('anAdmin.maxTasks') }}</span><input v-model="form.max_tasks_per_run" type="number" min="1" max="50" class="rounded-lg border border-line bg-surface px-2 py-1.5" /></label>
           <label class="flex flex-col gap-1"><span class="text-xs text-ink-muted">{{ t('anAdmin.maxConcurrent') }}</span><input v-model="form.max_concurrent_runs" type="number" min="1" max="500" class="rounded-lg border border-line bg-surface px-2 py-1.5" /></label>

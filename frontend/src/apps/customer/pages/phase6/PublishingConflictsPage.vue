@@ -92,14 +92,16 @@ const show = (v: unknown) => (v === null || v === undefined || v === '' ? '—' 
         <ul class="list-disc pl-5 text-xs">
           <li v-for="x in current.types" :key="x"><strong>{{ t(`p6.pub.conflictType.${x}`) }}</strong> — {{ t(`p6.pub.conflictHint.${x}`) }}</li>
         </ul>
-        <table class="w-full text-xs">
-          <thead class="text-ink-muted"><tr><th class="py-1 text-left" /><th class="text-left">{{ t('p6.pub.conflicts.wp') }}</th><th class="text-left">{{ t('p6.pub.conflicts.expected') }}</th></tr></thead>
-          <tbody class="divide-y divide-line">
-            <tr v-for="r in diffRows" :key="r.key" :class="show(r.wp) !== show(r.expected) ? 'bg-warning-50' : ''">
-              <td class="py-1 pr-2 font-medium">{{ r.key }}</td><td class="max-w-[14rem] truncate pr-2" :title="show(r.wp)">{{ show(r.wp) }}</td><td class="max-w-[14rem] truncate" :title="show(r.expected)">{{ show(r.expected) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead class="text-ink-muted"><tr><th class="py-1 text-left" /><th class="text-left">{{ t('p6.pub.conflicts.wp') }}</th><th class="text-left">{{ t('p6.pub.conflicts.expected') }}</th></tr></thead>
+            <tbody class="divide-y divide-line">
+              <tr v-for="r in diffRows" :key="r.key" :class="show(r.wp) !== show(r.expected) ? 'bg-warning-50' : ''">
+                <td class="py-1 pr-2 font-medium">{{ r.key }}</td><td class="max-w-[14rem] truncate pr-2" :title="show(r.wp)">{{ show(r.wp) }}</td><td class="max-w-[14rem] truncate" :title="show(r.expected)">{{ show(r.expected) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <template v-if="current.status === 'open' && canPublish">
           <fieldset class="space-y-1">
             <legend class="mb-1 font-medium">{{ t('p6.pub.conflicts.choose') }}</legend>

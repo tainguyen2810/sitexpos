@@ -101,7 +101,7 @@ const horizonTone = computed(() => (overview.data.value?.horizon === 'running' ?
     <LoadingState v-if="overview.loading.value && !overview.data.value" :rows="2" />
     <ErrorState v-else-if="overview.error.value" :error="overview.error.value" @retry="overview.run" />
     <template v-else-if="overview.data.value">
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="jobs-overview">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="jobs-overview">
         <AppCard>
           <p class="text-sm text-ink-muted">{{ $t('jobs.horizon') }}</p>
           <p class="mt-1"><AppBadge :tone="horizonTone">{{ $t(`jobs.horizonStates.${overview.data.value.horizon}`) }}</AppBadge></p>

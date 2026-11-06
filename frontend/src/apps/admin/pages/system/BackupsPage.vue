@@ -80,7 +80,7 @@ const verifyTone = (s: string | null) => (s === 'verified' ? 'success' : s === '
     <div v-else-if="view.data.value" class="space-y-6">
       <p v-if="!view.data.value.configured" class="rounded-lg bg-danger-50 px-4 py-2 text-sm text-danger-600" data-testid="backup-not-configured">{{ t('sys.backups.notConfigured') }}</p>
 
-      <div class="grid gap-6 md:grid-cols-2">
+      <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
         <AppCard :title="t('sys.backups.schedule')">
           <form class="space-y-3" @submit.prevent="saveSchedule">
             <Toggle v-model="schedule.schedule_enabled" :label="t('sys.backups.enabled')" />

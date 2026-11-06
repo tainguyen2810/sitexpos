@@ -63,7 +63,7 @@ async function control(kind: 'pause' | 'resume' | 'cancel') {
           {{ i + 1 }}. {{ t(`ag.phases.${p}`) }}
         </li>
       </ol>
-      <div class="grid gap-6 lg:grid-cols-3">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <AppCard :title="t('ag.runs.tasks')" :padded="false" class="lg:col-span-2">
           <EmptyState v-if="!r.tasks.length" icon="list" :title="t('ag.runs.noTasks')" />
           <div v-else class="divide-y divide-line">

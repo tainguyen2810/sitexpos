@@ -55,7 +55,7 @@ async function save() {
 
 <template>
   <AppModal :open="open" :title="campaign ? t('common.edit') : t('research.campaigns.new')" width="lg" @close="emit('close')">
-    <form id="campaign-form" class="grid gap-4 sm:grid-cols-2" novalidate @submit.prevent="save">
+    <form id="campaign-form" class="grid grid-cols-1 gap-4 sm:grid-cols-2" novalidate @submit.prevent="save">
       <p v-if="formError" class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600 sm:col-span-2" role="alert">{{ formError }}</p>
       <AppSelect v-if="!campaign" v-model="draft.site_id" class="sm:col-span-2" :label="t('research.campaigns.site')" :options="siteOptions" :error="errors.site_id" />
       <AppInput v-model="draft.name" :label="t('research.campaigns.name')" required :error="errors.name" />

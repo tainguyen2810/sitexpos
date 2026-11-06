@@ -282,7 +282,7 @@ export interface Experiment {
   status: (typeof EXPERIMENT_STATUSES)[number]
   outcome: (typeof EXPERIMENT_OUTCOMES)[number] | null
   outcome_note: string | null
-  external_factors: string[] | null
+  external_factors: string | null
   is_demo: boolean
   created_at: string | null
 }

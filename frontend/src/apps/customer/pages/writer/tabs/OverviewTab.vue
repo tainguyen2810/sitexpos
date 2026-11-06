@@ -80,7 +80,7 @@ async function cancelArticle() {
 </script>
 
 <template>
-  <div class="grid gap-4 lg:grid-cols-2">
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     <AppCard>
       <h3 class="mb-3 text-sm font-semibold">{{ t('writer.article.workflow') }}</h3>
       <div v-if="canEdit && startKind" class="mb-4 space-y-2 rounded-lg border border-line p-3">
@@ -156,7 +156,7 @@ async function cancelArticle() {
           :hint="autoEnabled ? t('writer.autoApprove.hint', { min: opts.data.value?.auto_approve.min_quality ?? 0 }) : undefined" />
         <p v-if="autoResult?.approved && a.status === 'APPROVED'" class="mt-2 rounded bg-success-50 p-2 text-xs text-success-600" data-testid="auto-approved">{{ t('writer.autoApprove.approved') }}</p>
         <p v-else-if="autoResult && !autoResult.approved" class="mt-2 rounded bg-warning-50 p-2 text-xs text-warning-600" data-testid="auto-skipped">{{ t('writer.autoApprove.skipped', { reasons: autoReasons }) }}</p>
-        <dl class="mt-3 grid grid-cols-2 gap-2 text-sm">
+        <dl class=" ">
           <div><dt class="text-ink-muted">{{ t('writer.article.keyword') }}</dt><dd>{{ a.primary_keyword }}</dd></div>
           <div><dt class="text-ink-muted">{{ t('writer.article.type') }}</dt><dd>{{ t(`writer.contentType.${a.content_type}`) }}</dd></div>
         </dl>

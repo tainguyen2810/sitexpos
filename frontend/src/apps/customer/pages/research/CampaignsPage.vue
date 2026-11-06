@@ -56,7 +56,7 @@ const statusTone = (s: Campaign['status']) => (({ active: 'success', paused: 'wa
       </template>
     </PageHeader>
 
-    <div v-if="usage.data.value" class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div v-if="usage.data.value" class=" ">
       <StatCard :label="t('research.campaigns.title')" :value="`${usage.data.value.campaigns}/${usage.data.value.limits.max_campaigns}`" icon="target" />
       <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
         <p class="text-sm text-ink-muted">{{ t('research.run.history') }}</p>

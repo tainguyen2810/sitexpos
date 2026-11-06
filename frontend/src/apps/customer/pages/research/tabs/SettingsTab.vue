@@ -197,7 +197,7 @@ const gscTone = (s: SearchConsoleState) => (s.connected && s.property_url ? 'suc
 </script>
 
 <template>
-  <div class="grid gap-6 lg:grid-cols-2">
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
     <!-- discovery + planning -->
     <AppCard :title="t('research.settings.discovery')" class="lg:row-span-2">
       <LoadingState v-if="settings.loading.value && !settings.data.value" :rows="4" />
@@ -216,7 +216,7 @@ const gscTone = (s: SearchConsoleState) => (s.connected && s.property_url ? 'suc
           <p class="text-xs text-ink-muted">{{ t('research.settings.excludedHint') }}</p>
           <p v-if="settingsForm.errors.excluded_topics" class="text-xs text-danger-600">{{ settingsForm.errors.excluded_topics }}</p>
         </div>
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <AppInput v-model="draft.max_site_pages" type="number" :label="t('research.settings.maxSitePages')" :error="settingsForm.errors.max_site_pages" :disabled="!canOperate" />
           <AppInput v-model="draft.max_competitor_pages" type="number" :label="t('research.settings.maxCompetitorPages')" :error="settingsForm.errors.max_competitor_pages" :disabled="!canOperate" />
         </div>
@@ -259,7 +259,7 @@ const gscTone = (s: SearchConsoleState) => (s.connected && s.property_url ? 'suc
       <form v-else class="space-y-4" @submit.prevent="saveSchedule">
         <p v-if="scheduleForm.formError.value" class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">{{ scheduleForm.formError.value }}</p>
         <Toggle v-model="sched.is_enabled" :label="t('research.settings.scheduleEnabled')" :disabled="!canOperate" />
-        <div class="grid gap-4 sm:grid-cols-3">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <AppSelect v-model="sched.frequency" :label="t('research.settings.frequency')" :options="freqOptions" :disabled="!canOperate" />
           <AppSelect v-if="sched.frequency === 'weekly'" v-model="sched.day_of_week" :label="t('research.settings.dayOfWeek')" :options="dowOptions" :disabled="!canOperate" />
           <AppSelect v-if="sched.frequency === 'monthly'" v-model="sched.day_of_month" :label="t('research.settings.dayOfMonth')" :options="domOptions" :disabled="!canOperate" />

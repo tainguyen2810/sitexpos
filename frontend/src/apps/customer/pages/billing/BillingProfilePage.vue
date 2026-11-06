@@ -50,7 +50,7 @@ async function save() {
     <LoadingState v-if="loading && !data" />
     <ErrorState v-else-if="error" :error="error" @retry="run" />
     <AppCard v-else-if="data">
-      <form class="grid gap-4 md:grid-cols-2" @submit.prevent="save">
+      <form class="grid grid-cols-1 gap-4 md:grid-cols-2" @submit.prevent="save">
         <AppInput v-for="f in FIELDS" :key="f.key" v-model="form[f.key]" :type="f.type" :label="t(f.label)" :disabled="!canManage" />
         <div v-if="canManage" class="md:col-span-2 flex justify-end"><AppButton type="submit" :loading="saving" data-testid="save-profile">{{ t('common.save') }}</AppButton></div>
       </form>

@@ -47,13 +47,13 @@ async function save() {
     <LoadingState v-if="overview.loading.value && !overview.data.value" />
     <ErrorState v-else-if="overview.error.value" :error="overview.error.value" @retry="overview.run" />
     <template v-else-if="overview.data.value">
-      <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard :label="t('p6.admin.pub.published')" :value="overview.data.value.jobs.published" icon="send" />
         <StatCard :label="t('p6.admin.pub.stuck')" :value="overview.data.value.jobs.stuck" icon="alert" />
         <StatCard :label="t('p6.admin.pub.conflicts')" :value="overview.data.value.jobs.open_conflicts" icon="link" />
         <StatCard :label="t('p6.admin.pub.missed')" :value="overview.data.value.jobs.missed_schedules" icon="calendar" />
       </div>
-      <div class="mb-6 grid gap-6 lg:grid-cols-2">
+      <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <AppCard :title="t('p6.admin.pub.byStatus')">
           <ul class="flex flex-wrap gap-2 text-xs"><li v-for="(v, k) in overview.data.value.jobs.by_status" :key="k"><AppBadge tone="neutral">{{ t(`p6.pub.status.${k}`) }}: {{ v }}</AppBadge></li></ul>
           <h3 class="mb-1 mt-4 text-sm font-semibold">{{ t('p6.admin.pub.errors') }}</h3>
@@ -84,7 +84,7 @@ async function save() {
           <AppButton size="sm" variant="ghost" class="ml-auto" @click="edit(r)">{{ t('common.edit') }}</AppButton>
         </li>
       </ul>
-      <form class="grid gap-3 md:grid-cols-3" @submit.prevent="save">
+      <form class="grid grid-cols-1 gap-3 md:grid-cols-3" @submit.prevent="save">
         <AppInput v-model="form.scope_key" :label="t('p6.admin.scope')" :error="isValidScope(form.scope_key) ? undefined : t('p6.admin.scopeInvalid')" />
         <AppInput v-model="form.max_publishes_per_day" type="number" :label="t('p6.admin.pub.maxPerDay')" />
         <AppInput v-model="form.max_bulk_items" type="number" :label="t('p6.admin.pub.maxBulk')" />

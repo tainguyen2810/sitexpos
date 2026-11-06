@@ -34,7 +34,7 @@ function reasonKey(r: string): string {
     </ul>
     <p v-if="task.error_code" class="mt-1 text-xs text-danger-600">{{ t(`an.errors.${task.error_code}`, task.error_message ?? task.error_code) }}</p>
     <button type="button" class="mt-1 text-xs text-brand-700 hover:underline" @click="open = !open">{{ open ? t('ag.task.hide') : t('ag.task.details') }}</button>
-    <div v-if="open" class="mt-2 grid gap-2 md:grid-cols-2">
+    <div v-if="open" class="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
       <div><p class="text-[11px] uppercase text-ink-muted">{{ t('ag.task.input') }}</p><pre class="max-h-40 overflow-auto rounded bg-surface-muted p-2 text-[11px]">{{ JSON.stringify(task.input, null, 2) }}</pre></div>
       <div><p class="text-[11px] uppercase text-ink-muted">{{ t('ag.task.output') }}</p><pre class="max-h-40 overflow-auto rounded bg-surface-muted p-2 text-[11px]">{{ JSON.stringify(task.output ?? task.evidence, null, 2) }}</pre></div>
     </div>
