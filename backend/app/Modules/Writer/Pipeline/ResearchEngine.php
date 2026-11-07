@@ -134,22 +134,12 @@ class ResearchEngine
             // Web search only when the article allows it AND a model on the
             // discovery route can do it; otherwise the gateway would refuse the
             // call and discovery would silently find nothing.
-            $search = (bool) $a->setting('allow_web_search', false) && $this->ai->canSearch();
-            if ((bool) $a->setting('allow_web_search', false) && ! $search) {
+            $search = $this->searchAllowed($a) && $this->ai->canSearch();
+            if ($this->searchAllowed($a) && ! $search) {
                 $warnings[] = 'web_search_unavailable';
             }
-            try {
-                $questions = ResearchQuestion::query()->where('research_dossier_id', $d->id)->orderBy('position')->pluck('question')->all();
-                $res = $this->ai->discovery($a, ['topic' => $a->title, 'primary_keyword' => $a->primary_keyword, 'language' => $a->language,
-                    'country' => $a->country, 'questions' => $questions], $key, $run, $search);
-                foreach (array_slice((array) ($res->json['urls'] ?? []), 0, 8) as $u) {
-                    if ($this->add($d, (string) ($u['url'] ?? ''), 'ai_suggestion', $max)) {
-                        $added['ai_suggestion']++;
-                    }
-                }
-            } catch (AiGatewayException $e) {
-                $warnings[] = 'discovery_ai_failed:'.$e->errorCode;
-            }
+            $questions = ResearchQuestion::query()->where('research_dossier_id', $d->id)->orderBy('position')->pluck('question')->all();
+            $added['ai_suggestion'] += $this->suggest($a, $d, ['questions' => $questions], $key, $run, $search, $max, $warnings);
         }
         if ($this->count($d) === 0) {
             $warnings[] = 'no_source_candidates';
@@ -157,6 +147,81 @@ class ResearchEngine
         $this->warn($d, $warnings);
 
         return ['added' => $added, 'total' => $this->count($d), 'web_search' => $search, 'warnings' => $warnings];
+    }
+
+    /**
+     * One AI discovery call; a failed web-search call is retried once
+     * without search (the model then only proposes URLs it knows).
+     *
+     * @param  array<string, mixed>  $extra
+     * @param  list<string>  $warnings
+     */
+    private function suggest(Article $a, ResearchDossier $d, array $extra, string $key, ?string $run, bool $search, int $max, array &$warnings): int
+    {
+        $ctx = ['topic' => $a->title, 'primary_keyword' => $a->primary_keyword, 'language' => $a->language, 'country' => $a->country] + $extra;
+        try {
+            $res = $this->ai->discovery($a, $ctx, $key, $run, $search);
+        } catch (AiGatewayException $e) {
+            $warnings[] = 'discovery_ai_failed:'.$e->errorCode;
+            if (! $search) {
+                return 0;
+            }
+            try {
+                $res = $this->ai->discovery($a, $ctx, $key.':nosearch', $run, false);
+            } catch (AiGatewayException $e) {
+                $warnings[] = 'discovery_ai_failed:'.$e->errorCode;
+
+                return 0;
+            }
+        }
+        $n = 0;
+        foreach (array_slice((array) ($res->json['urls'] ?? []), 0, 8) as $u) {
+            if ($this->add($d, (string) ($u['url'] ?? ''), 'ai_suggestion', $max)) {
+                $n++;
+            }
+        }
+
+        return $n;
+    }
+
+    /**
+     * Follow-up lookup ("tự tra cứu"): when the first pass left the dossier
+     * below the evidence minimum and web search is available, search again
+     * for the questions that still have no evidence (avoiding URLs already
+     * tried), then fetch and extract the new sources. One extra round only.
+     *
+     * @return array<string, mixed>
+     */
+    public function lookup(Article $a, ResearchDossier $d, string $key, ?string $run): array
+    {
+        $min = max(0, $this->settings->int('min_evidence_items', $a->workspace_id));
+        $have = EvidenceItem::query()->where('research_dossier_id', $d->id)->count();
+        if ($have >= $min) {
+            return ['skipped' => 'enough_evidence', 'evidence' => $have];
+        }
+        if (! (bool) $a->setting('ai_source_discovery', true) || ! $this->searchAllowed($a) || ! $this->ai->canSearch()) {
+            return ['skipped' => 'web_search_unavailable', 'evidence' => $have];
+        }
+        $answered = EvidenceItem::query()->where('research_dossier_id', $d->id)->whereNotNull('research_question_id')->distinct()->pluck('research_question_id')->all();
+        $open = ResearchQuestion::query()->where('research_dossier_id', $d->id)->whereNotIn('id', $answered)->orderBy('position')->pluck('question')->all();
+        $tried = EvidenceSource::query()->where('research_dossier_id', $d->id)->pluck('url')->all();
+        $warnings = [];
+        $max = $this->settings->maxSources($d->depth, $a->workspace_id) + 6;
+        $added = $this->suggest($a, $d, ['questions' => $open !== [] ? $open : ResearchQuestion::query()->where('research_dossier_id', $d->id)->pluck('question')->all(),
+            'already_tried_urls' => array_slice($tried, 0, 30),
+            'note' => 'Vòng tìm thứ hai: các URL đã thử không cho đủ bằng chứng. Tìm trang KHÁC, cụ thể hơn (tài liệu chính thức, trang hỗ trợ, bài phân tích uy tín), không lặp lại URL đã thử.'],
+            $key, $run, true, $max, $warnings);
+        $retrieved = $added > 0 ? $this->retrieve($a, $d) : ['fetches' => 0];
+        $extracted = $added > 0 ? $this->extract($a, $d, $key.':x', $run) : ['evidence' => 0];
+        $this->warn($d, $warnings);
+
+        return ['added' => $added, 'fetches' => (int) ($retrieved['fetches'] ?? 0), 'evidence' => $have + (int) ($extracted['evidence'] ?? 0), 'warnings' => $warnings];
+    }
+
+    /** Web search is on for the platform/workspace AND for this article. */
+    private function searchAllowed(Article $a): bool
+    {
+        return (bool) $this->settings->get('web_search_enabled', $a->workspace_id) && (bool) $a->setting('allow_web_search', false);
     }
 
     private function count(ResearchDossier $d): int
@@ -362,6 +427,8 @@ class ResearchEngine
         }
         if (! (bool) $a->setting('ai_source_discovery', true)) {
             $parts[] = __('writer.shortfall.discovery_off');
+        } elseif (! (bool) $this->settings->get('web_search_enabled', $a->workspace_id)) {
+            $parts[] = __('writer.shortfall.search_disabled');
         } elseif (! (bool) $a->setting('allow_web_search', false)) {
             $parts[] = __('writer.shortfall.search_off');
         } elseif (! $this->ai->canSearch()) {

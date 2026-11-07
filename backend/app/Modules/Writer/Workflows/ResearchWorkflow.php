@@ -20,15 +20,16 @@ use SiteXPost\Modules\Writer\Support\ArticleStateMachine;
 use SiteXPost\Modules\Writer\Support\WriterSettings;
 
 /**
- * Evidence research → dossier → (evidence gate) → content brief.
+ * Evidence research → (follow-up web lookup when evidence is thin) →
+ * dossier → (evidence gate) → content brief.
  */
 final class ResearchWorkflow extends ArticleWorkflow
 {
     public const TYPE = 'writer.research';
 
-    protected const STEPS = ['prepare' => 2, 'questions' => 10, 'discover' => 20, 'retrieve' => 40, 'extract' => 60, 'dossier' => 75, 'brief' => 90, 'handoff' => 98];
+    protected const STEPS = ['prepare' => 2, 'questions' => 10, 'discover' => 20, 'retrieve' => 40, 'extract' => 55, 'lookup' => 68, 'dossier' => 75, 'brief' => 90, 'handoff' => 98];
 
-    protected const PAID = ['questions', 'discover', 'extract', 'brief'];
+    protected const PAID = ['questions', 'discover', 'extract', 'lookup', 'brief'];
 
     public function __construct(
         ArticleStateMachine $machine,
@@ -59,6 +60,7 @@ final class ResearchWorkflow extends ArticleWorkflow
             'discover' => $this->engine->discover($a, $dossier(), $ctx->callKey(), $run->id),
             'retrieve' => $this->retrieve($a, $dossier(), $ctx, $run),
             'extract' => $this->engine->extract($a, $dossier(), $ctx->callKey(), $run->id),
+            'lookup' => $this->lookup($a, $dossier(), $ctx, $run),
             'dossier' => $this->finalize($a, $dossier()),
             'brief' => $this->brief($a, $dossier(), $ctx, $run),
             'handoff' => $this->handoff($a, $run),
@@ -83,6 +85,17 @@ final class ResearchWorkflow extends ArticleWorkflow
     private function retrieve(Article $a, ResearchDossier $d, StepContext $ctx, WorkflowRun $run): array
     {
         $out = $this->engine->retrieve($a, $d);
+        app(AiCaller::class)->recordFetches($a, $ctx->callKey().':fetch', $run->id, (int) ($out['fetches'] ?? 0));
+
+        return $out;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function lookup(Article $a, ResearchDossier $d, StepContext $ctx, WorkflowRun $run): array
+    {
+        $out = $this->engine->lookup($a, $d, $ctx->callKey(), $run->id);
         app(AiCaller::class)->recordFetches($a, $ctx->callKey().':fetch', $run->id, (int) ($out['fetches'] ?? 0));
 
         return $out;

@@ -147,11 +147,11 @@ final class AiRegistry
             // Phase 5 — AI Writer & Fact-Check (defaults only; Super Admin re-routes each task in AI Settings).
             // `content.draft` (writing) and `verification.claims` (fact-check reasoning) above are reused.
             'writer.research_questions' => ['desc' => 'Writer: research questions for an article', 'queue' => 'research', 'priority' => 'batch',
-                'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'deepseek/deepseek-flash', 'fake/fake-echo'], 'max_out' => 1500],
+                'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'deepseek/deepseek-flash', 'anthropic/claude-sonnet-5-5', 'fake/fake-echo'], 'max_out' => 1500],
             'writer.source_discovery' => ['desc' => 'Writer: candidate source URLs (always fetched and verified by the system)', 'queue' => 'research', 'priority' => 'batch',
-                'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'fake/fake-echo'], 'max_out' => 1500],
+                'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'anthropic/claude-sonnet-5-5', 'fake/fake-echo'], 'max_out' => 1500],
             'writer.source_analysis' => ['desc' => 'Writer: extract verbatim evidence from retrieved sources', 'queue' => 'research', 'priority' => 'batch',
-                'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'deepseek/deepseek-flash', 'fake/fake-echo'], 'max_out' => 3000],
+                'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'deepseek/deepseek-flash', 'anthropic/claude-sonnet-5-5', 'fake/fake-echo'], 'max_out' => 3000],
             'writer.brief' => ['desc' => 'Writer: content brief from idea + research dossier', 'queue' => 'writing', 'priority' => 'batch',
                 'primary' => 'anthropic/claude-sonnet-5-5', 'economy' => 'gemini/gemini-3.8-flash', 'fallbacks' => ['openai/gpt-6.1-terra', 'deepseek/deepseek-flash', 'fake/fake-echo'], 'max_out' => 4000],
             'writer.outline' => ['desc' => 'Writer: structured outline with evidence references', 'queue' => 'writing', 'priority' => 'batch',

@@ -72,6 +72,36 @@ it('asks the model to search the web when a routed model can', function () {
     expect($prompt)->toContain('DÙNG công cụ tìm kiếm web');
 });
 
+it('looks up more sources by itself when the first pass is too thin', function () {
+    $t = writerTenant();
+    discoveryCanSearch(true);
+    $t['ai']->on('source_candidates', fn ($r) => str_contains($r->prompt, 'Vòng tìm thứ hai')
+        ? ['urls' => [['url' => AX210_URL, 'reason' => 'Intel'], ['url' => AX200_URL, 'reason' => 'Intel']]]
+        : ['urls' => [['url' => 'https://www.intel.example/missing-page.html', 'reason' => 'guess']]]);
+
+    $id = createArticle($t, ['review_mode' => 'final_only', 'source_urls' => [], 'ai_source_discovery' => true])->assertCreated()->json('data.id');
+    $article = $this->actingAs($t['owner'])->getJson(writerUrl($t, "articles/{$id}"))->assertOk()->json('data');
+
+    expect($t['ai']->count('source_candidates'))->toBe(2)
+        ->and($article['blocked_reason'])->toBeNull()
+        ->and($article['status'])->toBe('NEEDS_HUMAN_REVIEW');
+    $prompt = collect($t['ai']->calls)->where('schema', 'source_candidates')->last()['prompt'];
+    expect($prompt)->toContain('missing-page.html'); // told which URLs were already tried
+});
+
+it('never searches the web when the Super Admin switch is off', function () {
+    $t = writerTenant();
+    discoveryCanSearch(true);
+    app(WriterSettings::class)->save(null, ['web_search_enabled' => false], null);
+
+    $id = createArticle($t, ['source_urls' => [], 'ai_source_discovery' => true, 'allow_web_search' => true])->assertCreated()->json('data.id');
+
+    $prompts = collect($t['ai']->calls)->where('schema', 'source_candidates')->pluck('prompt');
+    expect($prompts)->toHaveCount(1)->and($prompts->first())->not->toContain('DÙNG công cụ tìm kiếm web');
+    $article = $this->actingAs($t['owner'])->getJson(writerUrl($t, "articles/{$id}"))->assertOk()->json('data');
+    expect($article['last_error']['message'])->toContain('Tìm kiếm web đang bị tắt');
+});
+
 it('can turn the evidence gate off (min_evidence_items = 0)', function () {
     $t = writerTenant();
     app(WriterSettings::class)->save(null, ['min_evidence_items' => 0], null);

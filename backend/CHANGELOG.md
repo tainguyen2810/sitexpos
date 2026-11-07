@@ -7,6 +7,9 @@ Bump `config/sitex.php` → `version` together with this file.
 ## [1.0.6] - 2026-11-07
 - AI Writer no longer produces "empty" articles (tables full of "Cần xác minh", sentences like "bài này chưa có điều khoản chính thức trong tay"). When research finds fewer than 3 verbatim evidence excerpts (Super Admin setting `min_evidence_items`, 0 = off), the article stops before the brief with status "Chưa đủ nguồn" and a message saying exactly what is missing (sources not fetched, web search off, model without web search). The article page has a form to paste source URLs / turn on web search and **Research again**.
 - Source discovery uses the model's web search whenever the article allows it (now on by default) and a model routed to `writer.source_discovery` supports it (Gemini, OpenAI, Claude). DeepSeek cannot search: discovery then falls back to guessing URLs instead of failing, and the research tab says so. Research warnings are shown in plain Vietnamese.
+- **Self lookup:** if the first pass leaves the dossier below the minimum, the AI searches the web once more for the questions that still have no evidence (avoiding URLs already tried), then fetches and extracts the new sources (new research step "Tự tra cứu thêm nguồn").
+- Claude Sonnet added as a fallback on `writer.research_questions`, `writer.source_discovery`, `writer.source_analysis` (migration appends it on existing installs), so a platform running only Claude can research and search the web.
+- Super Admin › AI Writer: new switch **Cho phép AI tìm nguồn trên web** (`web_search_enabled`, default on, overridable per workspace). Off = no web search at all; each article keeps its own "Tìm kiếm web" toggle.
 - Writer prompts forbid placeholder content; a section that still contains it is rewritten once. Placeholder text left in a version (also when pasted by hand) blocks approval and is flagged in the quality report.
 
 ## [1.0.5] - 2026-11-07

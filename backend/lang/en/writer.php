@@ -6,7 +6,7 @@ return [
 
     'steps' => [
         'prepare' => 'Prepare', 'questions' => 'Research questions', 'discover' => 'Find sources', 'retrieve' => 'Retrieve sources',
-        'extract' => 'Extract evidence', 'dossier' => 'Build dossier', 'brief' => 'Content brief', 'handoff' => 'Hand-off', 'outline' => 'Outline',
+        'extract' => 'Extract evidence', 'lookup' => 'Look up more sources', 'dossier' => 'Build dossier', 'brief' => 'Content brief', 'handoff' => 'Hand-off', 'outline' => 'Outline',
         'write' => 'Write sections', 'assemble' => 'Assemble', 'claims' => 'Extract claims', 'factcheck' => 'Fact-check', 'revise' => 'Auto-revise',
         'quality' => 'Quality review', 'finalize' => 'Finalize', 'rewrite' => 'AI rewrite',
     ],
@@ -16,6 +16,7 @@ return [
         'failed' => ':n sources could not be fetched (missing page, blocked or login required) — see the Research tab.',
         'retrieval_off' => 'Source retrieval is turned off in the system settings (Super Admin).',
         'discovery_off' => '"AI source discovery" is off for this article.',
+        'search_disabled' => 'Web search is turned off in the AI Writer settings (Super Admin › AI Writer › "Let the AI search the web for sources").',
         'search_off' => '"Web search" is off for this article, so the AI only guesses URLs from memory and most cannot be fetched.',
         'search_unavailable' => '"Web search" is on but the model assigned to writer.source_discovery cannot search the web. A Super Admin must assign a web-search model (Gemini, OpenAI or Claude) to that task.',
         'add_urls' => 'Quickest fix: paste 3–5 official documentation or reputable article URLs into "Reference sources" and click "Research again".',
