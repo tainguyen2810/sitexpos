@@ -296,7 +296,11 @@ class WriterAi
             .'không bịa nguồn thay thế. Trả về toàn bộ HTML của đoạn sau khi sửa và danh sách thay đổi (before/after/reason).'
             ."\n\n<data>\n".self::json($ctx)."\n</data>";
 
-        return $this->caller->call($a, $step, self::TASK_REWRITE, $p, self::rewriteSchema(), 'rewrite', $key, $run, 4000, self::SYSTEM);
+        // The whole section HTML comes back plus the change list: size the output
+        // budget from the input instead of a flat 4000 (long sections were cut off).
+        $maxOut = max(4000, min(12000, (int) ceil(mb_strlen(self::json($ctx)) / 2) + 1500));
+
+        return $this->caller->call($a, $step, self::TASK_REWRITE, $p, self::rewriteSchema(), 'rewrite', $key, $run, $maxOut, self::SYSTEM);
     }
 
     /**

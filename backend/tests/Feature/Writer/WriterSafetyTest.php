@@ -1,8 +1,12 @@
 <?php
 
 use SiteXPost\Modules\AiGateway\Domain\AiModelPrice;
+use SiteXPost\Modules\AiGateway\Domain\AiRequest;
 use SiteXPost\Modules\AiGateway\Providers\ProviderException;
 use SiteXPost\Modules\AiGateway\Providers\ProviderRequest;
+use SiteXPost\Modules\AiGateway\Providers\ProviderResponse;
+use SiteXPost\Modules\AiGateway\Providers\Usage;
+use SiteXPost\Modules\Writer\Domain\ArticleAiUsage;
 use SiteXPost\Modules\Writer\Domain\ArticleRevision;
 use SiteXPost\Modules\Writer\Domain\FactCheckRun;
 use SiteXPost\Modules\Writer\Support\WriterSettings;
@@ -159,4 +163,43 @@ it('scopes article child ids to the article and tenant', function () {
         $this->actingAs($t['owner'])->getJson(writerUrl($t, "articles/{$id}/{$path}"))->assertNotFound();
     }
     $this->actingAs($t['owner'])->postJson(writerUrl($t, "articles/{$id}/revisions/{$other['revision']}/apply"))->assertNotFound();
+});
+
+it('retries a section once with a bigger output budget when the answer was cut off at max_tokens', function () {
+    $t = writerTenant();
+    $seen = [];
+    $t['ai']->on('article_section', function (ProviderRequest $r) use (&$seen) {
+        $seen[] = $r->maxOutputTokens;
+        if (count($seen) === 1) {
+            // What Claude returns when max_tokens is hit inside structured output: half a JSON document.
+            return new ProviderResponse('{"html":"<p>Phần đầu của bài viết bị cắt ngang', new Usage(inputTokens: 2400, outputTokens: $r->maxOutputTokens), 'max_tokens', 'trunc_1');
+        }
+
+        return ['html' => '<p>Nội dung section đầy đủ.</p>', 'used_evidence_refs' => [], 'notes' => []];
+    });
+    $id = createArticle($t, ['review_mode' => 'final_only'])->assertCreated()->json('data.id');
+
+    $a = aJson($t, $id);
+    expect($a['status'])->not->toBe('FAILED')
+        ->and($seen[0])->toBeGreaterThanOrEqual(2000) // never the old 600-token budget
+        ->and($seen[1])->toBe($seen[0] * 2);
+    expect(aJson($t, $id, 'editor')['version']['content_html'])->toContain('Nội dung section đầy đủ.');
+
+    // The cut-off call was billed by the provider: its tokens and cost are reported, not 0/0.
+    $failed = inResearchTenant($t, fn () => ArticleAiUsage::query()->where('article_id', $id)->where('status', 'failed')->get());
+    expect($failed)->toHaveCount(1)
+        ->and($failed[0]->output_tokens)->toBe($seen[0])
+        ->and($failed[0]->cost_micro_usd)->toBeGreaterThan(0);
+    $log = inResearchTenant($t, fn () => AiRequest::query()->where('error_code', 'invalid_output')->first());
+    expect($log->error_message)->toContain('max_tokens')->and($log->finish_reason)->toBe('max_tokens');
+});
+
+it('does not loop: a section still cut off after the bigger retry fails with invalid_output', function () {
+    $t = writerTenant();
+    $t['ai']->on('article_section', fn (ProviderRequest $r) => new ProviderResponse('{"html":"<p>cắt', new Usage(inputTokens: 100, outputTokens: $r->maxOutputTokens), 'max_tokens', 'trunc'));
+    $id = createArticle($t, ['review_mode' => 'final_only'])->assertCreated()->json('data.id');
+
+    expect($t['ai']->count('article_section'))->toBeLessThanOrEqual(2 * 3); // ≤ 2 calls per workflow attempt
+    $a = aJson($t, $id);
+    expect($a['status'])->toBe('FAILED');
 });
