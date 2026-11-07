@@ -88,7 +88,7 @@ const catOpts = computed(() => [{ value: '', label: t('common.all') }, ...AUDIT_
       <ErrorState v-else-if="listError" :error="listError" @retry="loadList" />
       <EmptyState v-else-if="!articles.length" icon="file" :title="t('p6.seo.noArticles')" :description="t('p6.seo.noArticlesHint')" />
       <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[36rem] text-left text-sm" data-testid="seo-articles">
+        <table class="data-table w-full min-w-[36rem] text-left text-sm" data-testid="seo-articles">
           <thead class="border-b border-line text-xs text-ink-muted"><tr><th class="px-5 py-2">{{ t('p6.common.article') }}</th><th class="px-2">{{ t('p6.seo.audit.score') }}</th><th class="px-2">{{ t('p6.seo.audit.result') }}</th><th class="px-5 text-right">{{ t('p6.seo.audit.lastRun') }}</th></tr></thead>
           <tbody class="divide-y divide-line">
             <tr v-for="a in articles" :key="a.id" class="cursor-pointer hover:bg-surface-muted" :class="a.id === articleId ? 'bg-brand-50' : ''" @click="articleId = a.id">

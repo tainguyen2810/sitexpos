@@ -153,7 +153,7 @@ function confirmChange() {
         <p class="font-medium">{{ current?.plan?.name }} → {{ quote.plan.name }} ({{ t(`bill.interval.${interval}`) }})</p>
         <p v-if="quote.quote.kind === 'upgrade'">{{ t('bill.plans.upgradeNow') }}</p>
         <p v-else>{{ t('bill.plans.downgradeLater', { date: formatDate(quote.quote.effective_at) }) }}</p>
-        <dl v-if="quote.quote.kind === 'upgrade'" class="">
+        <dl v-if="quote.quote.kind === 'upgrade'" class="grid grid-cols-2 gap-2">
           <dt class="text-ink-muted">{{ t('bill.plans.amountDue') }}</dt><dd class="text-right text-lg font-semibold tabular-nums" data-testid="quote-amount">{{ formatMoney(quote.quote.amount_minor, quote.quote.currency) }}</dd>
           <dt class="text-ink-muted">{{ t('bill.plans.newPeriodEnd') }}</dt><dd class="text-right">{{ formatDate(quote.quote.new_period_end) }}</dd>
         </dl>

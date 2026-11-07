@@ -61,7 +61,7 @@ const counts = computed(() => {
           </p>
           <details v-if="Object.keys(c.details).length" class="mt-3 text-sm">
             <summary class="cursor-pointer text-ink-muted">{{ t('sys.common.details') }}</summary>
-            <dl class=" ">
+            <dl class="mt-2 grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-x-3 gap-y-1 text-xs">
               <template v-for="(v, k) in c.details" :key="k">
                 <dt class="truncate font-mono text-ink-muted">{{ k }}</dt>
                 <dd class="break-all font-mono">{{ detailText(v) }}</dd>

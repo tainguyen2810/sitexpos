@@ -102,7 +102,7 @@ const maxTrend = computed(() => Math.max(1, ...(costs.data.value?.trend.map((x) 
       <p v-if="profit.data.value.exchange_rate === null" class="rounded-lg bg-warning-50 px-4 py-2 text-sm text-warning-600">{{ t('billAdmin.reports.noRate') }}</p>
       <AppCard :title="t('billAdmin.reports.byPlan')" :padded="false">
         <div class="overflow-x-auto">
-          <table class="min-w-full text-sm">
+          <table class="data-table min-w-full text-sm">
             <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('billAdmin.subs.plan') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.tenants') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.recognized') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.aiCost') }}</th></tr></thead>
             <tbody class="divide-y divide-line"><tr v-for="p in profit.data.value.by_plan" :key="p.plan_code ?? 'none'"><td class="px-4 py-2">{{ p.plan_code ?? '—' }}</td><td class="px-4 py-2 text-right">{{ p.tenants }}</td><td class="px-4 py-2 text-right tabular-nums">{{ formatMoney(p.recognized_minor, profit.data.value.currency) }}</td><td class="px-4 py-2 text-right tabular-nums">{{ formatMicroUsd(p.ai_cost_micro_usd) }}</td></tr></tbody>
           </table>
@@ -111,7 +111,7 @@ const maxTrend = computed(() => Math.max(1, ...(costs.data.value?.trend.map((x) 
       <AppCard :title="t('billAdmin.reports.tenant')" :padded="false">
         <EmptyState v-if="!profit.data.value.tenants.length" icon="chart" :title="t('bill.common.noData')" />
         <div v-else class="overflow-x-auto">
-          <table class="min-w-full text-sm">
+          <table class="data-table min-w-full text-sm">
             <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('billAdmin.reports.tenant') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.recognized') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.aiCost') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.creditsRev') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.profit') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.reports.margin') }}</th><th class="px-4 py-2">{{ t('billAdmin.reports.alerts') }}</th></tr></thead>
             <tbody class="divide-y divide-line">
               <tr v-for="r in profit.data.value.tenants" :key="r.workspace_id">

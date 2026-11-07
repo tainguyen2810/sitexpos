@@ -25,7 +25,7 @@ const totalIntents = computed(() => Object.values(overview.data.value?.keywords_
   <LoadingState v-if="overview.loading.value" :rows="4" />
   <AppCard v-else-if="overview.error.value"><ErrorState :error="overview.error.value" @retry="overview.run" /></AppCard>
   <div v-else-if="overview.data.value" class="space-y-6">
-    <div class=" ">
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
       <button type="button" class="text-left" @click="emit('navigate', 'keywords')"><StatCard :label="t('research.overview.keywords')" :value="overview.data.value.campaign.counts?.keywords ?? 0" icon="key" /></button>
       <button type="button" class="text-left" @click="emit('navigate', 'ideas')"><StatCard :label="t('research.overview.ideas')" :value="overview.data.value.campaign.counts?.ideas ?? 0" icon="sparkles" /></button>
       <button type="button" class="text-left" @click="emit('navigate', 'clusters')"><StatCard :label="t('research.overview.gaps')" :value="overview.data.value.open_gaps" icon="layers" /></button>
@@ -41,7 +41,7 @@ const totalIntents = computed(() => Object.values(overview.data.value?.keywords_
             <span class="text-ink-muted">{{ formatDateTime(overview.data.value.last_run.created_at) }} · {{ t(`research.run.trigger.${overview.data.value.last_run.trigger}`) }}</span>
             <button type="button" class="ml-auto text-sm font-medium text-brand-700 hover:underline" @click="emit('navigate', 'runs')">{{ t('common.open') }}</button>
           </div>
-          <dl class=" ">
+          <dl class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div v-for="(v, k) in overview.data.value.last_run.stats" :key="k" class="rounded-lg bg-surface-muted p-3">
               <dt class="text-xs text-ink-muted">{{ t(`research.run.stat.${k}`) }}</dt>
               <dd class="text-lg font-semibold tabular-nums">{{ v }}</dd>

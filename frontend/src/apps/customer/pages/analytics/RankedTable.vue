@@ -11,7 +11,7 @@ const ws = useWorkspaceStore()
 
 <template>
   <div class="overflow-x-auto">
-    <table class="min-w-full text-sm" data-testid="ranked-table">
+    <table class="data-table min-w-full text-sm" data-testid="ranked-table">
       <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
         <tr>
           <th class="px-4 py-2">{{ label }}</th>

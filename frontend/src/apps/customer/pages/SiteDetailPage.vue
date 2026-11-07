@@ -201,7 +201,7 @@ const featureList = computed(() => {
 
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <AppCard :title="$t('sites.info.title')">
-          <dl class="">
+          <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
             <dt class="text-ink-muted">WordPress</dt><dd>{{ site.data.value.versions.wordpress ?? '—' }}</dd>
             <dt class="text-ink-muted">PHP</dt><dd>{{ site.data.value.versions.php ?? '—' }}</dd>
             <dt class="text-ink-muted">{{ $t('sites.info.plugin') }}</dt><dd>{{ site.data.value.versions.plugin ?? '—' }}</dd>
@@ -213,7 +213,7 @@ const featureList = computed(() => {
           </dl>
         </AppCard>
         <AppCard :title="$t('sites.info.features')">
-          <ul class="">
+          <ul class="grid grid-cols-2 gap-2 text-sm">
             <li v-for="f in featureList" :key="f.key" class="flex items-center gap-2">
               <span :class="f.on ? 'text-success-600' : 'text-ink-subtle'">{{ f.on ? '●' : '○' }}</span>{{ $t(`sites.features.${f.key}`) }}
             </li>

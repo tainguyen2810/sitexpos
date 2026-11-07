@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSessionStore } from '@/shared/stores/session'
-import ShellLayout, { type NavItem } from '@/shared/layouts/ShellLayout.vue'
+import ShellLayout, { type NavGroup, type NavItem } from '@/shared/layouts/ShellLayout.vue'
 import UserMenu from '@/shared/ui/UserMenu.vue'
 import AppBadge from '@/shared/ui/AppBadge.vue'
 import { systemApi } from '@/shared/api/system'
@@ -12,27 +12,49 @@ const router = useRouter()
 const { t } = useI18n()
 const session = useSessionStore()
 
-const nav = computed<NavItem[]>(() => {
+const groups = computed<NavGroup[]>(() => {
   const perms = session.user?.platform_permissions ?? []
-  const items: (NavItem & { permission?: string; anyOf?: string[] })[] = [
-    { label: t('nav.dashboard'), to: '/', icon: 'home', permission: 'platform.dashboard.view' },
-    { label: t('nav.workspaces'), to: '/workspaces', icon: 'building', permission: 'platform.tenants.view' },
-    { label: t('nav.users'), to: '/users', icon: 'users', permission: 'platform.users.view' },
-    { label: t('nav.staff'), to: '/staff', icon: 'shield', permission: 'platform.staff.manage' },
-    { label: t('nav.aiUsage'), to: '/ai/usage', icon: 'chart', permission: 'platform.ai.view_costs' },
-    { label: t('nav.aiSettings'), to: '/ai/settings', icon: 'sparkles', permission: 'platform.ai.view_costs' },
-    { label: t('nav.aiProviders'), to: '/ai/providers', icon: 'cpu', permission: 'platform.ai.manage' },
-    { label: t('nav.jobs'), to: '/jobs', icon: 'layers', permission: 'platform.jobs.manage' },
-    { label: t('nav.research_admin'), to: '/research', icon: 'target', permission: 'platform.ai.view_costs' },
-    { label: t('nav.writerAdmin'), to: '/writer', icon: 'pen', anyOf: ['platform.ai.manage', 'platform.ai.view_costs', 'platform.jobs.manage'] },
-    { label: t('nav.mediaAdmin'), to: '/media', icon: 'image', permission: 'platform.ai.view_costs' },
-    { label: t('nav.publishingAdmin'), to: '/publishing', icon: 'send', permission: 'platform.jobs.manage' },
-    { label: t('nav.analyticsAdmin'), to: '/analytics', icon: 'chart', permission: 'platform.jobs.manage' },
-    { label: t('nav.audit'), to: '/audit', icon: 'list' },
-    { label: t('nav.billing'), to: '/billing/plans', icon: 'card', permission: 'platform.billing.manage' },
-    { label: t('nav.system'), to: '/system/health', icon: 'server', permission: 'platform.system.view' },
+  type Item = NavItem & { permission?: string; anyOf?: string[] }
+  const allowed = (i: Item) => (!i.permission || perms.includes(i.permission)) && (!i.anyOf || i.anyOf.some((p) => perms.includes(p)))
+  const raw: { label: string; items: Item[] }[] = [
+    { label: '', items: [{ label: t('nav.dashboard'), to: '/', icon: 'home', exact: true, permission: 'platform.dashboard.view' }] },
+    {
+      label: t('shell.groups.customers'),
+      items: [
+        { label: t('nav.workspaces'), to: '/workspaces', icon: 'building', permission: 'platform.tenants.view' },
+        { label: t('nav.users'), to: '/users', icon: 'users', permission: 'platform.users.view' },
+        { label: t('nav.billing'), to: '/billing/plans', icon: 'card', permission: 'platform.billing.manage' },
+        { label: t('nav.staff'), to: '/staff', icon: 'shield', permission: 'platform.staff.manage' },
+      ],
+    },
+    {
+      label: t('shell.groups.ai'),
+      items: [
+        { label: t('nav.aiUsage'), to: '/ai/usage', icon: 'chart', permission: 'platform.ai.view_costs' },
+        { label: t('nav.aiSettings'), to: '/ai/settings', icon: 'sparkles', permission: 'platform.ai.view_costs' },
+        { label: t('nav.aiProviders'), to: '/ai/providers', icon: 'cpu', permission: 'platform.ai.manage' },
+      ],
+    },
+    {
+      label: t('shell.groups.modules'),
+      items: [
+        { label: t('nav.research_admin'), to: '/research', icon: 'target', permission: 'platform.ai.view_costs' },
+        { label: t('nav.writerAdmin'), to: '/writer', icon: 'pen', anyOf: ['platform.ai.manage', 'platform.ai.view_costs', 'platform.jobs.manage'] },
+        { label: t('nav.mediaAdmin'), to: '/media', icon: 'image', permission: 'platform.ai.view_costs' },
+        { label: t('nav.publishingAdmin'), to: '/publishing', icon: 'send', permission: 'platform.jobs.manage' },
+        { label: t('nav.analyticsAdmin'), to: '/analytics', icon: 'trending', permission: 'platform.jobs.manage' },
+      ],
+    },
+    {
+      label: t('shell.groups.operations'),
+      items: [
+        { label: t('nav.system'), to: '/system/health', icon: 'server', permission: 'platform.system.view' },
+        { label: t('nav.jobs'), to: '/jobs', icon: 'layers', permission: 'platform.jobs.manage' },
+        { label: t('nav.audit'), to: '/audit', icon: 'list' },
+      ],
+    },
   ]
-  return items.filter((i) => (!i.permission || perms.includes(i.permission)) && (!i.anyOf || i.anyOf.some((p) => perms.includes(p))))
+  return raw.map((g) => ({ label: g.label, items: g.items.filter(allowed) })).filter((g) => g.items.length > 0)
 })
 
 // Super Admins see a reminder until the post-install setup is marked complete (the setup page can be reopened any time).
@@ -53,9 +75,9 @@ async function logout() {
 </script>
 
 <template>
-  <ShellLayout :nav="nav" brand-suffix="Admin">
+  <ShellLayout :groups="groups" brand-suffix="Admin">
     <template #topbar>
-      <span class="text-sm font-medium">{{ $t('admin.title') }}</span>
+      <span class="truncate text-sm font-semibold text-ink">{{ $t('admin.title') }}</span>
     </template>
     <template #topbar-right>
       <AppBadge v-if="session.user?.platform_role" tone="brand">{{ $t(`roles.${session.user.platform_role}`) }}</AppBadge>

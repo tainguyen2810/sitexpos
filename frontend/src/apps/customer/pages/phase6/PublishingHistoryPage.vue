@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { jobTone, PUBLISHING_STATUSES, publishingApi, type Batch } from '@/shared/api/publishing'
 import { useCursorList } from '@/shared/composables/useCursorList'
 import { formatDateTime } from '@/shared/utils/format'
@@ -22,7 +23,8 @@ const { workspaceId, canEdit, canPublish } = usePhase6Perms()
 const { toastError, toast } = usePhase6Errors()
 const sites = useSites()
 const tab = ref('jobs')
-const status = ref('')
+const route = useRoute()
+const status = ref(typeof route.query.status === 'string' ? route.query.status : '')
 const openJob = ref<string | null>(null)
 const jobs = useCursorList((cursor) => publishingApi.jobs(workspaceId.value, { cursor, status: status.value || undefined, site_id: sites.siteId.value || undefined }))
 const batches = useCursorList((cursor) => publishingApi.batches(workspaceId.value, { cursor }))
@@ -70,7 +72,7 @@ const syncTone = (s: string | undefined) => (s === 'in_sync' ? 'success' : !s ||
         <ErrorState v-else-if="jobs.error.value" :error="jobs.error.value" @retry="jobs.reload" />
         <EmptyState v-else-if="!jobs.items.value.length" icon="clock" :title="t('p6.pub.history.empty')" />
         <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[44rem] text-left text-sm" data-testid="history-jobs">
+          <table class="data-table w-full min-w-[44rem] text-left text-sm" data-testid="history-jobs">
             <thead class="border-b border-line text-xs text-ink-muted"><tr><th class="px-5 py-2">{{ t('p6.common.article') }}</th><th class="px-2">{{ t('p6.common.site') }}</th><th class="px-2">{{ t('p6.pub.center.mode') }}</th><th class="px-2">{{ t('common.status') }}</th><th class="px-2">{{ t('p6.pub.history.attempts') }}</th><th class="px-5 text-right">{{ t('p6.pub.history.updated') }}</th></tr></thead>
             <tbody class="divide-y divide-line">
               <tr v-for="j in jobs.items.value" :key="j.id" class="cursor-pointer hover:bg-surface-muted" @click="openJob = j.id">

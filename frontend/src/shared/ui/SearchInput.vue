@@ -6,7 +6,7 @@ const model = defineModel<string>({ default: '' })
 </script>
 
 <template>
-  <label class="relative block min-w-0 flex-1 sm:max-w-xs">
+  <label class="relative block min-w-[12rem] flex-1 sm:max-w-xs">
     <span class="sr-only">{{ placeholder ?? $t('common.search') }}</span>
     <AppIcon name="search" :size="16" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle" />
     <input

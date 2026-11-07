@@ -61,7 +61,7 @@ function metric(o: Record<string, unknown> | null | undefined, k: string): strin
       <ErrorState v-else-if="error" :error="error" @retry="run" />
       <EmptyState v-else-if="!data?.data.length" icon="trending" :title="t('an.decay.empty')" />
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full text-sm">
+        <table class="data-table min-w-full text-sm">
           <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
             <tr>
               <th class="px-4 py-2">{{ t('an.metrics.page') }}</th>
@@ -86,7 +86,7 @@ function metric(o: Record<string, unknown> | null | undefined, k: string): strin
       <div v-if="selected" class="space-y-4 text-sm">
         <p class="rounded-lg bg-surface-muted p-3 text-xs text-ink-muted">{{ t('an.decay.hypothesis') }}</p>
         <div class="overflow-x-auto">
-          <table class="min-w-full text-sm">
+          <table class="data-table min-w-full text-sm">
             <thead class="text-left text-xs uppercase text-ink-muted">
               <tr><th /><th class="text-right">{{ t('an.decay.recent') }}</th><th class="text-right">{{ t('an.decay.previous') }}</th><th class="text-right">{{ t('an.decay.baseline') }}</th></tr>
             </thead>

@@ -72,7 +72,7 @@ async function adjust() {
       <AppCard :title="t('bill.nav.credits')">
         <p v-if="!wallet" class="text-sm text-ink-muted">{{ t('billAdmin.credits.lookup') }}…</p>
         <template v-else>
-          <dl class=" ">
+          <dl class="mb-3 grid grid-cols-3 gap-2 text-sm">
             <div><dt class="text-ink-muted">{{ t('bill.credits.balance') }}</dt><dd class="font-semibold tabular-nums">{{ formatCredits(wallet.wallet.balance_mc) }}</dd></div>
             <div><dt class="text-ink-muted">{{ t('bill.credits.available') }}</dt><dd class="font-semibold tabular-nums">{{ formatCredits(wallet.wallet.available_mc) }}</dd></div>
             <div><dt class="text-ink-muted">{{ t('bill.credits.held') }}</dt><dd class="font-semibold tabular-nums">{{ formatCredits(wallet.wallet.held_mc) }}</dd></div>
@@ -88,7 +88,7 @@ async function adjust() {
         <ErrorState v-else-if="adjustments.error.value" :error="adjustments.error.value" @retry="adjustments.reload" />
         <EmptyState v-else-if="!adjustments.items.value.length" icon="coins" :title="t('billAdmin.common.empty')" />
         <div v-else class="overflow-x-auto">
-          <table class="min-w-full text-sm">
+          <table class="data-table min-w-full text-sm">
             <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('bill.orders.created') }}</th><th class="px-4 py-2">{{ t('billAdmin.common.workspace') }}</th><th class="px-4 py-2">{{ t('billAdmin.credits.kind') }}</th><th class="px-4 py-2 text-right">Credits</th><th class="px-4 py-2">{{ t('billAdmin.common.reason') }}</th></tr></thead>
             <tbody class="divide-y divide-line">
               <tr v-for="a in adjustments.items.value" :key="a.id">
@@ -108,7 +108,7 @@ async function adjust() {
         <ErrorState v-else-if="uncertain.error.value" :error="uncertain.error.value" @retry="uncertain.reload" />
         <EmptyState v-else-if="!uncertain.items.value.length" icon="check" :title="t('billAdmin.common.empty')" />
         <div v-else class="overflow-x-auto">
-          <table class="min-w-full text-sm">
+          <table class="data-table min-w-full text-sm">
             <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('bill.orders.created') }}</th><th class="px-4 py-2">Task</th><th class="px-4 py-2">{{ t('bill.orders.status') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.credits.estimate') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.credits.charged') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.credits.uncollected') }}</th></tr></thead>
             <tbody class="divide-y divide-line">
               <tr v-for="u in uncertain.items.value" :key="u.id">

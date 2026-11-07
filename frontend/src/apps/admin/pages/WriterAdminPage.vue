@@ -181,7 +181,7 @@ v-else v-model="wsDraft[k] as string" type="number" :label="label(k) + (isMoneyK
           <LoadingState v-if="routing.loading.value" class="p-5" />
           <ErrorState v-else-if="routing.error.value" :error="routing.error.value" class="p-5" @retry="routing.run" />
           <div v-else class="overflow-x-auto">
-            <table class="w-full min-w-[40rem] text-left text-sm" data-testid="writer-routing">
+            <table class="data-table w-full min-w-[40rem] text-left text-sm" data-testid="writer-routing">
               <thead class="border-b border-line text-xs text-ink-muted"><tr><th class="px-5 py-2">{{ t('writerAdmin.task') }}</th><th class="px-2">{{ t('writerAdmin.primary') }}</th><th class="px-2">{{ t('writerAdmin.economy') }}</th><th class="px-2">{{ t('writerAdmin.fallbacks') }}</th><th class="px-5">{{ t('common.status') }}</th></tr></thead>
               <tbody class="divide-y divide-line">
                 <tr v-for="r in routing.data.value ?? []" :key="r.task_key">
@@ -202,7 +202,7 @@ v-else v-model="wsDraft[k] as string" type="number" :label="label(k) + (isMoneyK
         <LoadingState v-if="costs.loading.value && !costs.data.value" />
         <ErrorState v-else-if="costs.error.value" :error="costs.error.value" @retry="costs.run" />
         <div v-else-if="costs.data.value" class="space-y-4">
-          <div class=" ">
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard :label="t('writerAdmin.totalCost')" :value="formatUsd(costs.data.value.total_cost_micro_usd)" icon="coins" />
             <StatCard :label="t('writerAdmin.articles')" :value="costs.data.value.articles" icon="file" />
             <StatCard :label="t('writerAdmin.avgPerArticle')" :value="formatUsd(costs.data.value.avg_cost_per_article_micro_usd)" icon="chart" />
@@ -242,7 +242,7 @@ v-else v-model="wsDraft[k] as string" type="number" :label="label(k) + (isMoneyK
           <ErrorState v-else-if="runs.error.value" :error="runs.error.value" class="p-5" @retry="runs.reload" />
           <EmptyState v-else-if="!runs.items.value.length" icon="activity" :title="t('common.noData')" />
           <div v-else class="overflow-x-auto">
-            <table class="w-full min-w-[44rem] text-left text-sm" data-testid="writer-runs">
+            <table class="data-table w-full min-w-[44rem] text-left text-sm" data-testid="writer-runs">
               <thead class="border-b border-line text-xs text-ink-muted"><tr><th class="px-5 py-2">{{ t('writerAdmin.type') }}</th><th class="px-2">{{ t('common.status') }}</th><th class="px-2">{{ t('writerAdmin.step') }}</th><th class="px-2">Workspace</th><th class="px-2">{{ t('writerAdmin.duration') }}</th><th class="px-5 text-right">{{ t('common.createdAt') }}</th></tr></thead>
               <tbody class="divide-y divide-line">
                 <tr v-for="r in runs.items.value" :key="r.id">

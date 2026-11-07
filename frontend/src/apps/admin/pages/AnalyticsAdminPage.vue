@@ -148,7 +148,7 @@ async function save(kill?: boolean) {
         <AppCard :title="t('anAdmin.byTool')" :padded="false">
           <EmptyState v-if="!agent.data.value.data.tasks_by_tool.length" icon="list" :title="t('anAdmin.noTasks')" />
           <div v-else class="overflow-x-auto">
-            <table class="min-w-full text-xs">
+            <table class="data-table min-w-full text-xs">
               <tbody class="divide-y divide-line">
                 <tr v-for="r in agent.data.value.data.tasks_by_tool" :key="r.tool + r.status"><td class="px-4 py-1.5">{{ r.tool }}</td><td class="px-4 py-1.5">{{ r.status }}</td><td class="px-4 py-1.5 text-right tabular-nums">{{ r.n }}</td></tr>
               </tbody>

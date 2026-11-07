@@ -65,7 +65,7 @@ const statusTone = (s: AiRequestLog['status']) => ({ succeeded: 'success', faile
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <AppCard :title="$t('aiAdmin.byProvider')" :padded="false">
           <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="data-table w-full text-sm">
               <tbody class="divide-y divide-line">
                 <tr v-for="r in d.by_provider ?? []" :key="r.provider"><td class="px-5 py-2 font-medium">{{ r.provider }}</td><td class="px-5 py-2 text-right">{{ r.requests }}</td><td class="px-5 py-2 text-right">{{ formatUsd(r.cost_micro_usd) }}</td></tr>
                 <tr v-if="!(d.by_provider ?? []).length"><td class="px-5 py-3 text-ink-muted">{{ $t('aiAdmin.noData') }}</td></tr>
@@ -75,7 +75,7 @@ const statusTone = (s: AiRequestLog['status']) => ({ succeeded: 'success', faile
         </AppCard>
         <AppCard :title="$t('aiAdmin.byTask')" :padded="false">
           <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="data-table w-full text-sm">
               <tbody class="divide-y divide-line">
                 <tr v-for="r in d.by_task" :key="r.task_key"><td class="px-5 py-2 font-mono text-xs">{{ r.task_key }}</td><td class="px-5 py-2 text-right">{{ r.requests }}</td><td class="px-5 py-2 text-right">{{ formatUsd(r.cost_micro_usd) }}</td></tr>
                 <tr v-if="!d.by_task.length"><td class="px-5 py-3 text-ink-muted">{{ $t('aiAdmin.noData') }}</td></tr>
@@ -85,7 +85,7 @@ const statusTone = (s: AiRequestLog['status']) => ({ succeeded: 'success', faile
         </AppCard>
         <AppCard :title="$t('aiAdmin.byModel')" :padded="false">
           <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="data-table w-full text-sm">
               <tbody class="divide-y divide-line">
                 <tr v-for="r in d.by_model" :key="r.provider + r.model">
                   <td class="px-5 py-2"><span class="text-ink-muted">{{ r.provider }}/</span>{{ r.model }}</td>
@@ -99,7 +99,7 @@ const statusTone = (s: AiRequestLog['status']) => ({ succeeded: 'success', faile
         </AppCard>
         <AppCard :title="$t('aiAdmin.byWorkspace')" :padded="false">
           <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="data-table w-full text-sm">
               <tbody class="divide-y divide-line">
                 <tr v-for="r in d.by_workspace ?? []" :key="r.workspace_id ?? 'none'"><td class="px-5 py-2">{{ r.workspace_name ?? '—' }}</td><td class="px-5 py-2 text-right">{{ r.requests }}</td><td class="px-5 py-2 text-right">{{ formatUsd(r.cost_micro_usd) }}</td></tr>
                 <tr v-if="!(d.by_workspace ?? []).length"><td class="px-5 py-3 text-ink-muted">{{ $t('aiAdmin.noData') }}</td></tr>
@@ -124,7 +124,7 @@ const statusTone = (s: AiRequestLog['status']) => ({ succeeded: 'success', faile
       <ErrorState v-else-if="log.error.value" :error="log.error.value" class="p-5" @retry="log.reload" />
       <EmptyState v-else-if="!log.items.value.length" icon="activity" :title="$t('aiAdmin.noData')" />
       <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[760px] text-sm" data-testid="request-log">
+        <table class="data-table w-full min-w-[760px] text-sm" data-testid="request-log">
           <thead class="text-left text-xs text-ink-muted">
             <tr><th class="px-5 py-2">{{ $t('ai.createdAt') }}</th><th class="px-3 py-2">Workspace</th><th class="px-3 py-2">{{ $t('ai.model') }}</th><th class="px-3 py-2"></th><th class="px-3 py-2 text-right">{{ $t('ai.tokensIn') }} / {{ $t('ai.tokensOut') }}</th><th class="px-3 py-2 text-right">{{ $t('ai.cost') }}</th><th class="px-5 py-2 text-right">{{ $t('aiAdmin.latency') }}</th></tr>
           </thead>

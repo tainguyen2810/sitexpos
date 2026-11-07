@@ -163,7 +163,7 @@ function evidenceText(e: Record<string, unknown>): string {
     <ErrorState v-else-if="list.error.value" :error="list.error.value" class="p-5" @retry="list.reload" />
     <EmptyState v-else-if="!list.items.value.length" icon="key" :title="t('research.noData')" :description="t('research.ideas.emptyBody')" />
     <div v-else class="overflow-x-auto">
-      <table class="w-full text-sm">
+      <table class="data-table w-full text-sm">
         <thead class="bg-surface-muted text-left text-xs uppercase tracking-wide text-ink-muted">
           <tr>
             <th v-if="canOperate" class="w-8 px-3 py-2"><input type="checkbox" :checked="allSelected" :aria-label="t('common.all')" @change="toggleAll" /></th>

@@ -93,7 +93,7 @@ const show = (v: unknown) => (v === null || v === undefined || v === '' ? '—' 
           <li v-for="x in current.types" :key="x"><strong>{{ t(`p6.pub.conflictType.${x}`) }}</strong> — {{ t(`p6.pub.conflictHint.${x}`) }}</li>
         </ul>
         <div class="overflow-x-auto">
-          <table class="w-full text-xs">
+          <table class="data-table w-full text-xs">
             <thead class="text-ink-muted"><tr><th class="py-1 text-left" /><th class="text-left">{{ t('p6.pub.conflicts.wp') }}</th><th class="text-left">{{ t('p6.pub.conflicts.expected') }}</th></tr></thead>
             <tbody class="divide-y divide-line">
               <tr v-for="r in diffRows" :key="r.key" :class="show(r.wp) !== show(r.expected) ? 'bg-warning-50' : ''">

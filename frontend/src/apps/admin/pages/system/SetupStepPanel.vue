@@ -130,7 +130,7 @@ const blocking = computed(() => (Array.isArray(d.value.blocking) ? (d.value.bloc
     <div v-else-if="step.key === 'ai_providers'" class="space-y-4">
       <p class="text-sm text-ink-muted">{{ t('sys.setup.ai.intro') }}</p>
       <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="data-table w-full text-sm">
           <thead class="text-left text-xs text-ink-muted"><tr><th class="py-2">{{ t('sys.setup.ai.provider') }}</th><th>{{ t('sys.setup.ai.hasKey') }}</th><th>{{ t('sys.setup.ai.keySource') }}</th><th>{{ t('sys.setup.ai.circuit') }}</th><th>{{ t('sys.setup.ai.ready') }}</th></tr></thead>
           <tbody class="divide-y divide-line">
             <tr v-for="p in list('providers')" :key="str(p.code)">
@@ -150,7 +150,7 @@ const blocking = computed(() => (Array.isArray(d.value.blocking) ? (d.value.bloc
     <div v-else-if="step.key === 'ai_models'" class="space-y-4">
       <p v-if="step.status === 'BLOCKED'" class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600">{{ t('sys.setup.ai.blocked') }}</p>
       <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="data-table w-full text-sm">
           <thead class="text-left text-xs text-ink-muted"><tr><th class="py-2">{{ t('sys.setup.ai.task') }}</th><th>{{ t('sys.setup.ai.primary') }}</th><th>{{ t('sys.setup.ai.readyModels') }}</th><th>{{ t('sys.setup.ai.ready') }}</th></tr></thead>
           <tbody class="divide-y divide-line">
             <tr v-for="r in list('tasks')" :key="str(r.task_key)">

@@ -217,7 +217,7 @@ watch(tab, (v) => {
           <LoadingState v-if="limits.loading.value && !limits.data.value" class="p-5" />
           <ErrorState v-else-if="limits.error.value" :error="limits.error.value" class="p-5" @retry="limits.run" />
           <div v-else-if="limits.data.value" class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="data-table w-full text-sm">
               <thead class="bg-surface-muted text-left text-xs text-ink-muted">
                 <tr>
                   <th class="px-3 py-2">{{ t('researchAdmin.workspace') }}</th>
@@ -261,7 +261,7 @@ watch(tab, (v) => {
         <ErrorState v-else-if="runs.error.value" :error="runs.error.value" class="p-5" @retry="runs.reload" />
         <p v-else-if="!runs.items.value.length" class="p-5 text-sm text-ink-muted">{{ t('research.run.empty') }}</p>
         <div v-else class="overflow-x-auto">
-          <table class="w-full text-sm">
+          <table class="data-table w-full text-sm">
             <thead class="bg-surface-muted text-left text-xs text-ink-muted">
               <tr><th class="px-3 py-2">{{ t('common.createdAt') }}</th><th class="px-3 py-2">{{ t('researchAdmin.workspace') }}</th><th class="px-3 py-2">{{ t('research.campaigns.title') }}</th><th class="px-3 py-2">{{ t('common.status') }}</th><th class="px-3 py-2">{{ t('research.run.warnings') }}</th><th class="px-3 py-2 text-right">{{ t('research.run.cost') }}</th></tr>
             </thead>
@@ -285,7 +285,7 @@ watch(tab, (v) => {
         <LoadingState v-if="costs.loading.value && !costs.data.value" :rows="3" />
         <AppCard v-else-if="costs.error.value"><ErrorState :error="costs.error.value" @retry="costs.run" /></AppCard>
         <template v-else-if="costs.data.value">
-          <div class=" ">
+          <div class="space-y-3">
             <AppCard><p class="text-sm text-ink-muted">{{ t('researchAdmin.runs') }}</p><p class="text-2xl font-semibold tabular-nums">{{ costs.data.value.runs }}</p></AppCard>
             <AppCard><p class="text-sm text-ink-muted">{{ t('researchAdmin.total') }}</p><p class="text-2xl font-semibold tabular-nums">{{ formatUsd(costs.data.value.total_micro_usd) }}</p></AppCard>
             <AppCard><p class="text-sm text-ink-muted">{{ t('researchAdmin.avg') }}</p><p class="text-2xl font-semibold tabular-nums">{{ formatUsd(costs.data.value.avg_micro_usd_per_run) }}</p></AppCard>
@@ -293,7 +293,7 @@ watch(tab, (v) => {
           </div>
           <AppCard :title="t('researchAdmin.byWorkspace')" :padded="false">
             <div class="overflow-x-auto">
-              <table class="w-full text-sm">
+              <table class="data-table w-full text-sm">
                 <tbody class="divide-y divide-line">
                   <tr v-for="w in costs.data.value.by_workspace" :key="w.workspace.id">
                     <td class="px-5 py-2">{{ w.workspace.name ?? w.workspace.id }}</td>
@@ -336,7 +336,7 @@ watch(tab, (v) => {
         <ErrorState v-else-if="usage.error.value" :error="usage.error.value" class="p-5" @retry="usage.run" />
         <p v-else-if="!usage.data.value?.workspaces.length" class="p-5 text-sm text-ink-muted">{{ t('research.noData') }}</p>
         <div v-else class="overflow-x-auto">
-          <table class="w-full text-sm">
+          <table class="data-table w-full text-sm">
             <thead class="bg-surface-muted text-left text-xs text-ink-muted">
               <tr><th class="px-5 py-2">{{ t('researchAdmin.workspace') }}</th><th class="px-3 py-2 text-right">{{ t('researchAdmin.limit.max_runs_per_month') }}</th><th class="px-3 py-2 text-right">{{ t('research.overview.ideas') }}</th><th class="px-5 py-2 text-right">{{ t('research.overview.aiCost') }}</th></tr>
             </thead>

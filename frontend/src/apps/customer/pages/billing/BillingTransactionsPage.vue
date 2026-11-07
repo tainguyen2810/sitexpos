@@ -34,7 +34,7 @@ watch(type, () => void list.reload(), { immediate: true })
       <ErrorState v-else-if="list.error.value" :error="list.error.value" @retry="list.reload" />
       <EmptyState v-else-if="!list.items.value.length" icon="list" :title="t('bill.transactions.empty')" />
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full text-sm">
+        <table class="data-table min-w-full text-sm">
           <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
             <tr>
               <th class="px-4 py-2">{{ t('bill.transactions.at') }}</th><th class="px-4 py-2">{{ t('bill.transactions.type') }}</th>

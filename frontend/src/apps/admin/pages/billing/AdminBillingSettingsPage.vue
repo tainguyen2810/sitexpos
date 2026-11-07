@@ -105,7 +105,7 @@ async function saveProvider() {
             <Toggle v-model="form.proration_enabled" :label="t('billAdmin.settings.proration')" />
             <AppSelect v-model="form.overpayment_policy" :label="t('billAdmin.settings.overpayment')" :options="['manual_review', 'accept_and_credit_difference'].map((x) => ({ value: x, label: t(`billAdmin.settings.overpaymentPolicies.${x}`) }))" />
           </div>
-          <div class="">
+          <div class="space-y-1">
             <AppInput v-model="form.default_plan_code" :label="t('billAdmin.settings.defaultPlan')" class="col-span-2" />
             <AppInput v-model="form.currency" :label="t('billAdmin.settings.currency')" />
             <AppInput v-model="form.grace_days" type="number" :label="t('billAdmin.settings.graceDays')" />

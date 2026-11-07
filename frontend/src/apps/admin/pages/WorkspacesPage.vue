@@ -39,7 +39,7 @@ void list.reload()
       <ErrorState v-else-if="list.error.value" :error="list.error.value" class="p-5" @retry="list.reload" />
       <EmptyState v-else-if="list.items.value.length === 0" icon="building" :title="$t('errors.notFound')" />
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-line text-sm">
+        <table class="data-table min-w-full divide-y divide-line text-sm">
           <thead class="bg-surface-muted text-left text-xs uppercase tracking-wide text-ink-subtle">
             <tr>
               <th class="px-5 py-3 font-medium">{{ $t('settings.name') }}</th>

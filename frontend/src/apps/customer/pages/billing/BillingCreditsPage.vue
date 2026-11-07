@@ -74,7 +74,7 @@ async function buy(code: string) {
       <AppCard :title="t('bill.credits.grants')" :padded="false">
         <EmptyState v-if="!data.grants.length" icon="coins" :title="t('bill.credits.noGrants')" />
         <div v-else class="overflow-x-auto">
-          <table class="min-w-full text-sm">
+          <table class="data-table min-w-full text-sm">
             <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
               <tr><th class="px-4 py-2">{{ t('bill.credits.source') }}</th><th class="px-4 py-2 text-right">{{ t('bill.credits.remaining') }}</th><th class="px-4 py-2">{{ t('bill.credits.expires') }}</th></tr>
             </thead>

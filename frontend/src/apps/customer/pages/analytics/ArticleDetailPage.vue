@@ -91,7 +91,7 @@ async function startRefresh() {
         <AppCard :title="t('an.article.queries')" :subtitle="data.data.queries_period_end ? `${t('an.common.until')} ${formatDate(data.data.queries_period_end)}` : undefined" :padded="false" class="lg:col-span-2">
           <EmptyState v-if="!data.data.queries.length" icon="search" :title="t('an.common.noData')" />
           <div v-else class="overflow-x-auto">
-            <table class="min-w-full text-sm">
+            <table class="data-table min-w-full text-sm">
               <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
                 <tr>
                   <th class="px-4 py-2">{{ t('an.metrics.query') }}</th>

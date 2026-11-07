@@ -203,7 +203,7 @@ async function saveEdit() {
         <h3 class="mb-1 text-sm font-semibold">{{ t('research.ideas.why') }}</h3>
         <p class="text-sm">{{ detail.rationale }}</p>
       </section>
-      <dl class=" ">
+      <dl class="mb-5 grid gap-2 text-sm">
         <div v-if="detail.primary_keyword"><dt class="text-xs text-ink-muted">{{ t('research.ideas.primary') }}</dt><dd class="font-medium">{{ detail.primary_keyword.keyword }}</dd></div>
         <div v-if="detail.secondary_keywords.length"><dt class="text-xs text-ink-muted">{{ t('research.ideas.secondary') }}</dt><dd>{{ detail.secondary_keywords.map((k) => k.keyword).join(', ') }}</dd></div>
         <div v-if="detail.angle"><dt class="text-xs text-ink-muted">{{ t('research.ideas.angle') }}</dt><dd>{{ detail.angle }}</dd></div>
