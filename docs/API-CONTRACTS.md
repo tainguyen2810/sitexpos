@@ -172,7 +172,8 @@ Quyền: O=OWNER, A=ADMIN, E=EDITOR, V=VIEWER. `{site}` luôn được tra trong
 | POST | `/workspaces/{ws}/sites/{site}/rotate-keys` | OA | 200 site; 502 `rotation_failed` nếu plugin không xác nhận (khóa cũ giữ nguyên) |
 | POST | `/workspaces/{ws}/sites/{site}/revoke` | OA | 200 site + `meta.plugin_notified`; 409 nếu đã ngắt |
 | GET | `/workspaces/{ws}/sites/{site}/taxonomies?filter[taxonomy]=` | OAEV | Tối đa 1000 term |
-| GET | `/workspaces/{ws}/sites/{site}/content?filter[post_type]=&q=&cursor=` | OAEV | Cursor pagination; `wp_post_id`, `url`, `is_managed`, `product` |
+| GET | `/workspaces/{ws}/sites/{site}/content?filter[post_type]=&filter[status]=&filter[term]=&filter[author]=&q=&cursor=` | OAEV | Cursor pagination; `wp_post_id`, `url`, `is_managed`, `product`, `term_ids`, `author_wp_id`, `author_name` (v1.0.9; `term`/`author` là id WordPress) |
+| GET | `/workspaces/{ws}/sites/{site}/authors` | OAEV | v1.0.9: tác giả của bài đã đăng `[{wp_author_id, name, posts}]` (cần plugin ≥ 1.2.0) |
 | GET | `/workspaces/{ws}/sites/{site}/logs?filter[level]=&cursor=` | OAEV | Nhật ký kết nối (không chứa secret/payload) |
 | GET | `/workspaces/{ws}/sites/{site}/health-checks` | OAEV | 50 lần kiểm tra gần nhất |
 | GET | `/workspaces/{ws}/job-runs/{id}` | OAEV | Trạng thái tác vụ nền (`queued/running/succeeded/failed`, `error`) |

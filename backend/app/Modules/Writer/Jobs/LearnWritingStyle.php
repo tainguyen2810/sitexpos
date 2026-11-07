@@ -20,8 +20,9 @@ final class LearnWritingStyle extends TenantJob
     /**
      * @param  list<string>  $itemIds
      * @param  list<array{title?: string|null, text: string}>  $samples
+     * @param  array{type: string, label: string|null}|null  $origin
      */
-    public function __construct(public string $presetId, public string $jobRunId, public ?string $siteId, public array $itemIds, public array $samples)
+    public function __construct(public string $presetId, public string $jobRunId, public ?string $siteId, public array $itemIds, public array $samples, public ?array $origin = null)
     {
         parent::__construct();
         $this->onQueue('writing');
@@ -29,6 +30,6 @@ final class LearnWritingStyle extends TenantJob
 
     public function handle(LearnStyle $action): void
     {
-        $action->run($this->presetId, $this->jobRunId, $this->siteId, $this->itemIds, $this->samples);
+        $action->run($this->presetId, $this->jobRunId, $this->siteId, $this->itemIds, $this->samples, $this->origin);
     }
 }

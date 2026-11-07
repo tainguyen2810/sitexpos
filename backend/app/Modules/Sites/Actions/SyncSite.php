@@ -162,6 +162,11 @@ final class SyncSite
             ];
         }
 
+        // Plugin ≥ 1.2.0 sends the author (id + public display name); older plugins send nothing.
+        $author = is_array($item['author'] ?? null) ? $item['author'] : [];
+        $authorId = (int) ($author['id'] ?? 0);
+        $authorName = mb_substr(self::text($author['name'] ?? ''), 0, 200);
+
         $termIds = array_values(array_filter(array_map('intval', is_array($item['term_ids'] ?? null) ? $item['term_ids'] : [])));
 
         $row = SiteContentItem::query()->where(['site_id' => $site->id, 'post_type' => $type, 'wp_post_id' => $postId])->first() ?? new SiteContentItem;
@@ -177,6 +182,8 @@ final class SyncSite
             'term_ids' => $termIds,
             'product' => $product,
             'is_managed' => (bool) ($item['managed'] ?? false),
+            'author_wp_id' => $authorId > 0 ? $authorId : null,
+            'author_name' => $authorId > 0 && $authorName !== '' ? $authorName : null,
             'published_at' => self::date($item['date_gmt'] ?? null),
             'modified_at' => self::date($item['modified_gmt'] ?? null),
             'synced_at' => now(),

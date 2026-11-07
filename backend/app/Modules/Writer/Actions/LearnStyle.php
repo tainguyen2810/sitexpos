@@ -8,6 +8,7 @@ use SiteXPost\Kernel\Http\ApiException;
 use SiteXPost\Kernel\Support\JobRun;
 use SiteXPost\Modules\AiGateway\Gateway\AiGatewayException;
 use SiteXPost\Modules\Audit\Audit;
+use SiteXPost\Modules\Research\Support\Text;
 use SiteXPost\Modules\Writer\Domain\WritingPreset;
 use SiteXPost\Modules\Writer\Jobs\LearnWritingStyle;
 use SiteXPost\Modules\Writer\Pipeline\StyleLearner;
@@ -21,13 +22,17 @@ use Throwable;
  */
 final class LearnStyle
 {
+    /** Where the samples came from (v1.0.9): one post, a category, an author, the whole blog, products or pasted text. */
+    public const ORIGINS = ['post', 'category', 'author', 'blog', 'product', 'paste'];
+
     public function __construct(private readonly StyleLearner $learner) {}
 
     /**
      * @param  list<string>  $itemIds
      * @param  list<array{title?: string|null, text: string}>  $samples
+     * @param  array{type: string, label?: string|null}|null  $origin
      */
-    public function start(WritingPreset $preset, ?string $siteId, array $itemIds, array $samples, ?string $userId): JobRun
+    public function start(WritingPreset $preset, ?string $siteId, array $itemIds, array $samples, ?string $userId, ?array $origin = null): JobRun
     {
         $siteId ??= $preset->site_id;
         if ($itemIds !== [] && $siteId === null) {
@@ -45,7 +50,7 @@ final class LearnStyle
         $run = new JobRun;
         $run->forceFill(['type' => 'writer.learn_style', 'subject_type' => 'writing_preset', 'subject_id' => $preset->id, 'created_by' => $userId])->save();
         Audit::record('writer.style_learning_requested', $preset, ['site_items' => count($itemIds), 'pasted' => count($samples)]);
-        LearnWritingStyle::dispatch($preset->id, $run->id, $siteId, array_values($itemIds), array_values($samples));
+        LearnWritingStyle::dispatch($preset->id, $run->id, $siteId, array_values($itemIds), array_values($samples), self::origin($origin));
 
         return $run;
     }
@@ -53,8 +58,9 @@ final class LearnStyle
     /**
      * @param  list<string>  $itemIds
      * @param  list<array{title?: string|null, text: string}>  $samples
+     * @param  array{type: string, label: string|null}|null  $origin
      */
-    public function run(string $presetId, string $runId, ?string $siteId, array $itemIds, array $samples): void
+    public function run(string $presetId, string $runId, ?string $siteId, array $itemIds, array $samples, ?array $origin = null): void
     {
         $run = JobRun::query()->find($runId);
         $preset = WritingPreset::query()->find($presetId);
@@ -66,7 +72,7 @@ final class LearnStyle
             $got = $this->learner->collect($siteId, $itemIds, $samples);
             if (count($got['samples']) < StyleLearner::MIN_SAMPLES) {
                 $this->fail($run, 'not_enough_samples', __('writer.errors.style_not_enough', ['n' => count($got['samples']), 'min' => StyleLearner::MIN_SAMPLES]));
-                $preset->forceFill(['style_sources' => ['skipped' => $got['skipped'], 'used' => []]])->save();
+                $preset->forceFill(['style_sources' => ['skipped' => $got['skipped'], 'used' => [], 'origin' => $origin]])->save();
 
                 return;
             }
@@ -81,7 +87,7 @@ final class LearnStyle
                 'words' => count(preg_split('/\s+/u', trim($s['text'])) ?: [])], $got['samples']);
             $preset->forceFill([
                 'style_draft' => $res['profile'] + ['generated_at' => now()->toIso8601ZuluString(), 'model' => $res['model'], 'cost_micro_usd' => $res['cost_micro_usd'], 'sample_count' => count($used)],
-                'style_sources' => ['used' => $used, 'skipped' => $got['skipped']],
+                'style_sources' => ['used' => $used, 'skipped' => $got['skipped'], 'origin' => $origin],
             ])->save();
             $run->forceFill(['status' => 'succeeded', 'progress' => 100, 'step' => 'done', 'finished_at' => now()])->save();
             Audit::record('writer.style_learned', $preset, ['samples' => count($used), 'cost_micro_usd' => $res['cost_micro_usd'], 'model' => $res['model']], actorType: 'system');
@@ -91,6 +97,20 @@ final class LearnStyle
             $this->fail($run, 'server_error', __('api.server_error'));
             throw $e;
         }
+    }
+
+    /**
+     * @param  array{type: string, label?: string|null}|null  $origin
+     * @return array{type: string, label: string|null}|null
+     */
+    private static function origin(?array $origin): ?array
+    {
+        if ($origin === null || ! in_array($origin['type'], self::ORIGINS, true)) {
+            return null;
+        }
+        $label = isset($origin['label']) ? Text::clean((string) $origin['label'], 200) : '';
+
+        return ['type' => $origin['type'], 'label' => $label !== '' ? $label : null];
     }
 
     private function fail(JobRun $run, string $code, string $message): void

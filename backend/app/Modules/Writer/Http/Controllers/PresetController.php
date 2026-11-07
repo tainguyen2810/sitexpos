@@ -20,6 +20,7 @@ use SiteXPost\Modules\Writer\Http\Requests\LearnStyleRequest;
 use SiteXPost\Modules\Writer\Http\Requests\PresetRequest;
 use SiteXPost\Modules\Writer\Http\WriterPresenter;
 use SiteXPost\Modules\Writer\Pipeline\StyleLearner;
+use SiteXPost\Modules\Writer\Support\BuiltinStyles;
 
 /**
  * Brand Voice & Writing Presets. Facts carry their provenance
@@ -95,7 +96,7 @@ final class PresetController
             throw new ApiException(422, 'validation_failed', __('api.validation_failed'), ['site_id' => [__('writer.errors.site_not_found')]]);
         }
         $run = $action->start($preset, $siteId, array_values($data['content_item_ids'] ?? []), array_values($data['samples'] ?? []),
-            (string) $request->user()?->getAuthIdentifier());
+            (string) $request->user()?->getAuthIdentifier(), isset($data['origin']) && is_array($data['origin']) ? $data['origin'] : null);
 
         return new JsonResponse(['data' => ['job_run' => ['id' => $run->id, 'status' => $run->status, 'type' => $run->type]]], 202);
     }
@@ -133,6 +134,15 @@ final class PresetController
                 'provenance' => ($f['provenance'] ?? 'user_provided') === 'source_verified' && empty($f['source_url']) ? 'user_provided' : ($f['provenance'] ?? 'user_provided'),
                 'source_url' => $f['source_url'] ?? null,
             ], $data['facts'] ?? []));
+        }
+        if (array_key_exists('from_builtin', $data)) {
+            // "Make my own copy" of a ready-made style: start from its profile unless one is sent.
+            $builtin = BuiltinStyles::profile(is_string($data['from_builtin']) ? $data['from_builtin'] : null);
+            if ($builtin !== null && ! isset($data['style_profile'])) {
+                $data['style_profile'] = $builtin;
+                $data['style_sources'] = ['origin' => ['type' => 'builtin', 'label' => (string) $data['from_builtin']]];
+            }
+            unset($data['from_builtin']);
         }
         if (array_key_exists('style_profile', $data)) {
             // Saving a style guide (edited or as learned) applies it and closes the pending draft.

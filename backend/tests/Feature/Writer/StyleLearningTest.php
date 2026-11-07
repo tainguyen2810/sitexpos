@@ -113,13 +113,13 @@ it('learns from the site\'s own published posts and skips pages it cannot read',
         ->and($ai->count('style_profile'))->toBe(1);
 });
 
-it('fails clearly when too few samples can be read, without calling the AI', function () {
+it('fails clearly when no sample can be read, without calling the AI', function () {
     $t = researchTenant('Few Samples');
     $ai = styleAi();
     $preset = stylePreset($t, ['site_id' => $t['site']->id]);
     $item = app(TenantContext::class)->runAs($t['workspace'], null, fn () => SiteContentItem::query()->where('post_type', 'post')->value('id'));
 
-    $res = $this->actingAs($t['owner'])->postJson(writerUrl($t, "presets/{$preset}/learn-style"), ['content_item_ids' => [$item], 'samples' => [['text' => styleSample('a')]]])->assertStatus(202);
+    $res = $this->actingAs($t['owner'])->postJson(writerUrl($t, "presets/{$preset}/learn-style"), ['content_item_ids' => [$item]])->assertStatus(202);
     $run = app(TenantContext::class)->runAs($t['workspace'], null, fn () => JobRun::query()->find($res->json('data.job_run.id')));
     expect($run->status)->toBe('failed')->and($run->error_code)->toBe('not_enough_samples')->and($ai->count('style_profile'))->toBe(0);
 });
@@ -130,7 +130,7 @@ it('validates samples, roles and discards a pending draft', function () {
     $preset = stylePreset($t);
     $url = writerUrl($t, "presets/{$preset}/learn-style");
 
-    $this->actingAs($t['owner'])->postJson($url, ['samples' => [['text' => styleSample('a')]]])->assertStatus(422);
+    $this->actingAs($t['owner'])->postJson($url, ['samples' => []])->assertStatus(422);
     $this->actingAs($t['owner'])->postJson($url, ['samples' => [['text' => 'quá ngắn'], ['text' => styleSample('b')]]])->assertStatus(422);
     $this->actingAs($t['owner'])->postJson($url, ['content_item_ids' => ['01jz0000000000000000000000', '01jz0000000000000000000001']])->assertStatus(422); // no site on the preset
     $this->actingAs($t['viewer'])->postJson($url, ['samples' => [['text' => styleSample('a')], ['text' => styleSample('b')]]])->assertForbidden();

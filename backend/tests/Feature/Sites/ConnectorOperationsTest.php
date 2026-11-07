@@ -83,6 +83,18 @@ it('syncs taxonomies, content and WooCommerce products as untrusted data', funct
     $products = $this->actingAs($owner)->getJson("/api/v1/workspaces/{$ws->id}/sites/{$site->id}/content?filter[post_type]=product")->json('data');
     expect($products)->toHaveCount(1);
 
+    // v1.0.9: author (plugin ≥ 1.2.0) and category/author filters for "learn style from…".
+    $base = "/api/v1/workspaces/{$ws->id}/sites/{$site->id}";
+    expect($content->firstWhere('wp_post_id', 11)['author_name'])->toBe('Nguyễn Lan')
+        ->and($content->firstWhere('wp_post_id', 11)['author_wp_id'])->toBe(3)
+        ->and($content->firstWhere('wp_post_id', 11)['term_ids'])->toBe([1, 5])
+        ->and($content->firstWhere('wp_post_id', 12)['author_wp_id'])->toBeNull();
+    expect($this->actingAs($owner)->getJson("{$base}/content?filter[author]=3")->json('data'))->toHaveCount(1)
+        ->and($this->actingAs($owner)->getJson("{$base}/content?filter[term]=5")->json('data'))->toHaveCount(1)
+        ->and($this->actingAs($owner)->getJson("{$base}/content?filter[term]=99")->json('data'))->toHaveCount(0)
+        ->and($this->actingAs($owner)->getJson("{$base}/content?filter[status]=publish&filter[post_type]=post")->json('data'))->toHaveCount(1);
+    expect($this->actingAs($owner)->getJson("{$base}/authors")->assertOk()->json('data'))->toBe([['wp_author_id' => 3, 'name' => 'Nguyễn Lan', 'posts' => 1]]);
+
     // Items removed on WordPress disappear on the next full sync.
     $wp->woocommerce = false;
     inTenant($ws, function () use ($site) {

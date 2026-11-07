@@ -2,7 +2,10 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CONTENT_TYPES, formatUsd, idempotencyKey, splitLines, usdToMicro, writerApi, type ApprovalMode, type ArticleInput, type Depth, type ReviewMode, type SearchIntent, type WriterContentType, type WriterIdea } from '@/shared/api/writer'
+import {
+  BUILTIN_STYLES, CONTENT_TYPES, LENGTHS, formatUsd, idempotencyKey, lengthOf, readingMinutes, splitLines, usdToMicro, writerApi,
+  type ApprovalMode, type ArticleInput, type BuiltinStyleKey, type Depth, type LengthKey, type ReviewMode, type SearchIntent, type WriterContentType, type WriterIdea,
+} from '@/shared/api/writer'
 import { researchApi, type Campaign } from '@/shared/api/research'
 import { siteApi } from '@/shared/api/sites'
 import { useAsync } from '@/shared/composables/useAsync'
@@ -17,36 +20,24 @@ import LoadingState from '@/shared/ui/LoadingState.vue'
 import ErrorState from '@/shared/ui/ErrorState.vue'
 import EmptyState from '@/shared/ui/EmptyState.vue'
 import PageHeader from '@/shared/ui/PageHeader.vue'
-import ProgressBar from '@/shared/ui/ProgressBar.vue'
 import WTextarea from './components/WTextarea.vue'
 import WriterNav from './components/WriterNav.vue'
+import StylePicker, { type StyleChoice } from './components/StylePicker.vue'
 import { useWriterPerms } from './useWriter'
 
+/**
+ * Simple writer (v1.0.9): three questions (topic, style, length) and a few
+ * plain-language switches. Everything else is optional under "Tùy chỉnh thêm";
+ * left empty, the AI decides. The request is the same ArticleInput as before.
+ */
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const { workspaceId: id, canEdit } = useWriterPerms()
 const { errors, formError, submitting, submit } = useApiForm()
 
-const GROUPS = ['source', 'seo', 'style', 'research', 'control', 'confirm'] as const
-type Group = (typeof GROUPS)[number]
-const STEPS: Record<Group, string[]> = {
-  source: ['site', 'campaign', 'idea'],
-  seo: ['primary', 'secondary', 'intent'],
-  style: ['audience', 'contentType', 'tone', 'language'],
-  research: ['length', 'researchDepth', 'internalLinks'],
-  control: ['brandRules', 'budget', 'reviewMode'],
-  confirm: ['confirm'],
-}
-const FIELD_GROUP: Record<string, Group> = {
-  site_id: 'source', campaign_id: 'source', content_idea_id: 'source', topic: 'source', title: 'source',
-  primary_keyword: 'seo', secondary_keywords: 'seo', search_intent: 'seo',
-  audience: 'style', content_type: 'style', tone: 'style', writing_preset_id: 'style', language: 'style', country: 'style',
-  target_words: 'research', content_depth: 'research', research_depth: 'research', source_urls: 'research', internal_links: 'research',
-  brand_rules: 'control', brand_domains: 'control', cta: 'control', notes: 'control', budget_limit_micro_usd: 'control', review_mode: 'control', approval_mode: 'control',
-}
-const step = ref(0)
-const group = computed(() => GROUPS[step.value]!)
+const ADVANCED_FIELDS = ['audience', 'search_intent', 'primary_keyword', 'secondary_keywords', 'content_type', 'language', 'country', 'source_urls',
+  'cta', 'brand_rules', 'notes', 'research_depth', 'budget_limit_micro_usd', 'review_mode', 'approval_mode', 'title', 'internal_links']
 
 const options = useAsync(() => writerApi.options(id.value))
 const sites = useAsync(() => siteApi.list(id.value))
@@ -55,17 +46,19 @@ const overview = useAsync(() => writerApi.overview(id.value))
 const campaigns = ref<Campaign[]>([])
 const ideas = ref<WriterIdea[]>([])
 const ideasLoading = ref(false)
+const showIdeas = ref(!!route.query.campaign || !!route.query.idea)
+const advanced = ref(false)
 
 const f = reactive({
-  site_id: '', campaign_id: '', source: 'topic' as 'idea' | 'topic', content_idea_id: '', topic: '', title: '',
-  primary_keyword: '', secondary: '', search_intent: 'informational' as SearchIntent,
-  audience: '', content_type: 'blog_article' as WriterContentType, tone: '', writing_preset_id: '', language: 'vi' as 'vi' | 'en', country: 'VN',
-  target_words: '1500', content_depth: 'standard' as Depth, research_depth: 'standard' as Depth,
-  source_urls: '', ai_source_discovery: true, allow_web_search: true, links_enabled: true, links_max: '5',
-  brand_rules: '', brand_domains: '', cta: '', notes: '', ai_review_notes: true,
-  budget_usd: '', review_mode: 'step_by_step' as ReviewMode, approval_mode: 'manual' as ApprovalMode, start: true,
+  site_id: '', campaign_id: '', content_idea_id: '', topic: '', title: '',
+  style: null as StyleChoice, length: 'medium' as LengthKey,
+  auto_images: true, allow_web_search: true, links_enabled: true,
+  audience: '', search_intent: 'informational' as SearchIntent, primary_keyword: '', secondary: '',
+  content_type: 'blog_article' as WriterContentType, language: 'vi' as 'vi' | 'en', country: 'VN',
+  source_urls: '', cta: '', brand_rules: '', notes: '',
+  research_depth: 'standard' as Depth, budget_usd: '', review_mode: 'final_only' as ReviewMode, approval_mode: 'manual' as ApprovalMode,
 })
-const key = idempotencyKey() // one key per wizard session: a double submit creates one article
+const key = idempotencyKey() // one key per page visit: a double submit creates one article
 
 watch(() => options.data.value, (o) => {
   if (o && f.budget_usd === '') f.budget_usd = String(o.limits.default_article_budget_micro_usd / 1_000_000)
@@ -73,81 +66,101 @@ watch(() => options.data.value, (o) => {
 watch(() => sites.data.value, (s) => {
   if (s?.length && !f.site_id) f.site_id = String(route.query.site ?? s[0]!.id)
 })
+// Default style: ?style=preset:<id>|builtin:<key> (from the Styles page), else the default preset,
+// else the first style of yours, else "Thân thiện".
+watch(() => presets.data.value, (list) => {
+  if (!list || f.style) return
+  const [kind, value] = String(route.query.style ?? '').split(':')
+  if (kind === 'builtin' && (BUILTIN_STYLES as readonly string[]).includes(value ?? '')) {
+    f.style = { kind: 'builtin', key: value as BuiltinStyleKey }
+    return
+  }
+  const p = (kind === 'preset' ? list.find((x) => x.id === value) : undefined) ?? list.find((x) => x.is_default) ?? list[0]
+  f.style = p ? { kind: 'preset', id: p.id } : { kind: 'builtin', key: 'friendly' }
+}, { immediate: true })
+watch(() => presets.error.value, (e) => {
+  if (e && !f.style) f.style = { kind: 'builtin', key: 'friendly' }
+})
+
 watch(() => f.site_id, async (sid) => {
   campaigns.value = []
+  f.campaign_id = ''
   if (!sid) return
   const page = await researchApi.campaigns(id.value, { site_id: sid, per_page: 100, status: 'active' }).catch(() => null)
   campaigns.value = (page?.data ?? []).filter((c) => c.site_id === sid)
   const wanted = String(route.query.campaign ?? '')
-  if (wanted && campaigns.value.some((c) => c.id === wanted)) f.campaign_id = wanted
+  f.campaign_id = wanted && campaigns.value.some((c) => c.id === wanted) ? wanted : (campaigns.value[0]?.id ?? '')
 })
 watch(() => f.campaign_id, async (cid) => {
   ideas.value = []
   f.content_idea_id = ''
-  if (!cid) {
-    f.source = 'topic'
-    return
-  }
+  if (!cid) return
   ideasLoading.value = true
   ideas.value = await writerApi.ideas(id.value, cid).catch(() => [])
   ideasLoading.value = false
-  if (ideas.value.some((i) => !i.article_id)) f.source = 'idea'
   const wanted = String(route.query.idea ?? '')
   if (wanted && ideas.value.some((i) => i.id === wanted && !i.article_id)) pickIdea(wanted)
 })
+const freeIdeas = computed(() => ideas.value.filter((i) => !i.article_id).length)
 const idea = computed(() => ideas.value.find((i) => i.id === f.content_idea_id) ?? null)
 function pickIdea(ideaId: string) {
-  f.source = 'idea'
-  f.content_idea_id = ideaId
   const i = ideas.value.find((x) => x.id === ideaId)
   if (!i) return
-  f.title = i.title
+  f.content_idea_id = ideaId
+  f.topic = i.title
   f.primary_keyword = i.primary_keyword
   f.secondary = (i.secondary_keywords ?? []).join(', ')
   if (i.search_intent) f.search_intent = i.search_intent
   if (i.audience) f.audience = i.audience
 }
-watch(() => f.writing_preset_id, (pid) => {
-  const p = presets.data.value?.find((x) => x.id === pid)
+function clearIdea() {
+  f.content_idea_id = ''
+}
+// Typing a different topic detaches the chosen idea.
+watch(() => f.topic, (v) => {
+  if (idea.value && v.trim() !== idea.value.title) f.content_idea_id = ''
+})
+
+// A style of yours carries its own defaults (length, depth, budget, CTA).
+watch(() => f.style, (s) => {
+  if (s?.kind !== 'preset') return
+  const p = presets.data.value?.find((x) => x.id === s.id)
   if (!p) return
-  if (p.tone) f.tone = p.tone
   const d = p.defaults
   if (d.content_type && (CONTENT_TYPES as readonly string[]).includes(d.content_type)) f.content_type = d.content_type as WriterContentType
-  if (d.target_words) f.target_words = String(d.target_words)
+  if (d.target_words) f.length = lengthOf(d.target_words)
   if (d.research_depth) f.research_depth = d.research_depth
-  if (d.content_depth) f.content_depth = d.content_depth
   if (d.budget_limit_micro_usd) f.budget_usd = String(d.budget_limit_micro_usd / 1_000_000)
+  if (typeof d.auto_images === 'boolean') f.auto_images = d.auto_images
   if (p.cta && !f.cta) f.cta = p.cta
 })
 
-const estimate = useAsync(() => writerApi.estimate(id.value, Number(f.target_words) || 1500), { immediate: false })
-watch(() => f.target_words, () => void estimate.run(), { immediate: true })
+const words = computed(() => LENGTHS[f.length])
+const estimate = useAsync(() => writerApi.estimate(id.value, words.value), { immediate: false })
+watch(words, () => void estimate.run(), { immediate: true })
 
 const siteOptions = computed(() => (sites.data.value ?? []).map((s) => ({ value: s.id, label: s.name })))
-const campaignOptions = computed(() => [{ value: '', label: t('writer.wizard.noCampaign') }, ...campaigns.value.map((c) => ({ value: c.id, label: c.name }))])
-const intentOptions = computed(() => (['informational', 'commercial', 'transactional', 'navigational'] as const).map((v) => ({ value: v, label: t(`writer.intent.${v}`) })))
+const campaignOptions = computed(() => campaigns.value.map((c) => ({ value: c.id, label: c.name })))
+const intentOptions = computed(() => (['informational', 'commercial', 'transactional', 'navigational'] as const).map((v) => ({ value: v, label: t(`writer.simple.intent.${v}`) })))
 const typeOptions = computed(() => (options.data.value?.content_types ?? CONTENT_TYPES).map((v) => ({ value: v, label: t(`writer.contentType.${v}`) })))
-const depthOptions = computed(() => (['basic', 'standard', 'deep'] as const).map((v) => ({
-  value: v, label: `${t(`writer.depth.${v}`)}${options.data.value ? ` — ${t('writer.wizard.maxSources', { n: options.data.value.limits.max_sources[v] })}` : ''}`,
-})))
-const contentDepthOptions = computed(() => (['basic', 'standard', 'deep'] as const).map((v) => ({ value: v, label: t(`writer.depth.${v}`) })))
-const presetOptions = computed(() => [{ value: '', label: t('writer.wizard.noPreset') }, ...(presets.data.value ?? []).map((p) => ({ value: p.id, label: p.name + (p.is_default ? ` (${t('writer.presets.default')})` : '') }))])
-const autoApprove = computed(() => options.data.value?.auto_approve ?? { enabled: false, min_quality: 0 })
-const approvalOptions = computed(() => (autoApprove.value.enabled ? (['manual', 'auto'] as const) : (['manual'] as const)).map((v) => ({ value: v, label: t(`writer.approvalMode.${v}`) })))
-const reviewOptions = computed(() => (['step_by_step', 'brief_only', 'final_only'] as const).map((v) => ({ value: v, label: t(`writer.reviewMode.${v}`) })))
 const languageOptions = [{ value: 'vi', label: 'Tiếng Việt' }, { value: 'en', label: 'English' }]
-
-const canNext = computed(() => {
-  if (group.value === 'source') return !!f.site_id && (f.source === 'idea' ? !!f.content_idea_id : f.topic.trim().length >= 5)
-  if (group.value === 'seo') return f.source === 'idea' || f.primary_keyword.trim().length >= 2 || f.topic.trim().length >= 5
-  return true
+const autoApprove = computed(() => options.data.value?.auto_approve ?? { enabled: false, min_quality: 0 })
+const maxSources = computed(() => options.data.value?.limits.max_sources ?? { basic: 5, standard: 10, deep: 20 })
+const quota = computed(() => overview.data.value?.quota ?? null)
+const styleName = computed(() => {
+  const s = f.style
+  if (!s) return '—'
+  return s.kind === 'preset' ? (presets.data.value?.find((p) => p.id === s.id)?.name ?? '—') : t(`writer.builtin.${s.key}.name`)
 })
 
+const canCreate = computed(() => !!f.site_id && (!!f.content_idea_id || f.topic.trim().length >= 5) && (quota.value === null || quota.value.remaining > 0))
+
 function payload(): ArticleInput {
-  const useIdea = f.source === 'idea' && !!f.content_idea_id
+  const useIdea = !!f.content_idea_id
+  const s = f.style
   return {
     site_id: f.site_id,
-    campaign_id: f.campaign_id || null,
+    campaign_id: useIdea ? (f.campaign_id || null) : null,
     content_idea_id: useIdea ? f.content_idea_id : null,
     topic: useIdea ? null : f.topic.trim(),
     title: f.title.trim() || null,
@@ -156,46 +169,46 @@ function payload(): ArticleInput {
     search_intent: f.search_intent,
     content_type: f.content_type,
     audience: f.audience.trim() || null,
-    tone: f.tone.trim() || null,
-    writing_preset_id: f.writing_preset_id || null,
+    writing_preset_id: s?.kind === 'preset' ? s.id : null,
+    builtin_style: s?.kind === 'builtin' ? s.key : null,
+    auto_images: f.auto_images,
     language: f.language,
     country: f.country.trim().toUpperCase().slice(0, 2) || 'VN',
-    target_words: Number(f.target_words) || 1500,
-    content_depth: f.content_depth,
+    target_words: words.value,
     research_depth: f.research_depth,
     source_urls: splitLines(f.source_urls.replace(/\s+/g, '\n')).slice(0, 20),
-    ai_source_discovery: f.ai_source_discovery,
+    ai_source_discovery: true,
     allow_web_search: f.allow_web_search,
-    internal_links: { enabled: f.links_enabled, max: Math.max(0, Math.min(15, Number(f.links_max) || 0)) },
-    brand_rules: f.brand_rules.split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 20),
-    brand_domains: splitLines(f.brand_domains).slice(0, 10),
+    internal_links: { enabled: f.links_enabled, max: 5 },
+    brand_rules: f.brand_rules.split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 20),
     cta: f.cta.trim() || null,
     notes: f.notes.trim() || null,
-    ai_review_notes: f.ai_review_notes,
     budget_limit_micro_usd: usdToMicro(Number(f.budget_usd) || 0),
     review_mode: f.review_mode,
     approval_mode: f.approval_mode,
-    start: f.start,
+    start: true,
   }
 }
 
 async function create() {
+  if (!canCreate.value) return
   const a = await submit(() => writerApi.create(id.value, payload(), key))
   if (a) {
     void router.push({ name: 'writer-article', params: { workspaceId: id.value, articleId: a.id } })
     return
   }
-  // Jump back to the first step that has a field error.
-  const first = Object.keys(errors).find((k) => errors[k])
-  const g = first ? FIELD_GROUP[first.split('.')[0]!] : undefined
-  if (g) step.value = GROUPS.indexOf(g)
+  // An error on an optional field: open "Tùy chỉnh thêm" so the user sees it.
+  if (Object.keys(errors).some((k) => errors[k] && ADVANCED_FIELDS.includes(k.split('.')[0]!))) advanced.value = true
 }
 const fieldErr = (k: string) => errors[k] ?? Object.entries(errors).find(([key, v]) => v && key.startsWith(`${k}.`))?.[1]
+const teachTo = computed(() => ({ name: 'writer-presets', params: { workspaceId: id.value }, query: { learn: '1' } }))
+const seg = (active: boolean) => ['flex-1 px-3 py-2.5 text-center text-sm transition sm:flex-none sm:px-5', active ? 'bg-brand-600 text-white' : 'bg-surface text-ink hover:bg-surface-muted']
+const choice = (active: boolean) => ['flex flex-col rounded-xl border-[1.5px] p-3 text-left text-sm', active ? 'border-brand-600 bg-brand-50 ring-4 ring-brand-100' : 'border-line bg-surface hover:border-brand-300']
 </script>
 
 <template>
   <div>
-    <PageHeader :title="t('writer.wizard.title')" :crumbs="[{ label: t('writer.title'), to: `/w/${id}/writer` }, { label: t('writer.nav.wizard') }]" />
+    <PageHeader :title="t('writer.simple.title')" :description="t('writer.simple.subtitle')" :crumbs="[{ label: t('writer.title'), to: `/w/${id}/writer` }, { label: t('writer.nav.wizard') }]" />
     <WriterNav active="wizard" />
 
     <EmptyState v-if="!canEdit" icon="lock" :title="t('errors.forbidden')" />
@@ -205,139 +218,176 @@ const fieldErr = (k: string) => errors[k] ?? Object.entries(errors).find(([key, 
       <RouterLink :to="{ name: 'sites', params: { workspaceId: id } }" class="text-sm font-medium text-brand-600 underline">{{ t('nav.sites') }}</RouterLink>
     </EmptyState>
 
-    <div v-else class="grid grid-cols-1 gap-6 lg:grid-cols-[14rem_1fr]">
-      <ol class="flex gap-2 overflow-x-auto lg:block lg:space-y-1" :aria-label="t('writer.wizard.title')">
-        <li v-for="(g, i) in GROUPS" :key="g">
-          <button
-            type="button"
-            class="w-full whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm"
-            :class="i === step ? 'bg-brand-50 font-medium text-brand-700' : i < step ? 'text-ink' : 'text-ink-muted'"
-            :aria-current="i === step ? 'step' : undefined"
-            :disabled="i > step && !canNext"
-            @click="step = i"
-          >
-            {{ i + 1 }}. {{ t(`writer.wizard.groups.${g}`) }}
-          </button>
-          <ul class="hidden pl-6 text-xs text-ink-muted lg:block">
-            <li v-for="s in STEPS[g]" :key="s">{{ t(`writer.wizard.steps.${s}`) }}</li>
-          </ul>
-        </li>
-      </ol>
-
+    <form v-else class="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_20rem]" novalidate data-testid="simple-writer" @submit.prevent="create">
       <AppCard>
-        <p class="mb-1 text-xs text-ink-muted">{{ t('writer.wizard.stepOf', { n: step + 1, total: GROUPS.length }) }}</p>
-        <ProgressBar class="mb-5" :value="step + 1" :max="GROUPS.length" />
         <p v-if="formError" class="mb-4 rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">{{ formError }}</p>
 
-        <form id="wizard" class="grid grid-cols-1 gap-4 sm:grid-cols-2" novalidate @submit.prevent="step < GROUPS.length - 1 ? step++ : create()">
-          <!-- 1–3 -->
-          <template v-if="group === 'source'">
-            <AppSelect v-model="f.site_id" :label="t('writer.wizard.steps.site')" :options="siteOptions" :error="fieldErr('site_id')" />
-            <AppSelect v-model="f.campaign_id" :label="t('writer.wizard.steps.campaign')" :options="campaignOptions" :error="fieldErr('campaign_id')" />
-            <fieldset class="sm:col-span-2">
-              <legend class="mb-2 text-sm font-medium">{{ t('writer.wizard.steps.idea') }}</legend>
-              <div class="mb-3 flex gap-2">
-                <AppButton size="sm" :variant="f.source === 'idea' ? 'primary' : 'secondary'" :disabled="!f.campaign_id" @click="f.source = 'idea'">{{ t('writer.wizard.useIdea') }}</AppButton>
-                <AppButton size="sm" :variant="f.source === 'topic' ? 'primary' : 'secondary'" @click="f.source = 'topic'">{{ t('writer.wizard.useTopic') }}</AppButton>
-              </div>
-              <template v-if="f.source === 'idea' && f.campaign_id">
-                <LoadingState v-if="ideasLoading" />
-                <p v-else-if="!ideas.length" class="text-sm text-ink-muted">{{ t('writer.wizard.noIdeas') }}</p>
-                <ul v-else class="max-h-80 divide-y divide-line overflow-y-auto rounded-lg border border-line" data-testid="idea-list">
-                  <li v-for="i in ideas" :key="i.id">
-                    <label class="flex cursor-pointer items-start gap-3 px-3 py-2 text-sm" :class="i.article_id ? 'opacity-60' : 'hover:bg-surface-muted'">
-                      <input type="radio" name="idea" class="mt-1" :value="i.id" :checked="f.content_idea_id === i.id" :disabled="!!i.article_id" @change="pickIdea(i.id)" />
-                      <span class="min-w-0 flex-1">
-                        <span class="block font-medium">{{ i.title }}</span>
-                        <span class="block text-xs text-ink-muted">{{ i.primary_keyword }}</span>
-                      </span>
-                      <AppBadge v-if="i.article_id" tone="neutral">{{ t('writer.wizard.ideaTaken') }}</AppBadge>
-                    </label>
-                  </li>
-                </ul>
-                <p v-if="fieldErr('content_idea_id')" class="mt-1 text-xs text-danger-600">{{ fieldErr('content_idea_id') }}</p>
-              </template>
-              <template v-else>
-                <AppInput v-model="f.topic" :label="t('writer.wizard.topic')" :placeholder="t('writer.wizard.topicHint')" :error="fieldErr('topic')" />
-              </template>
-            </fieldset>
-            <AppInput v-model="f.title" class="sm:col-span-2" :label="t('writer.wizard.titleOptional')" :hint="t('common.optional')" :error="fieldErr('title')" />
-          </template>
-
-          <!-- 4–6 -->
-          <template v-if="group === 'seo'">
-            <AppInput v-model="f.primary_keyword" :label="t('writer.wizard.steps.primary')" :error="fieldErr('primary_keyword')" />
-            <AppSelect v-model="f.search_intent" :label="t('writer.wizard.steps.intent')" :options="intentOptions" :error="fieldErr('search_intent')" />
-            <WTextarea v-model="f.secondary" class="sm:col-span-2" :label="t('writer.wizard.steps.secondary')" :hint="t('writer.wizard.secondaryHint')" :error="fieldErr('secondary_keywords')" />
-          </template>
-
-          <!-- 7–10 -->
-          <template v-if="group === 'style'">
-            <AppInput v-model="f.audience" class="sm:col-span-2" :label="t('writer.wizard.steps.audience')" :error="fieldErr('audience')" />
-            <AppSelect v-model="f.content_type" :label="t('writer.wizard.steps.contentType')" :options="typeOptions" :error="fieldErr('content_type')" />
-            <AppSelect v-model="f.writing_preset_id" :label="t('writer.wizard.preset')" :options="presetOptions" :error="fieldErr('writing_preset_id')" />
-            <AppInput v-model="f.tone" class="sm:col-span-2" :label="t('writer.wizard.steps.tone')" :placeholder="t('writer.wizard.tonePlaceholder')" :error="fieldErr('tone')" />
-            <AppSelect v-model="f.language" :label="t('writer.wizard.steps.language')" :options="languageOptions" :error="fieldErr('language')" />
-            <AppInput v-model="f.country" :label="t('writer.wizard.country')" :error="fieldErr('country')" />
-          </template>
-
-          <!-- 11–13 -->
-          <template v-if="group === 'research'">
-            <AppInput v-model="f.target_words" type="number" :label="t('writer.wizard.targetWords')" :error="fieldErr('target_words')" />
-            <AppSelect v-model="f.content_depth" :label="t('writer.wizard.contentDepth')" :options="contentDepthOptions" :error="fieldErr('content_depth')" />
-            <AppSelect v-model="f.research_depth" class="sm:col-span-2" :label="t('writer.wizard.steps.researchDepth')" :options="depthOptions" :error="fieldErr('research_depth')" />
-            <WTextarea v-model="f.source_urls" class="sm:col-span-2" :rows="4" :label="t('writer.wizard.sourceUrls')" :hint="t('writer.wizard.sourceUrlsHint')" :error="fieldErr('source_urls')" placeholder="https://" />
-            <div class="sm:col-span-2">
-              <Toggle v-model="f.ai_source_discovery" :label="t('writer.wizard.aiDiscovery')" :description="t('writer.wizard.aiDiscoveryHint')" />
-              <Toggle v-model="f.allow_web_search" :label="t('writer.wizard.webSearch')" :description="t('writer.wizard.webSearchHint')" />
-              <Toggle v-model="f.links_enabled" :label="t('writer.wizard.steps.internalLinks')" :description="t('writer.wizard.linksEnabled')" />
+        <!-- 1. Topic -->
+        <section class="pb-6">
+          <h2 class="flex items-center gap-2 text-base font-semibold"><span class="grid h-6 w-6 place-items-center rounded-full bg-brand-600 text-xs text-white">1</span>{{ t('writer.simple.q1') }}</h2>
+          <p class="mb-3 mt-1 text-sm text-ink-muted sm:ml-8">{{ t('writer.simple.q1Help') }}</p>
+          <div class="sm:ml-8">
+            <AppInput v-model="f.topic" :label="t('writer.simple.q1')" class="[&_label]:sr-only [&_input]:py-3 [&_input]:text-base" :placeholder="t('writer.simple.topicPlaceholder')" :error="fieldErr('topic') ?? fieldErr('content_idea_id')" data-testid="topic" />
+            <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+              <label class="flex items-center gap-2 text-ink-muted">
+                {{ t('writer.simple.publishTo') }}
+                <select v-model="f.site_id" class="rounded-md border border-line bg-surface px-2 py-1 text-sm font-medium text-ink" data-testid="site">
+                  <option v-for="s in siteOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
+                </select>
+              </label>
+              <button v-if="campaigns.length > 1 || freeIdeas > 0" type="button" class="font-medium text-brand-600 hover:underline" :aria-expanded="showIdeas" @click="showIdeas = !showIdeas">
+                💡 {{ t('writer.simple.fromIdeas', { n: freeIdeas }) }}
+              </button>
             </div>
-            <AppInput v-if="f.links_enabled" v-model="f.links_max" type="number" :label="t('writer.wizard.linksMax')" :error="fieldErr('internal_links')" />
-          </template>
+            <div v-if="showIdeas && campaigns.length" class="mt-3 rounded-lg border border-line p-3">
+              <AppSelect v-if="campaigns.length > 1" v-model="f.campaign_id" class="mb-2" :label="t('writer.simple.campaign')" :options="campaignOptions" />
+              <LoadingState v-if="ideasLoading" />
+              <p v-else-if="!ideas.length" class="text-sm text-ink-muted">{{ t('writer.wizard.noIdeas') }}</p>
+              <ul v-else class="max-h-64 divide-y divide-line overflow-y-auto" data-testid="idea-list">
+                <li v-for="i in ideas" :key="i.id">
+                  <label class="flex cursor-pointer items-start gap-3 px-1 py-2 text-sm" :class="i.article_id ? 'opacity-60' : 'hover:bg-surface-muted'">
+                    <input type="radio" name="idea" class="mt-1" :value="i.id" :checked="f.content_idea_id === i.id" :disabled="!!i.article_id" @change="pickIdea(i.id)" />
+                    <span class="min-w-0 flex-1"><span class="block font-medium">{{ i.title }}</span><span class="block text-xs text-ink-muted">{{ i.primary_keyword }}</span></span>
+                    <AppBadge v-if="i.article_id" tone="neutral">{{ t('writer.wizard.ideaTaken') }}</AppBadge>
+                  </label>
+                </li>
+              </ul>
+              <button v-if="f.content_idea_id" type="button" class="mt-2 text-xs text-ink-muted underline" @click="clearIdea">{{ t('writer.simple.clearIdea') }}</button>
+            </div>
+          </div>
+        </section>
 
-          <!-- 14–16 -->
-          <template v-if="group === 'control'">
-            <WTextarea v-model="f.brand_rules" class="sm:col-span-2" :label="t('writer.wizard.steps.brandRules')" :hint="t('writer.wizard.brandRulesHint')" :error="fieldErr('brand_rules')" />
-            <AppInput v-model="f.brand_domains" :label="t('writer.wizard.brandDomains')" :hint="t('common.optional')" :error="fieldErr('brand_domains')" />
-            <AppInput v-model="f.cta" :label="t('writer.wizard.cta')" :hint="t('common.optional')" :error="fieldErr('cta')" />
-            <WTextarea v-model="f.notes" class="sm:col-span-2" :label="t('writer.wizard.notes')" :hint="t('common.optional')" :error="fieldErr('notes')" />
+        <!-- 2. Style -->
+        <section class="border-t border-line py-6">
+          <h2 class="flex items-center gap-2 text-base font-semibold"><span class="grid h-6 w-6 place-items-center rounded-full bg-brand-600 text-xs text-white">2</span>{{ t('writer.simple.q2') }}</h2>
+          <p class="mb-3 mt-1 text-sm text-ink-muted sm:ml-8">{{ t('writer.simple.q2Help') }}</p>
+          <div class="sm:ml-8">
+            <StylePicker v-model="f.style" :presets="presets.data.value ?? []" :teach-to="teachTo" />
+            <p v-if="fieldErr('writing_preset_id') || fieldErr('builtin_style')" class="mt-1 text-xs text-danger-600">{{ fieldErr('writing_preset_id') ?? fieldErr('builtin_style') }}</p>
+          </div>
+        </section>
+
+        <!-- 3. Length -->
+        <section class="border-t border-line py-6">
+          <h2 class="flex items-center gap-2 text-base font-semibold"><span class="grid h-6 w-6 place-items-center rounded-full bg-brand-600 text-xs text-white">3</span>{{ t('writer.simple.q3') }}</h2>
+          <p class="mb-3 mt-1 text-sm text-ink-muted sm:ml-8">{{ t('writer.simple.q3Help') }}</p>
+          <div class="flex overflow-hidden rounded-lg border border-line-strong sm:ml-8 sm:inline-flex" role="radiogroup" :aria-label="t('writer.simple.q3')">
+            <button
+              v-for="(w, k) in LENGTHS" :key="k" type="button" role="radio" :aria-checked="f.length === k" :class="seg(f.length === k)" class="border-l border-line-strong first:border-l-0"
+              :data-testid="`length-${k}`" @click="f.length = k"
+            >
+              <span class="block font-medium">{{ t(`writer.simple.length.${k}`) }}</span>
+              <span class="block text-[11px] opacity-75">{{ t('writer.simple.lengthHint', { words: w.toLocaleString('vi-VN'), min: readingMinutes(w) }) }}</span>
+            </button>
+          </div>
+          <p v-if="fieldErr('target_words')" class="mt-1 text-xs text-danger-600 sm:ml-8">{{ fieldErr('target_words') }}</p>
+        </section>
+
+        <!-- Switches -->
+        <section class="border-t border-line py-5">
+          <h2 class="text-sm font-semibold">{{ t('writer.simple.auto') }}</h2>
+          <div class="mt-1 divide-y divide-dashed divide-line sm:ml-8">
+            <Toggle v-model="f.auto_images" :label="t('writer.simple.images')" :description="t('writer.simple.imagesHelp')" />
+            <Toggle v-model="f.allow_web_search" :label="t('writer.simple.web')" :description="t('writer.simple.webHelp')" />
+            <Toggle v-model="f.links_enabled" :label="t('writer.simple.links')" :description="t('writer.simple.linksHelp')" />
+          </div>
+        </section>
+
+        <!-- Optional settings -->
+        <section class="border-t border-line pt-5">
+          <button
+            type="button" class="flex w-full items-center justify-between gap-2 rounded-lg border border-dashed border-line-strong px-4 py-3 text-left text-sm"
+            :aria-expanded="advanced" data-testid="advanced-toggle" @click="advanced = !advanced"
+          >
+            <span><span class="font-medium text-ink">⚙️ {{ t('writer.simple.advanced') }}</span> <span class="text-ink-muted">{{ t('writer.simple.advancedHint') }}</span></span>
+            <span aria-hidden="true" class="text-ink-muted">{{ advanced ? '▾' : '▸' }}</span>
+          </button>
+
+          <div v-if="advanced" class="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2" data-testid="advanced">
+            <p class="text-sm text-ink-muted sm:col-span-2">{{ t('writer.simple.advancedLead') }}</p>
+            <AppInput v-model="f.audience" :label="t('writer.simple.audience')" :placeholder="t('writer.simple.audiencePh')" :hint="t('writer.simple.audienceHelp')" :error="fieldErr('audience')" />
+            <AppSelect v-model="f.search_intent" :label="t('writer.simple.intentLabel')" :options="intentOptions" :hint="t('writer.simple.intentHelp')" :error="fieldErr('search_intent')" />
+            <AppInput v-model="f.primary_keyword" :label="t('writer.simple.keyword')" :placeholder="t('writer.simple.keywordPh')" :hint="t('writer.simple.keywordHelp')" :error="fieldErr('primary_keyword')" />
+            <AppInput v-model="f.secondary" :label="t('writer.simple.secondary')" :hint="t('writer.simple.secondaryHelp')" :error="fieldErr('secondary_keywords')" />
+            <AppSelect v-model="f.content_type" :label="t('writer.simple.type')" :options="typeOptions" :hint="t('writer.simple.typeHelp')" :error="fieldErr('content_type')" />
+            <div class="grid grid-cols-2 gap-3">
+              <AppSelect v-model="f.language" :label="t('writer.simple.language')" :options="languageOptions" :error="fieldErr('language')" />
+              <AppInput v-model="f.country" :label="t('writer.simple.country')" :hint="t('writer.simple.countryHelp')" :error="fieldErr('country')" />
+            </div>
+            <AppInput v-model="f.title" class="sm:col-span-2" :label="t('writer.simple.titleLabel')" :hint="t('writer.simple.titleHelp')" :error="fieldErr('title')" />
+            <WTextarea v-model="f.source_urls" class="sm:col-span-2" :rows="3" :label="t('writer.simple.sources')" :hint="t('writer.simple.sourcesHelp')" :error="fieldErr('source_urls')" placeholder="https://" />
+            <AppInput v-model="f.cta" class="sm:col-span-2" :label="t('writer.simple.cta')" :placeholder="t('writer.simple.ctaPh')" :hint="t('writer.simple.ctaHelp')" :error="fieldErr('cta')" />
+            <WTextarea v-model="f.brand_rules" class="sm:col-span-2" :rows="3" :label="t('writer.simple.rules')" :hint="t('writer.simple.rulesHelp')" :error="fieldErr('brand_rules')" :placeholder="t('writer.simple.rulesPh')" />
+            <WTextarea v-model="f.notes" class="sm:col-span-2" :rows="2" :label="t('writer.simple.notes')" :hint="t('writer.simple.notesHelp')" :error="fieldErr('notes')" />
+
+            <fieldset>
+              <legend class="mb-1.5 text-sm font-medium">{{ t('writer.simple.depth') }}</legend>
+              <div class="flex overflow-hidden rounded-lg border border-line-strong" role="radiogroup" :aria-label="t('writer.simple.depth')">
+                <button
+                  v-for="d in (['basic', 'standard', 'deep'] as const)" :key="d" type="button" role="radio" :aria-checked="f.research_depth === d"
+                  :class="seg(f.research_depth === d)" class="border-l border-line-strong first:border-l-0" @click="f.research_depth = d"
+                >
+                  <span class="block font-medium">{{ t(`writer.simple.depthOpt.${d}`) }}</span>
+                  <span class="block text-[11px] opacity-75">{{ t('writer.simple.depthSources', { n: maxSources[d] }) }}</span>
+                </button>
+              </div>
+              <p class="mt-1 text-xs text-ink-muted">{{ t('writer.simple.depthHelp') }}</p>
+            </fieldset>
             <AppInput
-v-model="f.budget_usd" type="number" :label="t('writer.wizard.budget')" :error="fieldErr('budget_limit_micro_usd')"
-              :hint="options.data.value ? t('writer.wizard.budgetHint', { max: formatUsd(options.data.value.limits.max_article_budget_micro_usd) }) : undefined" />
-            <AppSelect v-model="f.review_mode" :label="t('writer.wizard.steps.reviewMode')" :options="reviewOptions" :error="fieldErr('review_mode')" />
-            <AppSelect
-              v-model="f.approval_mode" data-testid="approval-mode" :label="t('writer.article.approvalMode')" :options="approvalOptions" :error="fieldErr('approval_mode')"
-              :hint="autoApprove.enabled ? t('writer.autoApprove.hint', { min: autoApprove.min_quality }) : t('writer.autoApprove.disabled')" />
-            <div class="sm:col-span-2"><Toggle v-model="f.ai_review_notes" :label="t('writer.wizard.aiReviewNotes')" /></div>
-          </template>
+              v-model="f.budget_usd" type="number" :label="t('writer.simple.budget')" :error="fieldErr('budget_limit_micro_usd')"
+              :hint="options.data.value ? t('writer.simple.budgetHelp', { max: formatUsd(options.data.value.limits.max_article_budget_micro_usd) }) : undefined"
+            />
 
-          <!-- 17 -->
-          <template v-if="group === 'confirm'">
-            <dl class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:col-span-2 sm:grid-cols-2" data-testid="wizard-summary">
-              <div><dt class="text-ink-muted">{{ t('writer.wizard.steps.site') }}</dt><dd>{{ siteOptions.find((s) => s.value === f.site_id)?.label }}</dd></div>
-              <div><dt class="text-ink-muted">{{ t('writer.wizard.steps.idea') }}</dt><dd>{{ idea?.title ?? f.topic }}</dd></div>
-              <div><dt class="text-ink-muted">{{ t('writer.wizard.steps.primary') }}</dt><dd>{{ f.primary_keyword || idea?.primary_keyword || '—' }}</dd></div>
-              <div><dt class="text-ink-muted">{{ t('writer.wizard.steps.contentType') }}</dt><dd>{{ t(`writer.contentType.${f.content_type}`) }}</dd></div>
-              <div><dt class="text-ink-muted">{{ t('writer.wizard.steps.researchDepth') }}</dt><dd>{{ t(`writer.depth.${f.research_depth}`) }}</dd></div>
-              <div><dt class="text-ink-muted">{{ t('writer.wizard.steps.reviewMode') }}</dt><dd>{{ t(`writer.reviewMode.${f.review_mode}`) }}</dd></div>
-              <div><dt class="text-ink-muted">{{ t('writer.article.approvalMode') }}</dt><dd>{{ t(`writer.approvalMode.${f.approval_mode}`) }}</dd></div>
-              <div><dt class="text-ink-muted">{{ t('writer.wizard.steps.budget') }}</dt><dd>{{ formatUsd(usdToMicro(Number(f.budget_usd) || 0)) }}</dd></div>
-              <div v-if="estimate.data.value"><dt class="text-ink-muted">{{ t('writer.wizard.estimate', { cost: formatUsd(estimate.data.value.estimated_cost_micro_usd) }) }}</dt><dd class="text-xs text-ink-muted">{{ estimate.data.value.note }}</dd></div>
-            </dl>
-            <p v-if="overview.data.value" class="text-sm sm:col-span-2" :class="overview.data.value.quota.remaining > 0 ? 'text-ink-muted' : 'text-danger-600'">
-              {{ t('writer.wizard.quota', { remaining: overview.data.value.quota.remaining, limit: overview.data.value.quota.limit }) }}
-            </p>
-            <p class="text-sm text-ink-muted sm:col-span-2">{{ t('writer.wizard.duplicate') }}</p>
-            <div class="sm:col-span-2"><Toggle v-model="f.start" :label="t('writer.wizard.startNow')" /></div>
-          </template>
-        </form>
-
-        <div class="mt-6 flex justify-between gap-2 border-t border-line pt-4">
-          <AppButton variant="secondary" :disabled="step === 0" @click="step--">{{ t('common.back') }}</AppButton>
-          <AppButton v-if="step < GROUPS.length - 1" :disabled="!canNext" data-testid="wizard-next" @click="step++">{{ t('common.next') }}</AppButton>
-          <AppButton v-else type="submit" form="wizard" :loading="submitting" :disabled="!canNext" data-testid="wizard-create">{{ t('writer.wizard.create') }}</AppButton>
-        </div>
+            <fieldset class="sm:col-span-2">
+              <legend class="mb-1.5 text-sm font-medium">{{ t('writer.simple.review') }}</legend>
+              <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-3" role="radiogroup" :aria-label="t('writer.simple.review')">
+                <button
+                  v-for="m in (['final_only', 'brief_only', 'step_by_step'] as const)" :key="m" type="button" role="radio" :aria-checked="f.review_mode === m"
+                  :class="choice(f.review_mode === m)" @click="f.review_mode = m"
+                >
+                  <span class="font-semibold">{{ t(`writer.simple.reviewOpt.${m}.name`) }}</span>
+                  <span class="text-xs text-ink-muted">{{ t(`writer.simple.reviewOpt.${m}.desc`) }}</span>
+                </button>
+              </div>
+            </fieldset>
+            <div v-if="autoApprove.enabled" class="sm:col-span-2">
+              <Toggle
+                :model-value="f.approval_mode === 'auto'" data-testid="approval-mode" :label="t('writer.simple.autoApprove')"
+                :description="t('writer.autoApprove.hint', { min: autoApprove.min_quality })" @update:model-value="(v: boolean) => (f.approval_mode = v ? 'auto' : 'manual')"
+              />
+            </div>
+          </div>
+        </section>
       </AppCard>
-    </div>
+
+      <!-- Summary -->
+      <aside class="flex flex-col gap-4 lg:sticky lg:top-4">
+        <AppCard>
+          <h2 class="mb-1 font-semibold">{{ t('writer.wizard.summary') }}</h2>
+          <dl class="space-y-2.5 text-sm" data-testid="wizard-summary">
+            <div><dt class="text-xs text-ink-muted">{{ t('writer.simple.sumTopic') }}</dt><dd class="font-medium">{{ idea?.title ?? (f.topic.trim() || '—') }}</dd></div>
+            <div><dt class="text-xs text-ink-muted">{{ t('writer.simple.sumStyle') }}</dt><dd class="font-medium">{{ styleName }}</dd></div>
+            <div>
+              <dt class="text-xs text-ink-muted">{{ t('writer.simple.sumLength') }}</dt>
+              <dd class="font-medium">{{ t(`writer.simple.length.${f.length}`) }} · ~{{ words.toLocaleString('vi-VN') }} {{ t('writer.simple.words') }}<template v-if="f.auto_images"> · {{ t('writer.simple.withImages') }}</template></dd>
+            </div>
+            <div>
+              <dt class="text-xs text-ink-muted">{{ t('writer.simple.sumCost') }}</dt>
+              <dd class="font-medium">
+                {{ estimate.data.value ? `≈ ${formatUsd(estimate.data.value.estimated_cost_micro_usd)}` : '—' }}
+                <span class="text-xs font-normal text-ink-muted">{{ t('writer.simple.costMax', { max: formatUsd(usdToMicro(Number(f.budget_usd) || 0)) }) }}</span>
+              </dd>
+            </div>
+          </dl>
+          <div class="my-4 h-px bg-line" />
+          <p v-if="quota" class="mb-3 text-sm" :class="quota.remaining > 0 ? 'text-ink-muted' : 'text-danger-600'">
+            {{ t('writer.wizard.quota', { remaining: quota.remaining, limit: quota.limit }) }}
+          </p>
+          <AppButton type="submit" block class="py-3 text-base" :loading="submitting" :disabled="!canCreate" data-testid="wizard-create">✨ {{ t('writer.simple.start') }}</AppButton>
+          <p class="mt-2 text-center text-xs text-ink-muted">{{ t('writer.simple.startHelp') }}</p>
+        </AppCard>
+        <p class="rounded-lg bg-brand-50 px-3 py-2.5 text-sm text-brand-700">🛡️ {{ t('writer.simple.noFabrication') }}</p>
+      </aside>
+    </form>
   </div>
 </template>

@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\Writer\Http\Requests;
 
 use SiteXPost\Kernel\Http\Requests\ApiRequest;
 use SiteXPost\Modules\Writer\Actions\CreateArticle;
+use SiteXPost\Modules\Writer\Support\BuiltinStyles;
 
 /** Wizard input (manual topic or Phase 4 idea). */
 final class StoreArticleRequest extends ApiRequest
@@ -19,6 +20,8 @@ final class StoreArticleRequest extends ApiRequest
             'content_idea_id' => $ulid,
             'campaign_id' => $ulid,
             'writing_preset_id' => $ulid,
+            // Ready-made style (v1.0.9); used when no preset style is applied.
+            'builtin_style' => ['nullable', 'string', 'in:'.implode(',', BuiltinStyles::KEYS)],
             'topic' => ['required_without:content_idea_id', 'nullable', 'string', 'min:5', 'max:300'],
             'title' => ['nullable', 'string', 'min:5', 'max:300'],
             'primary_keyword' => ['nullable', 'string', 'min:2', 'max:190'],
@@ -43,6 +46,8 @@ final class StoreArticleRequest extends ApiRequest
             'cta' => ['nullable', 'string', 'max:500'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'ai_source_discovery' => ['nullable', 'boolean'],
+            // Per-article "add illustrations" switch (null = preset / platform default).
+            'auto_images' => ['nullable', 'boolean'],
             'allow_web_search' => ['nullable', 'boolean'],
             'ai_review_notes' => ['nullable', 'boolean'],
             'review_mode' => ['nullable', 'in:step_by_step,brief_only,final_only'],

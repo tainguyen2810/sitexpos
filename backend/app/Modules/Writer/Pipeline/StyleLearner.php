@@ -28,7 +28,7 @@ use SiteXPost\Modules\Writer\Retrieval\PageExtractor;
  */
 class StyleLearner
 {
-    public const MIN_SAMPLES = 2;
+    public const MIN_SAMPLES = 1;
 
     public const MAX_SAMPLES = 20;
 
@@ -87,7 +87,7 @@ class StyleLearner
         if ($itemIds !== [] && $siteId !== null && ($site = $this->sites->find($siteId)) !== null) {
             $host = self::host($site['url']);
             $wanted = array_flip($itemIds);
-            foreach ($this->sites->content($siteId, ['post', 'page']) as $item) {
+            foreach ($this->sites->content($siteId, ['post', 'page', 'product']) as $item) {
                 if (! isset($wanted[$item['id']])) {
                     continue;
                 }

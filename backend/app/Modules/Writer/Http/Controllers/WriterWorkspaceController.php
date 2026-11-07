@@ -18,6 +18,7 @@ use SiteXPost\Modules\Writer\Domain\Article;
 use SiteXPost\Modules\Writer\Domain\ArticleAiUsage;
 use SiteXPost\Modules\Writer\Domain\ArticleWorkflowRun;
 use SiteXPost\Modules\Writer\Http\WriterPresenter;
+use SiteXPost\Modules\Writer\Support\BuiltinStyles;
 use SiteXPost\Modules\Writer\Support\WriterQuota;
 use SiteXPost\Modules\Writer\Support\WriterSettings;
 
@@ -53,6 +54,7 @@ final class WriterWorkspaceController
         return new JsonResponse(['data' => [
             'content_types' => CreateArticle::CONTENT_TYPES,
             'review_modes' => ['step_by_step', 'brief_only', 'final_only'],
+            'builtin_styles' => BuiltinStyles::KEYS,
             'depths' => ['basic', 'standard', 'deep'],
             'limits' => [
                 'default_article_budget_micro_usd' => $settings->int('default_article_budget_micro_usd', $ws),

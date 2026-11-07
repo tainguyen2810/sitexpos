@@ -45,12 +45,44 @@ final class SiteDataController
         if (is_string($type) && in_array($type, ['post', 'page', 'product'], true)) {
             $query->where('post_type', $type);
         }
+        $status = $request->input('filter.status');
+        if (is_string($status) && in_array($status, ['publish', 'draft', 'pending', 'private', 'future'], true)) {
+            $query->where('status', $status);
+        }
+        // v1.0.9 "learn style from a category / an author": WordPress term id and author id.
+        $term = $request->input('filter.term');
+        if (is_scalar($term) && ctype_digit((string) $term) && (int) $term > 0) {
+            $query->whereJsonContains('term_ids', (int) $term);
+        }
+        $author = $request->input('filter.author');
+        if (is_scalar($author) && ctype_digit((string) $author) && (int) $author > 0) {
+            $query->where('author_wp_id', (int) $author);
+        }
         $q = $request->query('q');
         if (is_string($q) && trim($q) !== '') {
             $query->where('title', 'like', '%'.addcslashes(mb_substr(trim($q), 0, 100), '%_\\').'%');
         }
 
         return Paginated::response($query->orderByDesc('modified_at')->orderByDesc('id'), SiteContentItemResource::class, $request);
+    }
+
+    /**
+     * Authors of the site's published posts with their post count (from the synced index).
+     */
+    public function authors(Workspace $workspace, Site $site): JsonResponse
+    {
+        Gate::authorize('view', $site);
+
+        $rows = SiteContentItem::query()->where('site_id', $site->id)->where('post_type', 'post')->where('status', 'publish')
+            ->whereNotNull('author_wp_id')
+            ->selectRaw('author_wp_id, MAX(author_name) as author_name, COUNT(*) as posts')
+            ->groupBy('author_wp_id')->orderByDesc('posts')->limit(200)->get();
+
+        return new JsonResponse(['data' => $rows->map(fn (SiteContentItem $r): array => [
+            'wp_author_id' => (int) $r->author_wp_id,
+            'name' => (string) $r->author_name,
+            'posts' => (int) $r->getAttribute('posts'),
+        ])->values()->all()]);
     }
 
     public function logs(Request $request, Workspace $workspace, Site $site): JsonResponse

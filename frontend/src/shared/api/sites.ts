@@ -52,8 +52,24 @@ export interface SiteContentItem {
   excerpt: string
   product: { sku?: string; price?: string; regular_price?: string; sale_price?: string; currency?: string; stock_status?: string } | null
   is_managed: boolean
+  term_ids?: number[]
+  author_wp_id?: number | null
+  author_name?: string | null
   published_at: string | null
   modified_at: string | null
+}
+
+/** A post author of a synced site (plugin ≥ 1.2.0). */
+export interface SiteAuthor { wp_author_id: number; name: string; posts: number }
+
+export type SiteContentQuery = {
+  cursor?: string | null
+  per_page?: number
+  'filter[post_type]'?: string
+  'filter[status]'?: string
+  'filter[term]'?: number
+  'filter[author]'?: number
+  q?: string
 }
 
 export interface SiteActivityLog {
@@ -108,8 +124,9 @@ export const siteApi = {
   revoke: (ws: string, site: string) => api.post<Envelope<Site> & { meta: { plugin_notified: boolean } }>(`${S(ws, site)}/revoke`),
 
   taxonomies: (ws: string, site: string) => api.get<Envelope<SiteTaxonomy[]>>(`${S(ws, site)}/taxonomies`).then((r) => r.data),
-  content: (ws: string, site: string, query: { cursor?: string | null; 'filter[post_type]'?: string; q?: string }) =>
+  content: (ws: string, site: string, query: SiteContentQuery) =>
     api.get<Paginated<SiteContentItem>>(`${S(ws, site)}/content`, { query }),
+  authors: (ws: string, site: string) => api.get<Envelope<SiteAuthor[]>>(`${S(ws, site)}/authors`).then((r) => r.data),
   logs: (ws: string, site: string, query: { cursor?: string | null; 'filter[level]'?: string }) =>
     api.get<Paginated<SiteActivityLog>>(`${S(ws, site)}/logs`, { query }),
   healthChecks: (ws: string, site: string) => api.get<Envelope<SiteHealthCheck[]>>(`${S(ws, site)}/health-checks`).then((r) => r.data),

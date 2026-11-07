@@ -23,6 +23,14 @@
 - Chi phí đi qua AI Gateway (ngân sách workspace/toàn hệ thống, ghi `ai_requests`). Không retry lời gọi tốn phí.
 - Quyền: `operate` trên preset (viewer bị 403); route có `sitex.verified` + `throttle:writer-ai`.
 
+### 1.1. Giao diện tối giản & văn phong dựng sẵn (v1.0.9)
+
+- **Viết bài mới** (`/writer/new`) chỉ còn 3 câu hỏi: chủ đề, văn phong, độ dài (Ngắn 800 / Vừa 1.500 / Dài 2.500 chữ), 3 công tắc (ảnh minh họa, tìm trên Internet, link bài cũ) và phần **Tùy chỉnh thêm** đóng sẵn. Bỏ trống thì AI tự quyết. Chế độ duyệt mặc định đổi thành `final_only` ("Chỉ duyệt bài cuối"); API vẫn nhận đủ tham số cũ.
+- **Văn phong** (`/writer/presets`): "Văn phong của bạn" (preset) và "Văn phong dựng sẵn". 7 kiểu dựng sẵn (`Writer/Support/BuiltinStyles`: friendly, expert, step_by_step, sales, storytelling, news, formal) là hồ sơ văn phong cùng dạng với hồ sơ đã học. Bài chọn kiểu dựng sẵn gửi `builtin_style` (lưu `settings.builtin_style`); `ArticleContext::brandVoice()` dùng hồ sơ của preset nếu preset đã có văn phong, nếu không thì dùng kiểu dựng sẵn. **Tạo bản riêng** = `POST presets` với `from_builtin` (sao chép hồ sơ, `style_sources.origin = {type: builtin}`).
+- **Dạy AI văn phong mới** (3 bước): nguồn → chọn bài → xem kết quả & lưu. Nguồn: một bài, một danh mục, một tác giả, toàn bộ blog, sản phẩm, dán văn bản. Giao diện tự chọn bài (mới nhất trước) bằng `GET sites/{site}/content?filter[term]=|filter[author]=|filter[status]=publish`, người dùng bỏ chọn được; vẫn gửi `content_item_ids` như cũ kèm `origin {type, label}` (lưu `style_sources.origin`, hiển thị trên thẻ). Tối thiểu **1** bài (`StyleLearner::MIN_SAMPLES`), tối đa 20; sản phẩm được tính là bài của website.
+- **Tác giả:** plugin 1.2.0 gửi `author {id, name}` (chỉ tên hiển thị công khai) khi đồng bộ; Cloud lưu `site_content_items.author_wp_id/author_name` và có `GET sites/{site}/authors`. Website dùng plugin cũ: danh sách tác giả trống và giao diện nhắc cập nhật plugin rồi đồng bộ lại.
+- Công tắc ảnh theo từng bài: `auto_images` (bool) trong `settings` thắng mặc định của preset/hệ thống (`DraftWorkflow::imageTarget`).
+
 ## 2. Tự thêm ảnh (tối thiểu N ảnh mỗi bài)
 
 **Lựa chọn của chủ dự án:** ưu tiên ảnh thư viện, thiếu thì tạo ảnh AI.
