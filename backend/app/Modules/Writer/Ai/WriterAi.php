@@ -213,15 +213,15 @@ class WriterAi
         return $this->caller->call($a, 'discover', self::TASK_DISCOVERY, $p, self::discoverySchema(), 'source_candidates', $key, $run, 1500, self::SYSTEM, $webSearch);
     }
 
-    /**
-     * @param  list<string>  $questions
-     */
     /** A web-search capable model is routed for source discovery. */
     public function canSearch(): bool
     {
         return $this->caller->canWebSearch(self::TASK_DISCOVERY);
     }
 
+    /**
+     * @param  list<string>  $questions
+     */
     public function source(Article $a, array $questions, string $url, string $text, string $key, ?string $run): AiResult
     {
         $p = 'Đọc nội dung nguồn dưới đây và trích ra các đoạn bằng chứng trả lời các câu hỏi nghiên cứu. '
