@@ -38,6 +38,11 @@ const sourceOptions = computed(() => [{ value: '', label: t('writer.research.all
   .filter((s) => s.retrieval_status === 'fetched').map((s) => ({ value: s.id, label: (s.title ?? s.url).slice(0, 60) }))])
 const relTone = (n: number | null) => (n === null ? 'neutral' : n >= 75 ? 'success' : n >= 55 ? 'warning' : 'danger') as 'neutral' | 'success' | 'warning' | 'danger'
 const tr = (prefix: string, v: string) => (te(`${prefix}.${v}`) ? t(`${prefix}.${v}`) : v)
+const warningText = (w: string) => {
+  const [code, detail] = w.split(':')
+  const k = `writer.research.warning.${code}`
+  return te(k) ? t(k) + (detail ? ` (${detail})` : '') : w
+}
 const hostOf = (u: string) => {
   try {
     return new URL(u).host
@@ -60,7 +65,7 @@ const hostOf = (u: string) => {
     </div>
     <p v-if="!dossier.data.value.retrieval_available" class="rounded-lg bg-danger-50 px-4 py-3 text-sm text-danger-600" role="alert">{{ t('writer.research.retrievalOff') }}</p>
     <ul v-if="dossier.data.value.warnings.length" class="rounded-lg bg-warning-50 px-4 py-3 text-sm text-warning-600">
-      <li v-for="w in dossier.data.value.warnings" :key="w">{{ w }}</li>
+      <li v-for="w in dossier.data.value.warnings" :key="w">{{ warningText(w) }}</li>
     </ul>
 
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.4fr]">

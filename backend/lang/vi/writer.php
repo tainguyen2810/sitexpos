@@ -10,6 +10,7 @@ return [
         'discover' => 'Tìm nguồn',
         'retrieve' => 'Truy xuất nguồn',
         'extract' => 'Trích xuất bằng chứng',
+        'lookup' => 'Tự tra cứu thêm nguồn',
         'dossier' => 'Tổng hợp hồ sơ nghiên cứu',
         'brief' => 'Lập Content Brief',
         'handoff' => 'Chuyển bước',
@@ -22,6 +23,18 @@ return [
         'quality' => 'Đánh giá chất lượng',
         'finalize' => 'Hoàn tất',
         'rewrite' => 'AI viết lại',
+    ],
+
+    'shortfall' => [
+        'summary' => 'Chưa đủ nguồn để viết bài có nội dung thật: tìm được :sources nguồn ứng viên, tải được :fetched, trích được :evidence đoạn bằng chứng (cần ít nhất :min). Hệ thống dừng ở đây thay vì viết một bài toàn câu "cần xác minh".',
+        'failed' => ':n nguồn không tải được (trang không tồn tại, bị chặn hoặc cần đăng nhập) — xem tab Nghiên cứu.',
+        'retrieval_off' => 'Truy xuất nguồn đang bị tắt trong cấu hình hệ thống (Super Admin).',
+        'discovery_off' => 'Bài này đã tắt "AI tìm nguồn".',
+        'search_disabled' => 'Tìm kiếm web đang bị tắt trong cài đặt AI Writer (Super Admin › AI Writer › "Cho phép AI tìm nguồn trên web").',
+        'search_off' => 'Bài này chưa bật "Tìm kiếm web", nên AI chỉ đoán URL theo trí nhớ và phần lớn không tải được.',
+        'search_unavailable' => 'Đã bật "Tìm kiếm web" nhưng mô hình gán cho tác vụ writer.source_discovery không hỗ trợ tìm kiếm web (DeepSeek không có). Super Admin cần gán một mô hình có tìm kiếm web (Gemini, OpenAI hoặc Claude) cho tác vụ này.',
+        'add_urls' => 'Cách nhanh nhất: dán 3–5 URL tài liệu chính thức hoặc bài uy tín vào "Nguồn tham khảo" rồi bấm "Nghiên cứu lại".',
+        'add_more_urls' => 'Bài đã có :n URL do bạn nhập; hãy thêm URL khác (trang tài liệu cụ thể, không phải trang chủ) rồi bấm "Nghiên cứu lại".',
     ],
 
     'errors' => [
@@ -57,6 +70,7 @@ return [
         'invalid_verdict' => 'Kết luận không hợp lệ.',
         'manual_needs_evidence' => 'Cần chọn ít nhất một bằng chứng hoặc nhập URL nguồn đã kiểm tra.',
         'no_content' => 'Bài viết chưa có nội dung.',
+        'insufficient_evidence' => 'Chưa đủ nguồn để viết bài. Hãy bổ sung URL nguồn hoặc bật tìm kiếm web rồi nghiên cứu lại.',
         'not_editable' => 'Bài viết chưa thể chỉnh sửa ở trạng thái này.',
         'not_reviewable' => 'Bài viết chưa ở bước duyệt.',
         'nothing_to_cancel' => 'Không có tác vụ AI nào đang chạy.',

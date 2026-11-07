@@ -113,6 +113,24 @@ class AiCaller
         return $max;
     }
 
+    /**
+     * Whether a call with web search can be routed for this task: the route
+     * is on and at least one enabled model of an enabled provider on it
+     * declares the `web_search` capability (otherwise the gateway would
+     * reject the call with no_model_available).
+     */
+    public function canWebSearch(string $taskKey): bool
+    {
+        $route = AiTaskRoute::query()->where('task_key', $taskKey)->where('is_enabled', true)->first();
+        if ($route === null) {
+            return false;
+        }
+        $ids = array_values(array_filter([$route->primary_model_id, $route->economy_model_id, ...($route->fallback_model_ids ?? [])], 'is_string'));
+
+        return AiModel::query()->with('provider')->whereIn('id', $ids)->where('is_enabled', true)->get()
+            ->contains(fn (AiModel $m) => $m->provider !== null && $m->provider->is_enabled && $m->supports('web_search'));
+    }
+
     private function open(Article $article, string $step, string $taskKey, string $callKey, ?string $runId, int $estimate): ArticleAiUsage
     {
         $existing = ArticleAiUsage::query()->where('call_key', $callKey)->first();

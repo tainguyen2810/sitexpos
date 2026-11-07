@@ -140,6 +140,13 @@ class ArticleWorkflows
         if ($article->remainingBudget() <= 0) {
             throw ApiException::conflict('article_budget_exhausted', __('writer.errors.budget_exhausted_short'));
         }
+        if ($article->blocked_reason === 'insufficient_evidence' && $article->status === ArticleStatus::ResearchComplete) {
+            // Retrying the stopped run would only re-count the same dossier:
+            // research again (picks up newly added URLs / web search).
+            Audit::record('writer.workflow_resumed', $article, ['kind' => 'research']);
+
+            return $this->start($article, 'research', $userId);
+        }
         if ($article->status === ArticleStatus::Failed && $article->status_before_failure !== null) {
             $this->machine->transition($article, ArticleStatus::from($article->status_before_failure), ['last_error_code' => null, 'last_error_message' => null]);
         }

@@ -16,6 +16,7 @@ use SiteXPost\Modules\Writer\Domain\ContentBrief;
 use SiteXPost\Modules\Writer\Domain\EvidenceItem;
 use SiteXPost\Modules\Writer\Support\ArticleDocument;
 use SiteXPost\Modules\Writer\Support\HtmlSanitizer;
+use SiteXPost\Modules\Writer\Support\PlaceholderDetector;
 
 /**
  * Writes the article section by section (smaller prompts, precise retry):
@@ -79,7 +80,26 @@ class SectionWriter
                 throw $e;
             }
             $json = is_array($res->json) ? $res->json : [];
+            $cost = $res->costMicroUsd;
+            $placeholder = PlaceholderDetector::scan((string) ($json['html'] ?? ''));
+            if ($placeholder['hollow']) {
+                // "Cần xác minh" cells / talk about missing sources: one rewrite
+                // with the reason, under its own call key (counted separately).
+                try {
+                    $fix = $this->ai->section($a, $ctx + ['fix_placeholder' => $placeholder['phrases'] ?: ['placeholder_cells']], $key.':'.$s['key'].':fix', $run, $maxOut);
+                    $fixed = is_array($fix->json) ? $fix->json : [];
+                    $cost += $fix->costMicroUsd;
+                    if (trim(strip_tags((string) ($fixed['html'] ?? ''))) !== '') {
+                        [$res, $json] = [$fix, $fixed];
+                    }
+                } catch (AiGatewayException|BudgetBlocked) {
+                    // keep the first answer; the approval gate still blocks placeholder text
+                }
+            }
             [$html, $refs, $notes] = $this->citations((string) ($json['html'] ?? ''), $dossierId);
+            if (PlaceholderDetector::scan($html)['hollow']) {
+                $notes[] = 'placeholder_content';
+            }
             $html = (string) preg_replace('#^\s*<h2\b[^>]*>.*?</h2>#is', '', $html);
             $clean = $this->versions->sanitize($a, $html, [...$sectionLinks, ...array_column($links, 'url')]);
             foreach ($clean['violations'] as $v) {
@@ -92,7 +112,7 @@ class SectionWriter
             }
             $row->forceFill([
                 'status' => 'done', 'content_html' => $clean['html'], 'word_count' => HtmlSanitizer::wordCount($clean['html']),
-                'citations' => $refs, 'notes' => array_slice($notes, 0, 20), 'model' => $res->modelKey, 'cost_micro_usd' => $row->cost_micro_usd + $res->costMicroUsd,
+                'citations' => $refs, 'notes' => array_slice($notes, 0, 20), 'model' => $res->modelKey, 'cost_micro_usd' => $row->cost_micro_usd + $cost,
             ])->save();
             $written++;
         }

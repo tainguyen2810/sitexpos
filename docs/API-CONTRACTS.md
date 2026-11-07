@@ -268,7 +268,7 @@ Tiền tố `/api/v1/workspaces/{ws}/writer`. Danh sách dùng envelope cursor `
 | POST | `/batches/{b}/pause` · `/resume` · `/cancel` · `/retry` | |
 | GET | `/articles?q=&status=&content_type=&site_id=&campaign_id=&needs_review=&sort=&direction=` | `q` tìm theo tiêu đề |
 | POST | `/articles` | Tạo từ wizard (10 `content_type`, `review_mode: step_by_step\|brief_only\|final_only`, `approval_mode: manual\|auto` (auto cần Super Admin bật), `research_depth`, `budget_limit_micro_usd`…) |
-| GET · PATCH | `/articles/{a}` | PATCH: `title`, `review_mode`, `approval_mode`, `budget_limit_micro_usd`, `writing_preset_id` (không sửa được status/nội dung/chi phí qua đây) |
+| GET · PATCH | `/articles/{a}` | PATCH: `title`, `review_mode`, `approval_mode`, `budget_limit_micro_usd`, `writing_preset_id`; v1.0.6: `source_urls[]` (≤ 20), `allow_web_search`, `ai_source_discovery` — dùng cho lần nghiên cứu sau (không sửa được status/nội dung/chi phí qua đây) |
 | POST | `/articles/{a}/cancel` | |
 | GET · POST | `/articles/{a}/workflows` | POST `{kind: research\|outline\|draft\|recheck}`; 429 `writer_concurrency_limit` khi vượt giới hạn đồng thời |
 | POST | `/articles/{a}/workflows/resume` · `/workflows/cancel` | Resume sau FAILED/hết ngân sách |

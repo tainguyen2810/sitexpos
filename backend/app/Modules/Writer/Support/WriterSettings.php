@@ -28,6 +28,12 @@ final class WriterSettings
         'max_sources_deep' => 20,
         'source_cache_hours' => 72,
         'max_source_chars_for_ai' => 9000,
+        // Below this many verbatim evidence excerpts the research stops with
+        // "insufficient_evidence" instead of writing a hollow article (0 = off).
+        'min_evidence_items' => 3,
+        // Let the AI search the web for sources (discovery + follow-up lookup).
+        // Per article it is still the article's own "allow_web_search" choice.
+        'web_search_enabled' => true,
         // Fact-check & revision policy
         'max_revision_rounds' => 2,
         'high_risk_min_reliability' => 60,
@@ -46,7 +52,7 @@ final class WriterSettings
     /** Keys a per-workspace override may change. */
     public const WORKSPACE_KEYS = ['max_articles_per_month', 'max_concurrent_workflows', 'max_batch_size', 'max_batch_concurrency',
         'default_article_budget_micro_usd', 'max_article_budget_micro_usd', 'autonomous_enabled', 'autonomous_articles_per_day',
-        'auto_approve_enabled', 'auto_approve_min_quality'];
+        'auto_approve_enabled', 'auto_approve_min_quality', 'web_search_enabled'];
 
     /** @var array<string, array<string, mixed>> */
     private array $cache = [];

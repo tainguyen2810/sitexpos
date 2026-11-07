@@ -9,7 +9,7 @@ export default {
     max_batch_concurrency: 'Max parallel in a batch', default_article_budget_micro_usd: 'Default budget per article', max_article_budget_micro_usd: 'Max budget per article',
     autonomous_enabled: 'Enable autonomous mode', autonomous_articles_per_day: 'Autonomous articles / day', max_sources_basic: 'Max sources (basic)',
     max_sources_standard: 'Max sources (standard)', max_sources_deep: 'Max sources (deep)', source_cache_hours: 'Source cache (hours)',
-    max_source_chars_for_ai: 'Max source characters sent to AI', max_revision_rounds: 'Max auto-revision rounds',
+    max_source_chars_for_ai: 'Max source characters sent to AI', min_evidence_items: 'Minimum evidence to write (0 = off)', web_search_enabled: 'Let the AI search the web for sources (needs a web-search model, extra cost per search)', max_revision_rounds: 'Max auto-revision rounds',
     high_risk_min_reliability: 'Min reliability for high-risk claims', outdated_after_months: 'Outdated after (months)',
     min_quality_score_for_approval: 'Min quality score to approve', require_ack_for_high_risk: 'Require acknowledgement for HIGH claims',
     auto_approve_enabled: 'Allow auto-approval (customer opts in per article)', auto_approve_min_quality: 'Min quality score for auto-approval',

@@ -2,7 +2,7 @@
 import { computed, ref, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { BUSY_STATUSES, formatUsd, isActiveWorkflow, nextTab, usdToMicro, writerApi, type ArticleDetail } from '@/shared/api/writer'
+import { BUSY_STATUSES, formatUsd, idempotencyKey, isActiveWorkflow, nextTab, usdToMicro, writerApi, type ArticleDetail } from '@/shared/api/writer'
 import { formatDateTime } from '@/shared/utils/format'
 import AppCard from '@/shared/ui/AppCard.vue'
 import AppButton from '@/shared/ui/AppButton.vue'
@@ -14,6 +14,7 @@ import ErrorState from '@/shared/ui/ErrorState.vue'
 import PageHeader from '@/shared/ui/PageHeader.vue'
 import ProgressBar from '@/shared/ui/ProgressBar.vue'
 import Tabs from '@/shared/ui/Tabs.vue'
+import AddSourcesForm from './components/AddSourcesForm.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import WorkflowProgress from './components/WorkflowProgress.vue'
 import OverviewTab from './tabs/OverviewTab.vue'
@@ -83,6 +84,13 @@ async function act(fn: () => Promise<unknown>, done?: string) {
 const resume = () => act(() => writerApi.resume(workspaceId.value, articleId))
 const cancelWorkflow = () => act(() => writerApi.cancelWorkflow(workspaceId.value, articleId))
 
+// Research stopped for lack of evidence: add URLs / web search, research again.
+const needsSources = computed(() => article.value?.blocked_reason === 'insufficient_evidence')
+const researchAgain = (p: { source_urls: string[]; allow_web_search: boolean }) => act(async () => {
+  await writerApi.update(workspaceId.value, articleId, { ...p, ai_source_discovery: true })
+  await writerApi.start(workspaceId.value, articleId, 'research', {}, idempotencyKey())
+})
+
 const budgetOpen = ref(false)
 const budgetUsd = ref('')
 function openBudget() {
@@ -116,12 +124,14 @@ async function saveBudget() {
           </p>
           <p v-if="article.blocked_reason" class="mt-3 rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">
             {{ t(`writer.blocked.${article.blocked_reason}`, article.blocked_reason) }}
+            <span v-if="needsSources && article.last_error?.message" class="mt-1 block" data-testid="shortfall">{{ article.last_error.message }}</span>
           </p>
+          <AddSourcesForm v-if="needsSources && canEdit" :settings="article.settings" :loading="acting" @submit="researchAgain" />
           <p v-if="article.status === 'FAILED' && article.last_error" class="mt-3 rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">
             {{ t('writer.article.lastError') }}: {{ article.last_error.message || article.last_error.code }}
           </p>
           <div v-if="canEdit" class="mt-3 flex flex-wrap gap-2">
-            <AppButton v-if="article.status === 'FAILED' || article.blocked_reason" size="sm" :loading="acting" @click="resume">{{ t('writer.article.resume') }}</AppButton>
+            <AppButton v-if="article.status === 'FAILED' || (article.blocked_reason && !needsSources)" size="sm" :loading="acting" @click="resume">{{ t('writer.article.resume') }}</AppButton>
             <AppButton v-if="isActiveWorkflow(article.workflow)" size="sm" variant="secondary" :loading="acting" @click="cancelWorkflow">{{ t('writer.article.cancelWorkflow') }}</AppButton>
           </div>
         </AppCard>

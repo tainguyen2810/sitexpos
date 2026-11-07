@@ -42,7 +42,8 @@ Chặn duyệt khi:
 - có section đã sửa nhưng chưa kiểm chứng lại;
 - chưa chạy đánh giá chất lượng cho phiên bản hiện tại, hoặc điểm < `min_quality_score_for_approval` (50);
 - kiểm tra trùng lặp đề xuất loại và người dùng chưa chọn quyết định;
-- còn claim **HIGH** chưa xác minh và chưa xác nhận (`acknowledge_high_risk`) khi `require_ack_for_high_risk` bật.
+- còn claim **HIGH** chưa xác minh và chưa xác nhận (`acknowledge_high_risk`) khi `require_ack_for_high_risk` bật;
+- phiên bản hiện tại còn nội dung giữ chỗ (`placeholder_content`, v1.0.6): ≥ 2 ô bảng kiểu "Cần xác minh" hoặc ≥ 2 câu nói về việc thiếu nguồn. Viết thận trọng là bỏ ý không có bằng chứng, không phải thay nó bằng "cần xác minh".
 
 Cảnh báo (không chặn): claim `INSUFFICIENT_EVIDENCE`/`PENDING` mức thấp hơn.
 

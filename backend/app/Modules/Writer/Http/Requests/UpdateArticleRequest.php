@@ -17,6 +17,11 @@ final class UpdateArticleRequest extends ApiRequest
             'approval_mode' => ['sometimes', 'in:manual,auto'],
             'budget_limit_micro_usd' => ['sometimes', 'integer', 'min:50000'],
             'writing_preset_id' => ['sometimes', 'nullable', 'string', 'regex:/^[0-9a-z]{26}$/i'],
+            // Research settings: used by the next research run.
+            'source_urls' => ['sometimes', 'array', 'max:20'],
+            'source_urls.*' => ['string', 'max:1000', 'url:http,https'],
+            'allow_web_search' => ['sometimes', 'boolean'],
+            'ai_source_discovery' => ['sometimes', 'boolean'],
             'status' => ['prohibited'],
             'spent_micro_usd' => ['prohibited'],
             'approved_by' => ['prohibited'],
