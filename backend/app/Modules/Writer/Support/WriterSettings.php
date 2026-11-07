@@ -34,9 +34,18 @@ final class WriterSettings
         // Let the AI search the web for sources (discovery + follow-up lookup).
         // Per article it is still the article's own "allow_web_search" choice.
         'web_search_enabled' => true,
+        // Real Google top results (DataForSEO, configured in Admin → Research)
+        // as extra source candidates. Skipped silently when not configured.
+        'serp_discovery_enabled' => true,
+        'serp_results' => 10,
+        // Platform-wide source block list (domains; subdomains included).
+        'blocked_source_domains' => [],
         // Fact-check & revision policy
         'max_revision_rounds' => 2,
         'high_risk_min_reliability' => 60,
+        // HIGH/CRITICAL claims need this many different websites agreeing,
+        // unless one source is official (manufacturer / regulator). 1 = off.
+        'high_risk_min_independent_sources' => 2,
         'outdated_after_months' => 24,
         // Approval policy
         'min_quality_score_for_approval' => 50,

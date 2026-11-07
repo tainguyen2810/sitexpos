@@ -4,6 +4,12 @@ Format: `## [version] - YYYY-MM-DD`, one bullet per change. The Upgrade Wizard
 shows the sections between the installed version and the deployed code.
 Bump `config/sitex.php` → `version` together with this file.
 
+## [1.0.11] - 2026-11-07
+- **Trusted sources (AI Writer → Nguồn tin cậy):** each workspace lists preferred and blocked websites. Blocked sites are never fetched or used as evidence (also after redirects, and also when pasted by the user); preferred sites are suggested to the AI first and get +15 reliability. Owners/admins edit; everyone can see. New table `writer_source_rules` (additive migration), API `GET/POST/DELETE writer/source-rules`.
+- **Platform block list** for the Super Admin (Admin → AI Writer → Settings), applied to every workspace.
+- **Google top 10 as source candidates:** when DataForSEO is configured in Admin → Research, research also takes the Google organic top 10 for the main keyword (ads and the customer's own site skipped). Candidates only — every page is still filtered, fetched, scored and checked word for word. Without a key it is skipped and the AI searches on its own as before. Setting `serp_discovery_enabled` / `serp_results`.
+- **Two independent sources for important facts:** a HIGH/CRITICAL claim is "verified" only when 2 different websites support it, or one official source (manufacturer, government). Otherwise it is marked "needs review". Setting `high_risk_min_independent_sources` (1 = off).
+
 ## [1.0.10] - 2026-11-07
 - **New look for both apps** (customer and admin), matching the approved demo design. No API or database change.
 - **App shell:** grouped side menu (Nội dung · Tối ưu & đăng bài · Website · Tài khoản; admin: Khách hàng · AI · Phân hệ · Vận hành) with live badges (articles awaiting review, failed publishes + conflicts, agent proposals, broken sites); search box for pages and articles (Ctrl+K); a bell listing what needs you; "Viết bài mới" button always visible; remaining credits in the sidebar; floating "Viết bài" button on mobile.

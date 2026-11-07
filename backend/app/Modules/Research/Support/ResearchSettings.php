@@ -24,7 +24,7 @@ final class ResearchSettings
         'competitor_crawl' => ['label' => 'Thu thập trang công khai của đối thủ', 'requires_credentials' => false, 'default_enabled' => true],
         'search_console' => ['label' => 'Google Search Console (OAuth)', 'requires_credentials' => true, 'default_enabled' => true],
         'ai_expansion' => ['label' => 'AI mở rộng chủ đề ngành (qua AI Gateway)', 'requires_credentials' => false, 'default_enabled' => true],
-        'dataforseo' => ['label' => 'DataForSEO (search volume, độ khó, gợi ý từ khóa)', 'requires_credentials' => true, 'default_enabled' => false],
+        'dataforseo' => ['label' => 'DataForSEO (search volume, độ khó, gợi ý từ khóa, top 10 Google cho AI Writer)', 'requires_credentials' => true, 'default_enabled' => false],
         'evidence_fetch' => ['label' => 'Truy xuất nguồn bằng chứng cho AI Writer (Phase 5)', 'requires_credentials' => false, 'default_enabled' => true],
         'google_trends' => ['label' => 'Google Trends (chỉ qua API chính thức được cấp quyền)', 'requires_credentials' => true, 'default_enabled' => false],
     ];

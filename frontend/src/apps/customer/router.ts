@@ -43,6 +43,7 @@ export const router = createRouter({
             { path: 'writer/new', name: 'writer-new', component: () => import('./pages/writer/WizardPage.vue') },
             { path: 'writer/bulk', name: 'writer-bulk', component: () => import('./pages/writer/BulkPage.vue') },
             { path: 'writer/presets', name: 'writer-presets', component: () => import('./pages/writer/PresetsPage.vue') },
+            { path: 'writer/sources', name: 'writer-sources', component: () => import('./pages/writer/SourcesPage.vue') },
             { path: 'writer/history', name: 'writer-history', component: () => import('./pages/writer/HistoryPage.vue') },
             { path: 'writer/articles/:articleId/:tab?', name: 'writer-article', component: () => import('./pages/writer/ArticlePage.vue') },
             { path: 'media', name: 'media', component: () => import('./pages/phase6/MediaStudioPage.vue') },

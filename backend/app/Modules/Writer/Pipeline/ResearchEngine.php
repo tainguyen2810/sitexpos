@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\Writer\Pipeline;
 
 use Illuminate\Support\Facades\DB;
 use SiteXPost\Modules\AiGateway\Gateway\AiGatewayException;
+use SiteXPost\Modules\Research\Contracts\SerpResults;
 use SiteXPost\Modules\Research\Support\ResearchSettings;
 use SiteXPost\Modules\Research\Support\Text;
 use SiteXPost\Modules\Writer\Ai\WriterAi;
@@ -16,6 +17,7 @@ use SiteXPost\Modules\Writer\Domain\EvidenceSource;
 use SiteXPost\Modules\Writer\Domain\ResearchDossier;
 use SiteXPost\Modules\Writer\Domain\ResearchQuestion;
 use SiteXPost\Modules\Writer\Retrieval\SourceRetriever;
+use SiteXPost\Modules\Writer\Support\SourceFilter;
 use SiteXPost\Modules\Writer\Support\Verbatim;
 use SiteXPost\Modules\Writer\Support\WriterSettings;
 
@@ -37,6 +39,8 @@ class ResearchEngine
         private readonly SourceRetriever $retriever,
         private readonly WriterSettings $settings,
         private readonly ResearchSettings $researchSettings,
+        private readonly SourceFilter $filter,
+        private readonly SerpResults $serp,
     ) {}
 
     public function dossierFor(Article $a): ResearchDossier
@@ -114,8 +118,9 @@ class ResearchEngine
     public function discover(Article $a, ResearchDossier $d, string $key, ?string $run): array
     {
         $max = $this->settings->maxSources($d->depth, $a->workspace_id);
-        $added = ['user' => 0, 'customer_site' => 0, 'ai_suggestion' => 0];
+        $added = ['user' => 0, 'customer_site' => 0, 'serp' => 0, 'ai_suggestion' => 0];
         $warnings = [];
+        $this->takeBlocked();
 
         foreach ((array) $a->setting('source_urls', []) as $u) {
             $url = is_array($u) ? (string) ($u['url'] ?? '') : (string) $u;
@@ -129,6 +134,7 @@ class ResearchEngine
                 $added['customer_site']++;
             }
         }
+        $added['serp'] = $this->serpCandidates($a, $d, $max, $warnings);
         $search = false;
         if ((bool) $a->setting('ai_source_discovery', true) && $this->count($d) < $max) {
             // Web search only when the article allows it AND a model on the
@@ -141,12 +147,69 @@ class ResearchEngine
             $questions = ResearchQuestion::query()->where('research_dossier_id', $d->id)->orderBy('position')->pluck('question')->all();
             $added['ai_suggestion'] += $this->suggest($a, $d, ['questions' => $questions], $key, $run, $search, $max, $warnings);
         }
+        if (($blocked = $this->takeBlocked()) > 0) {
+            $warnings[] = 'blocked_sources:'.$blocked;
+        }
         if ($this->count($d) === 0) {
             $warnings[] = 'no_source_candidates';
         }
         $this->warn($d, $warnings);
 
         return ['added' => $added, 'total' => $this->count($d), 'web_search' => $search, 'warnings' => $warnings];
+    }
+
+    /** Candidates dropped by the source filter during the current step. */
+    private int $blockedCount = 0;
+
+    /** Returns the blocked-candidate count of the current step and resets it. */
+    private function takeBlocked(): int
+    {
+        $n = $this->blockedCount;
+        $this->blockedCount = 0;
+
+        return $n;
+    }
+
+    /**
+     * Real Google top results for the primary keyword (DataForSEO, when the
+     * Super Admin configured it). Candidates only: each one is still
+     * filtered, fetched, scored and verified verbatim. The article's own
+     * website is skipped (it is already added as customer_site). Leaves
+     * room for at least 2 AI-found sources (this channel only runs when AI
+     * discovery is on).
+     *
+     * @param  list<string>  $warnings
+     */
+    private function serpCandidates(Article $a, ResearchDossier $d, int $max, array &$warnings): int
+    {
+        $ws = $a->workspace_id;
+        if (! (bool) $this->settings->get('serp_discovery_enabled', $ws) || ! (bool) $a->setting('ai_source_discovery', true) || ! $this->serp->available()) {
+            return 0;
+        }
+        $keyword = trim((string) ($a->primary_keyword ?: $a->title));
+        $res = $this->serp->top($keyword, (string) ($a->country ?: 'VN'), (string) ($a->language ?: 'vi'), max(1, min(10, $this->settings->int('serp_results', $ws))));
+        if ($res['error'] !== null) {
+            $warnings[] = 'serp_failed:'.$res['error'];
+
+            return 0;
+        }
+        $own = app(VersionManager::class)->siteHost($a);
+        $ownSite = $own !== null ? SourceFilter::site('https://'.$own) : null;
+        $limit = $max - 2;
+        $n = 0;
+        foreach ($res['results'] as $r) {
+            if ($this->count($d) >= $limit) {
+                break;
+            }
+            if ($ownSite !== null && SourceFilter::site($r['url']) === $ownSite) {
+                continue;
+            }
+            if ($this->add($d, $r['url'], 'serp', $limit)) {
+                $n++;
+            }
+        }
+
+        return $n;
     }
 
     /**
@@ -158,7 +221,9 @@ class ResearchEngine
      */
     private function suggest(Article $a, ResearchDossier $d, array $extra, string $key, ?string $run, bool $search, int $max, array &$warnings): int
     {
-        $ctx = ['topic' => $a->title, 'primary_keyword' => $a->primary_keyword, 'language' => $a->language, 'country' => $a->country] + $extra;
+        $lists = $this->filter->lists($a->workspace_id);
+        $ctx = ['topic' => $a->title, 'primary_keyword' => $a->primary_keyword, 'language' => $a->language, 'country' => $a->country] + $extra
+            + array_filter(['preferred_domains' => array_slice($lists['prefer'], 0, 30), 'blocked_domains' => array_slice($lists['block'], 0, 50)]);
         try {
             $res = $this->ai->discovery($a, $ctx, $key, $run, $search);
         } catch (AiGatewayException $e) {
@@ -206,11 +271,15 @@ class ResearchEngine
         $open = ResearchQuestion::query()->where('research_dossier_id', $d->id)->whereNotIn('id', $answered)->orderBy('position')->pluck('question')->all();
         $tried = EvidenceSource::query()->where('research_dossier_id', $d->id)->pluck('url')->all();
         $warnings = [];
+        $this->takeBlocked();
         $max = $this->settings->maxSources($d->depth, $a->workspace_id) + 6;
         $added = $this->suggest($a, $d, ['questions' => $open !== [] ? $open : ResearchQuestion::query()->where('research_dossier_id', $d->id)->pluck('question')->all(),
             'already_tried_urls' => array_slice($tried, 0, 30),
             'note' => 'Vòng tìm thứ hai: các URL đã thử không cho đủ bằng chứng. Tìm trang KHÁC, cụ thể hơn (tài liệu chính thức, trang hỗ trợ, bài phân tích uy tín), không lặp lại URL đã thử.'],
             $key, $run, true, $max, $warnings);
+        if (($blocked = $this->takeBlocked()) > 0) {
+            $warnings[] = 'blocked_sources:'.$blocked;
+        }
         $retrieved = $added > 0 ? $this->retrieve($a, $d) : ['fetches' => 0];
         $extracted = $added > 0 ? $this->extract($a, $d, $key.':x', $run) : ['evidence' => 0];
         $this->warn($d, $warnings);
@@ -237,6 +306,18 @@ class ResearchEngine
         }
         $hash = SourceRetriever::hashUrl($url);
         if (EvidenceSource::query()->where('research_dossier_id', $d->id)->where('url_hash', $hash)->exists()) {
+            return false;
+        }
+        if ($this->filter->blocked($d->workspace_id, $url)) {
+            // A URL the user typed is kept (marked blocked) so they see why
+            // it was not used; found candidates are simply dropped.
+            if ($via === 'user') {
+                $s = new EvidenceSource;
+                $s->forceFill(['research_dossier_id' => $d->id, 'url' => $url, 'url_hash' => $hash, 'discovered_via' => $via, 'retrieval_status' => 'blocked_policy',
+                    'error_code' => 'source_blocked', 'source_type' => 'other'])->save();
+            }
+            $this->blockedCount++;
+
             return false;
         }
         $s = new EvidenceSource;

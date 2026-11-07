@@ -39,6 +39,8 @@ return [
 
     'errors' => [
         'already_current' => 'Phiên bản này đang là phiên bản hiện tại.',
+        'invalid_domain' => 'Tên miền không hợp lệ. Ví dụ đúng: example.com',
+        'too_many_source_rules' => 'Tối đa :max tên miền trong bộ lọc nguồn.',
         'approval_blocked' => 'Chưa thể duyệt bài: còn điều kiện bắt buộc chưa đạt.',
         'article_cancelled' => 'Bài viết đã bị hủy.',
         'batch_concurrency' => 'Số bài chạy song song phải từ 1 đến :max.',

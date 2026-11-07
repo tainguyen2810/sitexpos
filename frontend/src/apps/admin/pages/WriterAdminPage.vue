@@ -42,7 +42,7 @@ const label = (k: string) => (te(`writerAdmin.keys.${k}`) ? t(`writerAdmin.keys.
 const settings = useAsync(() => writerAdminApi.settings(), { immediate: false })
 const draft = reactive<Record<string, string | boolean>>({})
 function toDraft(values: WriterSettings, target: Record<string, string | boolean>) {
-  for (const [k, v] of Object.entries(values)) target[k] = typeof v === 'boolean' ? v : isMoneyKey(k) ? String(Number(v) / 1_000_000) : String(v)
+  for (const [k, v] of Object.entries(values)) if (!Array.isArray(v)) target[k] = typeof v === 'boolean' ? v : isMoneyKey(k) ? String(Number(v) / 1_000_000) : String(v)
 }
 function fromDraft(src: Record<string, string | boolean>, keys: readonly string[]): Partial<WriterSettings> {
   const out: Record<string, number | boolean> = {}
@@ -53,14 +53,21 @@ function fromDraft(src: Record<string, string | boolean>, keys: readonly string[
   }
   return out as Partial<WriterSettings>
 }
-watch(() => settings.data.value, (d) => d && toDraft(d.values, draft))
+// Platform source block list: one domain per line (FACT-CHECK-POLICY §7).
+const blockedText = ref('')
+watch(() => settings.data.value, (d) => {
+  if (!d) return
+  toDraft(d.values, draft)
+  blockedText.value = (d.values.blocked_source_domains ?? []).join('\n')
+})
 const fieldErrors = reactive<Record<string, string | undefined>>({})
 const saving = ref(false)
 async function saveSettings() {
   saving.value = true
   for (const k of Object.keys(fieldErrors)) fieldErrors[k] = undefined
   try {
-    await writerAdminApi.updateSettings(fromDraft(draft, Object.values(WRITER_SETTING_GROUPS).flat()))
+    const blocked = blockedText.value.split(/[\n,]+/).map((x) => x.trim()).filter(Boolean)
+    await writerAdminApi.updateSettings({ ...fromDraft(draft, Object.values(WRITER_SETTING_GROUPS).flat()), blocked_source_domains: blocked })
     toast.success(t('common.saved'))
     await settings.run()
   } catch (e) {
@@ -145,6 +152,14 @@ v-else v-model="draft[k] as string" type="number" :label="label(k) + (isMoneyKey
                   :hint="t('writerAdmin.default', { v: isMoneyKey(k) ? formatUsd(Number(settings.data.value.defaults[k as WriterSettingKey])) : String(settings.data.value.defaults[k as WriterSettingKey]) })" />
               </template>
             </div>
+          </AppCard>
+          <AppCard>
+            <label for="blocked-sources" class="mb-1 block text-sm font-semibold">{{ t('writerAdmin.blockedSources') }}</label>
+            <p class="mb-2 text-xs text-ink-muted">{{ t('writerAdmin.blockedSourcesHint') }}</p>
+            <textarea id="blocked-sources" v-model="blockedText" rows="5" class="w-full rounded-lg border border-line px-3 py-2 font-mono text-sm" data-testid="blocked-sources" />
+            <p v-if="fieldErrors.blocked_source_domains || Object.keys(fieldErrors).some((k) => k.startsWith('blocked_source_domains.'))" class="mt-1 text-xs text-danger-600">
+              {{ fieldErrors.blocked_source_domains ?? Object.entries(fieldErrors).find(([k, v]) => k.startsWith('blocked_source_domains.') && v)?.[1] }}
+            </p>
           </AppCard>
           <p class="text-xs text-ink-muted">{{ t('writerAdmin.policyNote') }}</p>
           <div class="flex justify-end"><AppButton :loading="saving" data-testid="save-writer-settings" @click="saveSettings">{{ t('common.save') }}</AppButton></div>

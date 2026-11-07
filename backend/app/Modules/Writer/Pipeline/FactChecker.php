@@ -59,6 +59,7 @@ class FactChecker
         $claims = $q->orderBy('created_at')->get();
         $minRel = $this->settings->int('high_risk_min_reliability', $a->workspace_id);
         $months = $this->settings->int('outdated_after_months', $a->workspace_id);
+        $minIndep = max(1, $this->settings->int('high_risk_min_independent_sources', $a->workspace_id));
         $warnings = [];
         $model = null;
 
@@ -100,8 +101,9 @@ class FactChecker
                 $sup = $ans !== null ? $pick((array) ($ans['supporting_refs'] ?? [])) : [];
                 $con = $ans !== null ? $pick((array) ($ans['contradicting_refs'] ?? [])) : [];
                 $shape = fn (array $list) => array_map(fn (EvidenceItem $e) => ['ref' => $e->ref, 'excerpt' => $e->excerpt,
-                    'reliability' => $e->source?->reliability_score, 'date' => ($e->source->modified_at ?? $e->source?->published_at)?->toDateString()], $list);
-                $decision = VerdictRules::decide($c->claim_text, $c->category, RiskLevel::from($c->risk_level), $ans['verdict'] ?? null, $shape($sup), $shape($con), $minRel, $months);
+                    'reliability' => $e->source?->reliability_score, 'date' => ($e->source->modified_at ?? $e->source?->published_at)?->toDateString(),
+                    'url' => $e->source->final_url ?? $e->source?->url, 'type' => $e->source?->source_type], $list);
+                $decision = VerdictRules::decide($c->claim_text, $c->category, RiskLevel::from($c->risk_level), $ans['verdict'] ?? null, $shape($sup), $shape($con), $minRel, $months, $minIndep);
                 $this->record($fc, $c, $decision['verdict'], $sup, $con, $ans !== null ? Text::clean($ans['date_context'] ?? '', 300) : null,
                     $ans !== null ? Text::clean($ans['explanation'] ?? '', 2000) : 'Mô hình không trả lời cho claim này.', $decision['notes'], 'model', $model);
             }
