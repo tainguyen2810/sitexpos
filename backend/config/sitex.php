@@ -118,6 +118,11 @@ return [
         'max_ai_images_per_day' => (int) env('SITEX_MEDIA_MAX_AI_IMAGES_PER_DAY', 30),
         'max_ai_cost_per_job_micro_usd' => (int) env('SITEX_MEDIA_MAX_AI_COST_PER_JOB', 500_000),
         'max_inline_images' => (int) env('SITEX_MEDIA_MAX_INLINE_IMAGES', 8),
+        // Auto images after a draft (STYLE-AND-AUTO-IMAGES.md §2): library first, AI for the rest.
+        // A writing preset can override both (defaults.auto_images / defaults.min_images).
+        'auto_images' => (bool) env('SITEX_MEDIA_AUTO_IMAGES', true),
+        'min_article_images' => (int) env('SITEX_MEDIA_MIN_ARTICLE_IMAGES', 2),
+        'auto_image_style' => env('SITEX_MEDIA_AUTO_IMAGE_STYLE', 'editorial_concept'),
         'font_dir' => env('SITEX_MEDIA_FONT_DIR', resource_path('fonts')),
     ],
 
@@ -155,7 +160,7 @@ return [
 
     // Phase 9 — release version of this code (compared with the version recorded in the
     // database to detect a pending upgrade). Bump together with CHANGELOG.md.
-    'version' => '1.0.4',
+    'version' => '1.0.5',
 
     // Phase 9 — web installer (INSTALLATION-WIZARD.md, INSTALLER-SECURITY.md)
     'installer' => [

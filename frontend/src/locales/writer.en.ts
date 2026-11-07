@@ -188,6 +188,31 @@ export default {
     factHint: 'Without a source URL a fact is stored as "User provided".', customers: 'Target customers', geo: 'Geographic context',
     guidelines: 'Editorial guidelines', cta: 'Default CTA', defaults: 'Defaults for new articles', deleteConfirm: 'Delete preset "{name}"? Existing articles are not affected.',
     allSites: 'All websites',
+    learn: {
+      button: 'Learn style', title: 'Learn the writing style from samples',
+      intro: 'Pick 2–20 published posts from your own website, or paste sample articles. The AI only learns how you write (tone, addressing, sentence rhythm, intros and conclusions) and never copies sentences. Use your own content only, never a competitor\'s.',
+      site: 'Website', fromSite: 'Published posts on the website', noPosts: 'No posts yet. Sync the website first, or paste samples below.',
+      selected: '{n} posts selected', paste: 'Paste samples', pasteTitle: 'Title (optional)', pasteText: 'Article text (at least 300 characters)',
+      addSample: 'Add sample', total: '{n} samples in total (need {min}–{max})', start: 'Start learning',
+      running: 'The AI is reading the samples and analysing the style, usually under a minute…', stillRunning: 'Still running in the background. Reopen the preset in a few minutes.',
+      failed: 'Could not learn the style: {msg}', done: 'Style analysed. Review it and click Save to apply.',
+    },
+    learnedStyle: {
+      section: 'Learned writing style', none: 'None yet. Click "Learn style" to analyse samples, or fill in the fields below.',
+      draftBadge: 'Style awaiting review', appliedBadge: 'Style applied',
+      draftHint: 'This is the AI\'s new analysis and is not used for articles yet. Edit it if needed, then click Save to apply it to every article using this preset.',
+      discard: 'Discard', clear: 'Remove style', sources: 'Learned from {n} samples', skipped: '{n} posts could not be read', listHint: 'One item per line',
+      fields: {
+        summary: 'Overview', tone: 'Tone', addressing: 'Addressing the reader', sentence_style: 'Sentences', paragraph_style: 'Paragraphs',
+        intro_pattern: 'Intros', conclusion_pattern: 'Conclusions', heading_style: 'Section headings', formatting: 'Formatting',
+        vocabulary: 'Common words', signature_phrases: 'Signature phrases', avoid: 'Never used', dos: 'Do', donts: 'Don\'t',
+      },
+    },
+    images: {
+      title: 'Automatic images', auto: 'Add images when a draft is finished', min: 'Minimum images per article (incl. featured)',
+      platform: 'Platform default', on: 'On', off: 'Off',
+      hint: 'Images from the website library come first; AI images fill the rest. AI images are always labelled, never used as real product photos, and count against the AI budget.',
+    },
   },
   history: { title: 'Writing history', subtitle: 'Every AI task run on this workspace’s articles.', empty: 'No AI tasks yet', article: 'Article', duration: 'Duration', kind: 'Task type' },
   errors: {

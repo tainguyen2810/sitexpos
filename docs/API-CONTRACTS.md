@@ -261,6 +261,8 @@ Tiền tố `/api/v1/workspaces/{ws}/writer`. Danh sách dùng envelope cursor `
 | GET | `/overview` · `/options` · `/ideas` · `/estimate` | Tổng quan, lựa chọn wizard (gồm `auto_approve {enabled, min_quality}`), ý tưởng Phase 4, ước tính chi phí |
 | GET | `/history?kind=&status=&article_id=&cursor=` | Lịch sử workflow của workspace, mỗi dòng kèm `article {id, title, status}` |
 | GET · POST · GET · PATCH · DELETE | `/presets` · `/presets/{p}` | `presets` trả `{data: [...]}` (không phân trang). Mỗi fact của brand voice có `provenance` |
+| POST | `/presets/{p}/learn-style` | v1.0.5. Body `{site_id?, content_item_ids?[], samples?[{title?, text}]}` (tổng 2–20 bài) → **202** `{data: {job_run}}`. Kết quả vào `style_draft`; `PATCH /presets/{p}` với `style_profile` để áp dụng |
+| DELETE | `/presets/{p}/style-draft` | Bỏ bản phân tích chờ duyệt, trả preset |
 | GET | `/batches?status=queued\|running\|paused\|completed\|canceled\|failed` · `/batches/{b}` | |
 | POST | `/batches/preview` · `/batches` | Tối đa `max_batch_size` bài; cần email đã xác minh |
 | POST | `/batches/{b}/pause` · `/resume` · `/cancel` · `/retry` | |

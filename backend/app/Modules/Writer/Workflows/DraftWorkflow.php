@@ -11,7 +11,9 @@ use SiteXPost\Modules\Writer\Actions\Batches;
 use SiteXPost\Modules\Writer\Domain\Article;
 use SiteXPost\Modules\Writer\Domain\ArticleOutline;
 use SiteXPost\Modules\Writer\Domain\ArticleVersion;
+use SiteXPost\Modules\Writer\Domain\WritingPreset;
 use SiteXPost\Modules\Writer\Enums\ArticleStatus;
+use SiteXPost\Modules\Writer\Events\ArticleDraftReady;
 use SiteXPost\Modules\Writer\Pipeline\AutoApprover;
 use SiteXPost\Modules\Writer\Pipeline\ClaimExtractor;
 use SiteXPost\Modules\Writer\Pipeline\FactChecker;
@@ -161,9 +163,22 @@ final class DraftWorkflow extends ArticleWorkflow
     private function finalize(Article $a, WorkflowRun $run): array
     {
         $this->moveTo($a, ArticleStatus::NeedsHumanReview, ['last_error_code' => null, 'last_error_message' => null]);
+        ArticleDraftReady::dispatch($a->workspace_id, $a->id, $a->current_version_id, self::imageTarget($a));
         app(AutoApprover::class)->attempt($a->refresh(), $run->id);
         app(Batches::class)->articleFinished($a->refresh());
 
         return ['status' => $a->status->value, 'unresolved_critical' => $a->unresolved_critical, 'unresolved_high' => $a->unresolved_high];
+    }
+
+    /**
+     * Images to add automatically: the preset's choice, else the platform default (0 = off).
+     */
+    public static function imageTarget(Article $a): int
+    {
+        $defaults = $a->writing_preset_id !== null ? (WritingPreset::query()->find($a->writing_preset_id)->defaults ?? []) : [];
+        $enabled = array_key_exists('auto_images', $defaults) && $defaults['auto_images'] !== null ? (bool) $defaults['auto_images'] : (bool) config('sitex.media.auto_images', true);
+        $min = isset($defaults['min_images']) ? (int) $defaults['min_images'] : (int) config('sitex.media.min_article_images', 2);
+
+        return $enabled ? max(0, min(6, $min)) : 0;
     }
 }

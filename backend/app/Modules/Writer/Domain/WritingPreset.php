@@ -27,6 +27,10 @@ use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
  * @property ?string $editorial_guidelines
  * @property ?string $cta
  * @property array<string, mixed>|null $defaults
+ * @property array<string, mixed>|null $style_profile
+ * @property array<string, mixed>|null $style_draft
+ * @property array<string, mixed>|null $style_sources
+ * @property ?Carbon $style_learned_at
  * @property bool $is_demo
  * @property ?string $created_by
  * @property ?Carbon $created_at
@@ -48,6 +52,10 @@ class WritingPreset extends Model
             'facts' => 'array',
             'target_customers' => 'array',
             'defaults' => 'array',
+            'style_profile' => 'array',
+            'style_draft' => 'array',
+            'style_sources' => 'array',
+            'style_learned_at' => 'datetime',
             'is_default' => 'boolean',
             'is_demo' => 'boolean',
         ];

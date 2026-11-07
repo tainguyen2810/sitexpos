@@ -62,6 +62,12 @@ export default {
       suggest: 'Gợi ý vị trí ảnh', suggested: 'Đã gợi ý {n} vị trí.', chooseImage: 'Chọn ảnh', ready: 'Ảnh đã sẵn sàng để đăng',
       notReady: '{n} vị trí chưa sẵn sàng (thiếu ảnh hoặc alt text)', needsAlt: 'Cần ảnh và alt text trước khi đăng.',
       notAllowed: 'Ảnh này không dùng được ở vị trí này (ảnh AI/infographic không được dùng làm ảnh sản phẩm, ảnh phải sẵn sàng và rõ bản quyền).',
+      autofill: {
+        running: 'Đang tự thêm ảnh: {filled}/{target} ảnh, còn {pending} ảnh AI đang tạo.',
+        completed: 'Đã tự thêm ảnh: {filled}/{target} ảnh ({library} từ thư viện, {ai} ảnh AI).',
+        incomplete: 'Thiếu ảnh: mới có {filled}/{target} ảnh. {reason}',
+        failed: 'Không tự thêm được ảnh. {reason}',
+      },
     },
   },
   seo: {

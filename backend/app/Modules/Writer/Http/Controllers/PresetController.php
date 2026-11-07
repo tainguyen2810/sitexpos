@@ -13,10 +13,13 @@ use SiteXPost\Modules\Audit\Audit;
 use SiteXPost\Modules\Research\Support\Text;
 use SiteXPost\Modules\Sites\Contracts\SiteDirectory;
 use SiteXPost\Modules\Workspace\Domain\Workspace;
+use SiteXPost\Modules\Writer\Actions\LearnStyle;
 use SiteXPost\Modules\Writer\Domain\Article;
 use SiteXPost\Modules\Writer\Domain\WritingPreset;
+use SiteXPost\Modules\Writer\Http\Requests\LearnStyleRequest;
 use SiteXPost\Modules\Writer\Http\Requests\PresetRequest;
 use SiteXPost\Modules\Writer\Http\WriterPresenter;
+use SiteXPost\Modules\Writer\Pipeline\StyleLearner;
 
 /**
  * Brand Voice & Writing Presets. Facts carry their provenance
@@ -81,6 +84,35 @@ final class PresetController
     }
 
     /**
+     * Queue "learn writing style" from the site's own posts and/or pasted samples (202 + job_run).
+     */
+    public function learnStyle(LearnStyleRequest $request, Workspace $workspace, WritingPreset $preset, SiteDirectory $sites, LearnStyle $action): JsonResponse
+    {
+        Gate::authorize('operate', $preset);
+        $data = $request->validated();
+        $siteId = isset($data['site_id']) ? (string) $data['site_id'] : $preset->site_id;
+        if ($siteId !== null && $sites->find($siteId) === null) {
+            throw new ApiException(422, 'validation_failed', __('api.validation_failed'), ['site_id' => [__('writer.errors.site_not_found')]]);
+        }
+        $run = $action->start($preset, $siteId, array_values($data['content_item_ids'] ?? []), array_values($data['samples'] ?? []),
+            (string) $request->user()?->getAuthIdentifier());
+
+        return new JsonResponse(['data' => ['job_run' => ['id' => $run->id, 'status' => $run->status, 'type' => $run->type]]], 202);
+    }
+
+    /**
+     * Discard the pending learned style (the applied profile is kept).
+     */
+    public function discardStyleDraft(Workspace $workspace, WritingPreset $preset): JsonResponse
+    {
+        Gate::authorize('operate', $preset);
+        $preset->forceFill(['style_draft' => null])->save();
+        Audit::record('writer.style_draft_discarded', $preset);
+
+        return new JsonResponse(['data' => WriterPresenter::preset($preset)]);
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     private function fill(WritingPreset $p, array $data, SiteDirectory $sites): void
@@ -101,6 +133,13 @@ final class PresetController
                 'provenance' => ($f['provenance'] ?? 'user_provided') === 'source_verified' && empty($f['source_url']) ? 'user_provided' : ($f['provenance'] ?? 'user_provided'),
                 'source_url' => $f['source_url'] ?? null,
             ], $data['facts'] ?? []));
+        }
+        if (array_key_exists('style_profile', $data)) {
+            // Saving a style guide (edited or as learned) applies it and closes the pending draft.
+            $profile = is_array($data['style_profile']) ? StyleLearner::sanitize($data['style_profile']) : null;
+            $data['style_profile'] = StyleLearner::isUsable($profile) ? $profile : null;
+            $data['style_draft'] = null;
+            $data['style_learned_at'] = now();
         }
         foreach (['preferred_terms', 'forbidden_phrases', 'target_customers'] as $k) {
             if (array_key_exists($k, $data)) {

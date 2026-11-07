@@ -245,6 +245,8 @@ final class WriterPresenter
             'writing_style' => $p->writing_style, 'preferred_terms' => $p->preferred_terms ?? [], 'forbidden_phrases' => $p->forbidden_phrases ?? [],
             'facts' => $p->facts ?? [], 'target_customers' => $p->target_customers ?? [], 'geographic_context' => $p->geographic_context,
             'editorial_guidelines' => $p->editorial_guidelines, 'cta' => $p->cta, 'defaults' => $p->defaults ?? [], 'is_demo' => $p->is_demo,
+            'style_profile' => $p->style_profile, 'style_draft' => $p->style_draft, 'style_sources' => $p->style_sources,
+            'style_learned_at' => self::ts($p->style_learned_at),
             'created_at' => self::ts($p->created_at), 'updated_at' => self::ts($p->updated_at)];
     }
 

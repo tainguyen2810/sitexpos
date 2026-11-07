@@ -83,6 +83,13 @@ function remove(p: Placement) {
 }
 const visible = computed(() => items.value.filter((p) => !p.delete))
 const notReady = computed(() => visible.value.filter((p) => !placementReady(p)).length)
+const autofill = computed(() => view.value?.autofill ?? null)
+const autofillTone = computed(() => ({ running: 'bg-brand-50 text-brand-700', completed: 'bg-success-50 text-success-700', incomplete: 'bg-warning-50 text-warning-700', failed: 'bg-danger-50 text-danger-600' })[autofill.value?.status ?? 'running'])
+const autofillText = computed(() => {
+  const a = autofill.value
+  if (!a) return ''
+  return t(`p6.media.art.autofill.${a.status}`, { filled: a.filled, target: a.target, pending: a.pending, library: a.library_count, ai: a.ai_count, reason: a.error?.message ?? '' })
+})
 
 // Asset picker
 const picking = ref<Placement | null>(null)
@@ -115,6 +122,7 @@ const statusTone = (s: string) => (s === 'accepted' ? 'success' : s === 'rejecte
     <LoadingState v-else-if="loading" />
     <ErrorState v-else-if="error" :error="error" @retry="load" />
     <template v-else-if="view">
+      <p v-if="autofill" :class="['mb-4 rounded-lg px-3 py-2 text-sm', autofillTone]" role="status" data-testid="autofill-status">{{ autofillText }}</p>
       <div class="mb-4 flex flex-wrap items-center gap-2">
         <AppBadge v-if="notReady" tone="warning" data-testid="placements-not-ready">{{ t('p6.media.art.notReady', { n: notReady }) }}</AppBadge>
         <AppBadge v-else tone="success">{{ t('p6.media.art.ready') }}</AppBadge>

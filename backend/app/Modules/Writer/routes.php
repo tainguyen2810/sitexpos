@@ -29,6 +29,8 @@ Route::prefix('api/v1/workspaces/{workspace}/writer')
         Route::get('presets/{preset}', [PresetController::class, 'show'])->name('presets.show');
         Route::patch('presets/{preset}', [PresetController::class, 'update'])->name('presets.update');
         Route::delete('presets/{preset}', [PresetController::class, 'destroy'])->name('presets.destroy');
+        Route::post('presets/{preset}/learn-style', [PresetController::class, 'learnStyle'])->middleware(['sitex.verified', 'throttle:writer-ai'])->name('presets.learn_style');
+        Route::delete('presets/{preset}/style-draft', [PresetController::class, 'discardStyleDraft'])->name('presets.style_draft.discard');
 
         Route::get('batches', [BatchController::class, 'index'])->name('batches.index');
         Route::post('batches/preview', [BatchController::class, 'preview'])->name('batches.preview');
