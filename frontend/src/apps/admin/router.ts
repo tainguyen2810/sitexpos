@@ -31,6 +31,7 @@ export const router = createRouter({
         { path: 'users/:id', name: 'user', component: () => import('./pages/UserDetailPage.vue'), props: true, meta: { permission: 'platform.users.view' } },
         { path: 'staff', name: 'staff', component: () => import('./pages/StaffPage.vue'), meta: { permission: 'platform.staff.manage' } },
         { path: 'ai/usage', name: 'ai-usage', component: () => import('./pages/AiUsagePage.vue'), meta: { permission: 'platform.ai.view_costs' } },
+        { path: 'ai/providers', name: 'ai-providers', component: () => import('./pages/AiProvidersPage.vue'), meta: { permission: 'platform.ai.manage' } },
         { path: 'ai/settings', name: 'ai-settings', component: () => import('./pages/AiSettingsPage.vue'), meta: { permission: 'platform.ai.view_costs' } },
         { path: 'research', name: 'research', component: () => import('./pages/ResearchAdminPage.vue') },
         { path: 'writer', name: 'writer', component: () => import('./pages/WriterAdminPage.vue') },

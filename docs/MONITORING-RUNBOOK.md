@@ -35,7 +35,7 @@ Lưu ý: cảnh báo đi qua hàng đợi. Nếu chính queue/Horizon chết th�
 | database | Không kết nối | `systemctl status mysql`, dung lượng đĩa, `max_connections`. Không chạy `migrate:*` khi đang sự cố |
 | redis | Không kết nối | `systemctl status redis`; session/cache/queue phụ thuộc Redis → người dùng bị đăng xuất, job dừng |
 | storage | Đĩa ≥ 85 % (cảnh báo) / gần đầy (nghiêm trọng) | Xóa log cũ, `sitex:backup:prune`, chuyển bản sao lưu ra ngoài máy chủ, dọn `storage/app/private/media` theo chính sách lưu |
-| ai_providers | Không provider nào sẵn sàng / circuit mở | Admin → Cấu hình AI: kiểm khóa, trạng thái provider. Circuit tự half-open sau cooldown. Không tắt circuit breaker |
+| ai_providers | Không provider nào sẵn sàng / circuit mở | Admin → Nhà cung cấp & mô hình: kiểm khóa; Cấu hình AI: provider đang dùng. Circuit tự half-open sau cooldown. Không tắt circuit breaker |
 | ai_spending | Chi phí gần/vượt ngân sách | Admin → Sử dụng AI: xem workspace tiêu nhiều; hạ ngân sách hoặc tạm dừng autonomous. AI **không** được tự đổi ngân sách |
 | payments | Không có cổng / webhook bị từ chối | Webhook bị từ chối = chữ ký sai, quá hạn hoặc phát lại. Kiểm secret webhook ở Gói & thanh toán; xem Đối soát. **Không** tự đánh dấu đơn đã trả nếu chưa đối chiếu sao kê |
 | wordpress | Nhiều site lỗi kết nối | Thường do site khách (plugin tắt, firewall, SSL). Xem Admin → Publishing; site lỗi kéo dài thì báo khách. Bài đăng có khóa idempotent nên retry không tạo trùng |

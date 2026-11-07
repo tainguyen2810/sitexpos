@@ -116,7 +116,7 @@ GEMINI_API_KEY=
 ANTHROPIC_API_KEY=
 DEEPSEEK_API_KEY=
 # DEEPSEEK_BASE_URL=https://api.deepseek.com
-# Có thể để trống các khóa trên và nhập từ trang admin Cấu hình AI (lưu mã hóa bằng APP_KEY;
+# Có thể để trống các khóa trên và nhập từ trang admin Nhà cung cấp & mô hình (lưu mã hóa bằng APP_KEY;
 # đổi APP_KEY thì phải nhập lại khóa). Khóa trong DB được ưu tiên hơn .env.
 SITEX_AI_FAKE_PROVIDER=false    # production: tắt provider giả
 # Các biến tinh chỉnh khác (timeout, deadline, ngân sách, workflow): xem backend/.env.example mục "Phase 3"
@@ -191,7 +191,7 @@ Dashboard Horizon tại `https://api.<domain>/horizon`, chỉ SUPER_ADMIN truy c
 - Bất biến thời gian, giữ nguyên thứ tự khi chỉnh: timeout job 300 s < `REDIS_QUEUE_RETRY_AFTER` 330 s < `SITEX_WORKFLOW_LEASE_SECONDS` 360 s; `SITEX_AI_CALL_DEADLINE_SECONDS` (240) < 300.
 - Scheduler thêm: `sitex:workflows:recover` mỗi phút (khôi phục run có lease hết hạn sau khi worker chết), `sitex:ai:expire-reservations` mỗi 5 phút, `horizon:snapshot` mỗi 5 phút (biểu đồ Horizon), `sitex:ai:prune` và `sitex:workflows:prune` hằng ngày. **Không có cron `schedule:run` thì workflow bị gián đoạn sẽ không tự khôi phục.**
 - Sau `migrate`: chạy `php artisan sitex:ai:sync-registry` để tạo provider/model/giá/route mặc định (không ghi đè chỉnh sửa của admin). Giá mặc định cần Super Admin đối chiếu lại với trang giá chính thức trước khi bật provider thật.
-- Bật provider thật: đặt khóa trong `.env` → `php artisan config:cache` → Super Admin vào **Cấu hình AI** bật provider/model và đặt ngân sách toàn hệ thống.
+- Bật provider thật: đặt khóa trong `.env` → `php artisan config:cache` → Super Admin vào **Nhà cung cấp & mô hình** kiểm tra khóa, bật mô hình; ở **Cấu hình AI** bật provider đang dùng và đặt ngân sách toàn hệ thống.
 - Windows (dev): không có Horizon/pcntl → dùng `php artisan queue:work --queue=...` như trên.
 
 ## 7. Nâng cấp (zero-downtime cơ bản)
