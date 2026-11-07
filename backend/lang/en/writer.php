@@ -11,6 +11,17 @@ return [
         'quality' => 'Quality review', 'finalize' => 'Finalize', 'rewrite' => 'AI rewrite',
     ],
 
+    'shortfall' => [
+        'summary' => 'Not enough sources to write an article with real substance: :sources candidate sources, :fetched fetched, :evidence evidence excerpts (at least :min needed). The system stops here instead of writing an article full of "needs verification".',
+        'failed' => ':n sources could not be fetched (missing page, blocked or login required) — see the Research tab.',
+        'retrieval_off' => 'Source retrieval is turned off in the system settings (Super Admin).',
+        'discovery_off' => '"AI source discovery" is off for this article.',
+        'search_off' => '"Web search" is off for this article, so the AI only guesses URLs from memory and most cannot be fetched.',
+        'search_unavailable' => '"Web search" is on but the model assigned to writer.source_discovery cannot search the web. A Super Admin must assign a web-search model (Gemini, OpenAI or Claude) to that task.',
+        'add_urls' => 'Quickest fix: paste 3–5 official documentation or reputable article URLs into "Reference sources" and click "Research again".',
+        'add_more_urls' => 'The article already has :n URLs you entered; add other specific pages (not home pages) and click "Research again".',
+    ],
+
     'errors' => [
         'already_current' => 'This version is already current.',
         'approval_blocked' => 'Cannot approve yet: required conditions are not met.',
@@ -44,6 +55,7 @@ return [
         'invalid_verdict' => 'Invalid verdict.',
         'manual_needs_evidence' => 'Select at least one evidence item or enter the source URL you checked.',
         'no_content' => 'The article has no content yet.',
+        'insufficient_evidence' => 'Not enough sources to write the article. Add source URLs or enable web search, then research again.',
         'not_editable' => 'The article cannot be edited in this state.',
         'not_reviewable' => 'The article is not in review.',
         'nothing_to_cancel' => 'No AI workflow is running.',

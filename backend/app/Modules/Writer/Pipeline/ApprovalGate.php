@@ -6,16 +6,19 @@ namespace SiteXPost\Modules\Writer\Pipeline;
 
 use SiteXPost\Modules\Workflows\Domain\WorkflowRun;
 use SiteXPost\Modules\Writer\Domain\Article;
+use SiteXPost\Modules\Writer\Domain\ArticleVersion;
 use SiteXPost\Modules\Writer\Domain\ArticleWorkflowRun;
 use SiteXPost\Modules\Writer\Domain\QualityReport;
 use SiteXPost\Modules\Writer\Enums\ArticleStatus;
+use SiteXPost\Modules\Writer\Support\PlaceholderDetector;
 use SiteXPost\Modules\Writer\Support\WriterSettings;
 
 /**
  * Conditions for a human to approve a version (FACT-CHECK-POLICY.md §6).
  * Blocking: unresolved CRITICAL claims, sections not fact-checked since
  * their last edit, a running workflow, quality below the policy minimum,
- * duplicate recommendation "reject". HIGH unresolved claims need an
+ * duplicate recommendation "reject", placeholder text ("Cần xác minh"
+ * cells, talk about missing sources). HIGH unresolved claims need an
  * explicit acknowledgement. AI scores alone never approve anything.
  */
 class ApprovalGate
@@ -45,6 +48,11 @@ class ApprovalGate
         }
         if ($stats['unchecked_sections'] !== []) {
             $blocking[] = ['code' => 'sections_not_checked', 'message' => 'Có phần đã sửa nhưng chưa kiểm chứng lại: '.implode(', ', $stats['unchecked_sections'])];
+        }
+        $current = $a->current_version_id !== null ? ArticleVersion::query()->find($a->current_version_id) : null;
+        if ($current !== null && ($ph = PlaceholderDetector::scan($current->content_html))['hollow']) {
+            $blocking[] = ['code' => 'placeholder_content', 'message' => 'Bài còn nội dung giữ chỗ (ví dụ: '.implode('; ', array_slice($ph['phrases'] ?: ['ô "Cần xác minh"'], 0, 3))
+                .'). Hãy bổ sung nguồn và viết lại, hoặc sửa tay các đoạn đó trước khi duyệt.'];
         }
         $report = QualityReport::query()->where('article_version_id', $a->current_version_id)->latest()->first();
         $min = $this->settings->int('min_quality_score_for_approval', $a->workspace_id);

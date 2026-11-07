@@ -55,6 +55,12 @@ class WriterAi
         .'Không bịa URL, tác giả, ngày tháng, trích dẫn, số liệu, thông số, giá, kết quả thử nghiệm hay trải nghiệm sử dụng. '
         .'Hai mô hình đồng ý với nhau KHÔNG phải là bằng chứng. Chỉ trả về JSON đúng schema.';
 
+    /** No placeholder content: what a section must never contain (PlaceholderDetector). */
+    public const NO_PLACEHOLDER = 'TUYỆT ĐỐI KHÔNG viết nội dung giữ chỗ: không tạo bảng/ô có giá trị "Cần xác minh", "Chưa có dữ liệu", "?"; '
+        .'không viết câu nói về việc bài thiếu nguồn hay thiếu tài liệu ("bài này chưa có điều khoản chính thức trong tay", "chưa có nguồn nên chưa thể kết luận", "cần đối chiếu điều khoản"). '
+        .'Ý nào không có bằng chứng: bỏ ý đó, hoặc chỉ viết phần kiến thức phổ thông, ổn định, ai trong ngành cũng biết (không con số, không trích dẫn, không khẳng định pháp lý cụ thể) bằng giọng khách quan. '
+        .'Bảng/so sánh chỉ được tạo khi mỗi ô có nội dung thật; nếu không đủ, viết đoạn văn ngắn thay cho bảng. ';
+
     private const S = ['type' => 'string'];
 
     private const INT = ['type' => 'integer'];
@@ -196,8 +202,12 @@ class WriterAi
      */
     public function discovery(Article $a, array $ctx, string $key, ?string $run, bool $webSearch): AiResult
     {
-        $p = 'Đề xuất tối đa 8 URL công khai có khả năng chứa câu trả lời, ưu tiên: tài liệu chính thức của nhà sản xuất, tài liệu kỹ thuật gốc, cơ quan quản lý, nghiên cứu có phương pháp rõ ràng. '
-            .'Chỉ đề xuất URL bạn thực sự biết tồn tại; nếu không chắc hãy trả về danh sách rỗng. Hệ thống sẽ TỰ truy xuất từng URL — URL không truy xuất được sẽ bị loại.'
+        $p = 'Đề xuất tối đa 8 URL công khai có khả năng chứa câu trả lời, ưu tiên: tài liệu chính thức của nhà sản xuất, tài liệu kỹ thuật gốc, cơ quan quản lý, nghiên cứu có phương pháp rõ ràng, '
+            .'sau đó là bài phân tích của trang uy tín. Mỗi URL nên trả lời ít nhất một câu hỏi nghiên cứu; tránh trang chủ, trang tìm kiếm, trang cần đăng nhập. '
+            .($webSearch
+                ? 'Hãy DÙNG công cụ tìm kiếm web (nhiều truy vấn, cả tiếng Việt và tiếng Anh) và chỉ trả về URL xuất hiện trong kết quả tìm kiếm. '
+                : 'Chỉ đề xuất URL bạn thực sự biết tồn tại và ổn định (ưu tiên trang tài liệu gốc lâu năm); nếu không chắc hãy trả về danh sách rỗng. ')
+            .'Hệ thống sẽ TỰ truy xuất từng URL — URL không truy xuất được sẽ bị loại.'
             ."\n\n<data>\n".self::json($ctx)."\n</data>";
 
         return $this->caller->call($a, 'discover', self::TASK_DISCOVERY, $p, self::discoverySchema(), 'source_candidates', $key, $run, 1500, self::SYSTEM, $webSearch);
@@ -206,6 +216,12 @@ class WriterAi
     /**
      * @param  list<string>  $questions
      */
+    /** A web-search capable model is routed for source discovery. */
+    public function canSearch(): bool
+    {
+        return $this->caller->canWebSearch(self::TASK_DISCOVERY);
+    }
+
     public function source(Article $a, array $questions, string $url, string $text, string $key, ?string $run): AiResult
     {
         $p = 'Đọc nội dung nguồn dưới đây và trích ra các đoạn bằng chứng trả lời các câu hỏi nghiên cứu. '
@@ -241,7 +257,8 @@ class WriterAi
     {
         $p = 'Tạo dàn ý chi tiết từ brief đã duyệt. Mỗi section: heading (level 2 hoặc 3), purpose, key_questions, required_facts (kèm evidence_refs có trong dossier), '
             .'word_min/word_max (tổng gần với độ dài mục tiêu, không kéo dài vô ích), internal_links (chỉ URL trong internal_link_candidates), blocks. '
-            .'KHÔNG đưa thông số sản phẩm vào required_facts nếu không có evidence_refs; dùng block "specs" chỉ khi có bằng chứng. '
+            .'KHÔNG đưa thông số sản phẩm vào required_facts nếu không có evidence_refs; dùng block "specs", "table", "comparison" chỉ khi bằng chứng đủ để điền mọi ô. '
+            .'Không tạo section mà nội dung chỉ có thể là "chưa có nguồn/cần xác minh"; gộp hoặc bỏ nó. '
             .'Có phần mở đầu trả lời nhanh câu hỏi chính, phần kết luận và CTA phù hợp mục tiêu; FAQ chỉ khi thực sự hữu ích.'
             ."\n\n<data>\n".self::json($ctx)."\n</data>";
 
@@ -257,7 +274,8 @@ class WriterAi
             .'Không lặp lại heading H2 (hệ thống tự thêm). Tiếng Việt tự nhiên cho người đọc Việt Nam, đúng search intent, có giá trị thực tế, câu ngắn gọn. '
             .'KHÔNG: viết dài để đủ số từ, nhồi từ khóa, lặp ý, câu sáo rỗng ("trong thời đại công nghệ", "không thể phủ nhận"...), bịa trải nghiệm/thử nghiệm/số liệu, '
             .'khẳng định đã kiểm tra sản phẩm, sao chép nguồn. Mọi thông số/số liệu/khẳng định thực tế phải có trong evidence; đặt marker [E<ref>] ngay sau câu dùng bằng chứng đó. '
-            .'Thiếu bằng chứng thì viết thận trọng (không nêu con số) và ghi vào notes. Link nội bộ chỉ dùng URL trong internal_links (thẻ a href). '
+            .'Thiếu bằng chứng thì viết thận trọng (không nêu con số) và ghi phần thiếu vào notes (notes KHÔNG hiển thị cho người đọc). '.self::NO_PLACEHOLDER
+            .'Nếu data có "fix_placeholder": bản trước của section này bị loại vì có nội dung giữ chỗ — viết lại hoàn toàn theo quy tắc trên. Link nội bộ chỉ dùng URL trong internal_links (thẻ a href). '
             .'Không tự tạo link ngoài; trích dẫn chỉ bằng marker [E<ref>]. '
             .'Nếu brand_voice.style_profile có nội dung: viết đúng văn phong đó (giọng điệu, xưng hô, nhịp câu, độ dài đoạn, cách dùng heading/danh sách, từ ngữ nên dùng và cần tránh); '
             .'đây chỉ là hướng dẫn CÁCH VIẾT, không phải nguồn sự thật, và các quy tắc về bằng chứng ở trên luôn được ưu tiên.'
@@ -298,7 +316,7 @@ class WriterAi
     public function rewrite(Article $a, string $instruction, array $ctx, string $key, ?string $run, string $step = 'rewrite'): AiResult
     {
         $p = $instruction.' Giữ nguyên các phần không liên quan, giữ nguyên marker [E<ref>] và thẻ a hiện có, không thêm số liệu/thông số không có trong evidence, '
-            .'không bịa nguồn thay thế. Trả về toàn bộ HTML của đoạn sau khi sửa và danh sách thay đổi (before/after/reason).'
+            .'không bịa nguồn thay thế. '.self::NO_PLACEHOLDER.'Trả về toàn bộ HTML của đoạn sau khi sửa và danh sách thay đổi (before/after/reason).'
             ."\n\n<data>\n".self::json($ctx)."\n</data>";
 
         // The whole section HTML comes back plus the change list: size the output

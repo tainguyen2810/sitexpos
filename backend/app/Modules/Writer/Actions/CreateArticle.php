@@ -101,7 +101,7 @@ class CreateArticle
             'cta' => $data['cta'] ?? ($preset?->cta),
             'notes' => $data['notes'] ?? null,
             'ai_source_discovery' => (bool) ($data['ai_source_discovery'] ?? true),
-            'allow_web_search' => (bool) ($data['allow_web_search'] ?? false),
+            'allow_web_search' => (bool) ($data['allow_web_search'] ?? true),
             'ai_review_notes' => (bool) ($data['ai_review_notes'] ?? true),
             'approval_mode' => ($data['approval_mode'] ?? 'manual') === 'auto' ? 'auto' : 'manual',
             'angle' => $idea['angle'] ?? null,

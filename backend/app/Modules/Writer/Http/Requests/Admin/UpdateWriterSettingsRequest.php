@@ -23,6 +23,7 @@ final class UpdateWriterSettingsRequest extends ApiRequest
             'autonomous_articles_per_day' => $int(0, 100),
             'max_sources_basic' => $int(1, 50),
             'max_sources_standard' => $int(1, 50),
+            'min_evidence_items' => $int(0, 50),
             'max_sources_deep' => $int(1, 50),
             'source_cache_hours' => $int(1, 720),
             'max_source_chars_for_ai' => $int(1000, 15000),

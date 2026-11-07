@@ -28,6 +28,9 @@ final class WriterSettings
         'max_sources_deep' => 20,
         'source_cache_hours' => 72,
         'max_source_chars_for_ai' => 9000,
+        // Below this many verbatim evidence excerpts the research stops with
+        // "insufficient_evidence" instead of writing a hollow article (0 = off).
+        'min_evidence_items' => 3,
         // Fact-check & revision policy
         'max_revision_rounds' => 2,
         'high_risk_min_reliability' => 60,

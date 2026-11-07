@@ -18,6 +18,7 @@ export default {
     max_sources_deep: 'Nguồn tối đa (chuyên sâu)',
     source_cache_hours: 'Cache nguồn (giờ)',
     max_source_chars_for_ai: 'Ký tự nguồn tối đa gửi AI',
+    min_evidence_items: 'Số bằng chứng tối thiểu để viết (0 = tắt)',
     max_revision_rounds: 'Số vòng sửa tự động tối đa',
     high_risk_min_reliability: 'Độ tin cậy tối thiểu cho claim rủi ro cao',
     outdated_after_months: 'Coi là lỗi thời sau (tháng)',

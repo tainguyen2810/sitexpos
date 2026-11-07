@@ -567,7 +567,7 @@ export const writerApi = {
   articles: (ws: string, query: Query = {}) => api.get<Paginated<Article>>(`${W(ws)}/articles`, { query }),
   create: (ws: string, data: ArticleInput, key?: string) => api.post<Envelope<ArticleDetail>>(`${W(ws)}/articles`, data, idem(key)).then((r) => r.data),
   article: (ws: string, id: string) => api.get<Envelope<ArticleDetail>>(A(ws, id)).then((r) => r.data),
-  update: (ws: string, id: string, data: { title?: string; review_mode?: ReviewMode; approval_mode?: ApprovalMode; budget_limit_micro_usd?: number; writing_preset_id?: string | null }) =>
+  update: (ws: string, id: string, data: { title?: string; review_mode?: ReviewMode; approval_mode?: ApprovalMode; budget_limit_micro_usd?: number; writing_preset_id?: string | null; source_urls?: string[]; allow_web_search?: boolean; ai_source_discovery?: boolean }) =>
     api.patch<Envelope<ArticleDetail>>(A(ws, id), data).then((r) => r.data),
   cancel: (ws: string, id: string) => api.post<Envelope<ArticleDetail>>(`${A(ws, id)}/cancel`).then((r) => r.data),
   workflows: (ws: string, id: string) => api.get<Envelope<Workflow[]>>(`${A(ws, id)}/workflows`).then((r) => r.data),

@@ -44,11 +44,14 @@ Mọi câu trả lời được kiểm theo JSON schema (`Ai/WriterAi.php`); n�
 - Captcha / paywall / trang đăng nhập được ghi nhận là `blocked_*`, **không vượt qua**.
 - Độ tin cậy nguồn tính theo quy tắc (`SourceClassifier`): trang chính thức, tài liệu nhà sản xuất, báo chí, diễn đàn…; không dùng ý kiến model.
 - Số nguồn tối đa: `max_sources_basic|standard|deep` (5/10/20). Không có nguồn thật → brief ghi `missing_information`, không bịa.
+- Tìm nguồn bằng web search (v1.0.6): dùng khi bài cho phép (`allow_web_search`, mặc định bật) **và** route `writer.source_discovery` có mô hình hỗ trợ `web_search` (Gemini/OpenAI/Claude). Không có (vd. DeepSeek) → AI chỉ đoán URL, ghi cảnh báo `web_search_unavailable`, không làm hỏng bước tìm nguồn.
+- **Cổng bằng chứng (v1.0.6):** sau bước `dossier`, nếu số đoạn bằng chứng nguyên văn < `min_evidence_items` (mặc định 3, Super Admin, 0 = tắt) thì workflow dừng (`insufficient_evidence`), bài ở `RESEARCH_COMPLETE` với `blocked_reason = insufficient_evidence` và thông báo nêu rõ thiếu gì; không lập brief, không viết. Người dùng thêm URL / bật web search (`PATCH /articles/{a}` với `source_urls`, `allow_web_search`) rồi chạy lại nghiên cứu (hoặc "Tiếp tục", tự chạy lại nghiên cứu). Lý do: thiếu bằng chứng thì bài chỉ còn câu "cần xác minh" — vô giá trị cho người đọc.
 - Không bịa URL, tác giả, ngày xuất bản, trích dẫn: citation trong bài chỉ được chèn từ `evidence_items` đã lưu (HTML sanitizer loại bỏ citation không khớp bằng chứng).
 
 ## 4. Viết, kiểm chứng, sửa
 
 - Viết từng section theo dàn ý đã duyệt; mỗi section có `section_key` để theo dõi thay đổi.
+- Không nội dung giữ chỗ (v1.0.6, `Support/PlaceholderDetector`): ô bảng "Cần xác minh", câu nói về việc thiếu nguồn ("chưa có điều khoản chính thức trong tay", "chưa có nguồn nên chưa thể kết luận"). Ý không có bằng chứng thì bỏ hoặc chỉ viết kiến thức phổ thông, không số liệu. Section còn nội dung giữ chỗ được viết lại một lần (call key `:fix`).
 - Claim extraction → risk level (xem `FACT-CHECK-POLICY.md`).
 - Consistency checker: mâu thuẫn số liệu/tên giữa các section.
 - Sửa tự động có giới hạn: tối đa `max_revision_rounds` (mặc định 2) vòng, mỗi vòng lưu diff; hết vòng → `NEEDS_HUMAN_REVIEW`.

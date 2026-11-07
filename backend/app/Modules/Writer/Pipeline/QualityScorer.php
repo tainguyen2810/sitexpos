@@ -10,6 +10,7 @@ use SiteXPost\Modules\Writer\Domain\ArticleVersion;
 use SiteXPost\Modules\Writer\Domain\ContentBrief;
 use SiteXPost\Modules\Writer\Domain\WritingPreset;
 use SiteXPost\Modules\Writer\Support\HtmlSanitizer;
+use SiteXPost\Modules\Writer\Support\PlaceholderDetector;
 
 /**
  * Deterministic quality rubric v1 (CONTENT-QUALITY-RUBRIC.md). 100 points,
@@ -178,6 +179,11 @@ final class QualityScorer
 
         foreach ($consistency as $ci) {
             $issues[] = ['severity' => $ci['severity'] === 'info' ? 'info' : 'warning', 'message' => $ci['message']];
+        }
+        $ph = PlaceholderDetector::scan($html);
+        if ($ph['hollow']) {
+            $issues[] = ['severity' => 'error', 'message' => 'Bài có nội dung giữ chỗ thay cho thông tin thật ('.($ph['cells'] > 0 ? $ph['cells'].' ô bảng, ' : '')
+                .implode('; ', array_slice($ph['phrases'], 0, 3)).') — chặn duyệt.'];
         }
         $unsupported = $claims->whereIn('status', ['INSUFFICIENT_EVIDENCE', 'PENDING', 'NEEDS_HUMAN_REVIEW'])->count();
         if ($unsupported > 0) {

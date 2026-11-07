@@ -126,13 +126,21 @@ final class ArticleController
             $article->forceFill(['settings' => array_merge($article->settings ?? [], ['approval_mode' => $data['approval_mode']])]);
             unset($data['approval_mode']);
         }
+        $research = array_intersect_key($data, array_flip(['source_urls', 'allow_web_search', 'ai_source_discovery']));
+        if ($research !== []) {
+            if (isset($research['source_urls'])) {
+                $research['source_urls'] = array_values(array_unique(array_map('trim', $research['source_urls'])));
+            }
+            $article->forceFill(['settings' => array_merge($article->settings ?? [], $research)]);
+            $data = array_diff_key($data, $research);
+        }
         $before = $article->only(array_keys($data));
         $article->forceFill($data);
         if (isset($data['budget_limit_micro_usd']) && $article->blocked_reason === 'article_budget_exhausted' && $article->remainingBudget() > 0) {
             $article->blocked_reason = null;
         }
         $article->save();
-        Audit::record('writer.article_updated', $article, ['before' => $before, 'after' => $data]);
+        Audit::record('writer.article_updated', $article, ['before' => $before, 'after' => $data + ($research !== [] ? ['research' => $research] : [])]);
 
         return new JsonResponse(['data' => $this->detail($request, $article)]);
     }

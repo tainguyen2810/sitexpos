@@ -80,7 +80,8 @@ class Reviser
                     'instruction' => match ($c->status) {
                         'CONTRADICTED' => 'Sửa câu cho khớp với bằng chứng contradicting và đặt marker [E<ref>] của bằng chứng đó.',
                         'OUTDATED' => 'Cập nhật theo bằng chứng mới hơn nếu có; nếu không, ghi rõ mốc thời gian của thông tin hoặc bỏ khẳng định.',
-                        default => 'Không có bằng chứng đủ mạnh: viết lại thận trọng (bỏ con số/thông số cụ thể) hoặc bỏ khẳng định. Không bịa nguồn.',
+                        default => 'Không có bằng chứng đủ mạnh: bỏ con số/thông số/khẳng định cụ thể, giữ ý ở mức kiến thức phổ thông nếu có thể, hoặc bỏ hẳn câu đó. '
+                            .'Không thay bằng câu kiểu "cần xác minh"/"chưa có nguồn". Không bịa nguồn.',
                     }];
             })->values()->all();
             $sectionHtml = $this->toMarkers($s['html']);

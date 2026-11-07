@@ -61,7 +61,7 @@ const f = reactive({
   primary_keyword: '', secondary: '', search_intent: 'informational' as SearchIntent,
   audience: '', content_type: 'blog_article' as WriterContentType, tone: '', writing_preset_id: '', language: 'vi' as 'vi' | 'en', country: 'VN',
   target_words: '1500', content_depth: 'standard' as Depth, research_depth: 'standard' as Depth,
-  source_urls: '', ai_source_discovery: true, allow_web_search: false, links_enabled: true, links_max: '5',
+  source_urls: '', ai_source_discovery: true, allow_web_search: true, links_enabled: true, links_max: '5',
   brand_rules: '', brand_domains: '', cta: '', notes: '', ai_review_notes: true,
   budget_usd: '', review_mode: 'step_by_step' as ReviewMode, approval_mode: 'manual' as ApprovalMode, start: true,
 })

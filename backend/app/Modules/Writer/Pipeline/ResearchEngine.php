@@ -129,11 +129,19 @@ class ResearchEngine
                 $added['customer_site']++;
             }
         }
+        $search = false;
         if ((bool) $a->setting('ai_source_discovery', true) && $this->count($d) < $max) {
+            // Web search only when the article allows it AND a model on the
+            // discovery route can do it; otherwise the gateway would refuse the
+            // call and discovery would silently find nothing.
+            $search = (bool) $a->setting('allow_web_search', false) && $this->ai->canSearch();
+            if ((bool) $a->setting('allow_web_search', false) && ! $search) {
+                $warnings[] = 'web_search_unavailable';
+            }
             try {
                 $questions = ResearchQuestion::query()->where('research_dossier_id', $d->id)->orderBy('position')->pluck('question')->all();
                 $res = $this->ai->discovery($a, ['topic' => $a->title, 'primary_keyword' => $a->primary_keyword, 'language' => $a->language,
-                    'country' => $a->country, 'questions' => $questions], $key, $run, (bool) $a->setting('allow_web_search', false));
+                    'country' => $a->country, 'questions' => $questions], $key, $run, $search);
                 foreach (array_slice((array) ($res->json['urls'] ?? []), 0, 8) as $u) {
                     if ($this->add($d, (string) ($u['url'] ?? ''), 'ai_suggestion', $max)) {
                         $added['ai_suggestion']++;
@@ -148,7 +156,7 @@ class ResearchEngine
         }
         $this->warn($d, $warnings);
 
-        return ['added' => $added, 'total' => $this->count($d), 'warnings' => $warnings];
+        return ['added' => $added, 'total' => $this->count($d), 'web_search' => $search, 'warnings' => $warnings];
     }
 
     private function count(ResearchDossier $d): int
@@ -331,6 +339,37 @@ class ResearchEngine
         $this->warn($d, $warnings);
 
         return ['status' => $d->status, 'sources' => $sources->count(), 'usable' => $usable, 'evidence' => $evidence, 'unanswered' => $unanswered];
+    }
+
+    /**
+     * Why the dossier is too thin to write from, and what the user can do —
+     * shown on the article instead of writing an empty article.
+     */
+    public function shortfall(Article $a, ResearchDossier $d, int $min): string
+    {
+        $sources = EvidenceSource::query()->where('research_dossier_id', $d->id)->get(['discovered_via', 'retrieval_status']);
+        $fetched = $sources->where('retrieval_status', 'fetched')->count();
+        $failed = $sources->count() - $fetched;
+        $evidence = EvidenceItem::query()->where('research_dossier_id', $d->id)->count();
+        $userUrls = count((array) $a->setting('source_urls', []));
+
+        $parts = [__('writer.shortfall.summary', ['sources' => $sources->count(), 'fetched' => $fetched, 'evidence' => $evidence, 'min' => $min])];
+        if ($failed > 0) {
+            $parts[] = __('writer.shortfall.failed', ['n' => $failed]);
+        }
+        if (! $this->researchSettings->enabled('evidence_fetch')) {
+            $parts[] = __('writer.shortfall.retrieval_off');
+        }
+        if (! (bool) $a->setting('ai_source_discovery', true)) {
+            $parts[] = __('writer.shortfall.discovery_off');
+        } elseif (! (bool) $a->setting('allow_web_search', false)) {
+            $parts[] = __('writer.shortfall.search_off');
+        } elseif (! $this->ai->canSearch()) {
+            $parts[] = __('writer.shortfall.search_unavailable');
+        }
+        $parts[] = $userUrls === 0 ? __('writer.shortfall.add_urls') : __('writer.shortfall.add_more_urls', ['n' => $userUrls]);
+
+        return mb_substr(implode(' ', $parts), 0, 1000);
     }
 
     /**

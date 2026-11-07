@@ -37,6 +37,8 @@ function approvedIdeas(array $t, int $n, string $status = 'approved'): array
 
 it('previews cost and duplicates, then writes approved ideas in a batch that stops at human review', function () {
     $t = writerTenant();
+    // Batch articles find their sources through AI discovery (the evidence gate needs real evidence).
+    $t['ai']->on('source_candidates', fn () => ['urls' => [['url' => AX210_URL, 'reason' => 'Intel'], ['url' => AX200_URL, 'reason' => 'Intel']]]);
     $ideas = approvedIdeas($t, 3);
     $suggested = approvedIdeas($t, 1, 'suggested');
 

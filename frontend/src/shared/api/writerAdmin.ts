@@ -8,7 +8,7 @@ import type { Envelope, Paginated } from './types'
  */
 export const WRITER_SETTING_GROUPS = {
   limits: ['max_articles_per_month', 'max_concurrent_workflows', 'max_batch_size', 'max_batch_concurrency', 'default_article_budget_micro_usd', 'max_article_budget_micro_usd', 'autonomous_enabled', 'autonomous_articles_per_day'],
-  research: ['max_sources_basic', 'max_sources_standard', 'max_sources_deep', 'source_cache_hours', 'max_source_chars_for_ai'],
+  research: ['max_sources_basic', 'max_sources_standard', 'max_sources_deep', 'source_cache_hours', 'max_source_chars_for_ai', 'min_evidence_items'],
   policy: ['max_revision_rounds', 'high_risk_min_reliability', 'outdated_after_months', 'min_quality_score_for_approval', 'require_ack_for_high_risk', 'auto_approve_enabled', 'auto_approve_min_quality'],
   abuse: ['abuse_articles_per_hour', 'abuse_cost_per_day_micro_usd', 'abuse_failed_ratio_pct'],
 } as const

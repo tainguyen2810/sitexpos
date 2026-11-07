@@ -8,6 +8,7 @@ use SiteXPost\Modules\Workflows\Domain\WorkflowRun;
 use SiteXPost\Modules\Workflows\Engine\StepContext;
 use SiteXPost\Modules\Workflows\Engine\StepFailed;
 use SiteXPost\Modules\Writer\Actions\ArticleWorkflows;
+use SiteXPost\Modules\Writer\Actions\Batches;
 use SiteXPost\Modules\Writer\Ai\AiCaller;
 use SiteXPost\Modules\Writer\Domain\Article;
 use SiteXPost\Modules\Writer\Domain\ContentBrief;
@@ -16,9 +17,10 @@ use SiteXPost\Modules\Writer\Enums\ArticleStatus;
 use SiteXPost\Modules\Writer\Pipeline\BriefBuilder;
 use SiteXPost\Modules\Writer\Pipeline\ResearchEngine;
 use SiteXPost\Modules\Writer\Support\ArticleStateMachine;
+use SiteXPost\Modules\Writer\Support\WriterSettings;
 
 /**
- * Evidence research → dossier → content brief.
+ * Evidence research → dossier → (evidence gate) → content brief.
  */
 final class ResearchWorkflow extends ArticleWorkflow
 {
@@ -32,6 +34,7 @@ final class ResearchWorkflow extends ArticleWorkflow
         ArticleStateMachine $machine,
         private readonly ResearchEngine $engine,
         private readonly BriefBuilder $briefs,
+        private readonly WriterSettings $settings,
     ) {
         parent::__construct($machine);
     }
@@ -68,7 +71,7 @@ final class ResearchWorkflow extends ArticleWorkflow
      */
     private function prepare(Article $a): array
     {
-        $this->moveTo($a, ArticleStatus::Researching);
+        $this->moveTo($a, ArticleStatus::Researching, ['last_error_code' => null, 'last_error_message' => null]);
         $d = $this->engine->dossierFor($a);
 
         return ['dossier_id' => $d->id];
@@ -92,6 +95,17 @@ final class ResearchWorkflow extends ArticleWorkflow
     {
         $out = $this->engine->finalize($d);
         $this->moveTo($a, ArticleStatus::ResearchComplete);
+
+        // Evidence gate: without enough verified evidence the writer can only
+        // produce "cần xác minh" filler. Stop here, say what is missing and
+        // let the user add sources / enable web search and research again.
+        $min = max(0, $this->settings->int('min_evidence_items', $a->workspace_id));
+        if ((int) $out['evidence'] < $min) {
+            $message = $this->engine->shortfall($a, $d, $min);
+            $a->forceFill(['blocked_reason' => 'insufficient_evidence', 'last_error_code' => 'insufficient_evidence', 'last_error_message' => $message])->save();
+            app(Batches::class)->articleFinished($a->refresh());
+            throw new StepFailed('insufficient_evidence', $message);
+        }
 
         return $out;
     }
