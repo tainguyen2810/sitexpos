@@ -4,6 +4,10 @@ Format: `## [version] - YYYY-MM-DD`, one bullet per change. The Upgrade Wizard
 shows the sections between the installed version and the deployed code.
 Bump `config/sitex.php` → `version` together with this file.
 
+## [1.0.4] - 2026-11-07
+- AI Writer: a section no longer fails with "invalid output" when the model's answer is cut off at the output limit. The output budget per section is sized for Vietnamese HTML (2,000–8,000 tokens instead of 600–4,000), and a cut-off answer is retried once with twice the budget. Rewrites size their budget from the section length.
+- AI requests: an answer cut off at `max_tokens` is logged as such, and failed writer calls show the tokens and cost actually billed instead of 0/0.
+
 ## [1.0.3] - 2026-11-06
 - Admin › AI settings redesigned: overview cards (providers ready, models enabled, routed tasks, budget), one card per provider with a switch, key status and plain-language connection health, model table grouped by provider with search/filters and a "⋯" menu, routes shown as "primary → fallbacks", budgets as cards with an alert marker, and a one-line guide per tab.
 - Whole UI (admin and customer apps): shared components restyled in the Tailwind UI look (slate palette, ring borders, buttons, inputs, badges with dots, tabs with counts, modals, sidebar and top bar). New shared `DropdownMenu` component.

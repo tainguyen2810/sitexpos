@@ -20,14 +20,14 @@ use SiteXPost\Modules\AiGateway\Providers\Usage;
  */
 final class ScriptedAi implements ProviderAdapter
 {
-    /** @var array<string, Closure(ProviderRequest): (array<string, mixed>|ProviderException)> */
+    /** @var array<string, Closure(ProviderRequest): (array<string, mixed>|ProviderException|ProviderResponse)> */
     public array $handlers = [];
 
     /** @var list<array{schema: string, prompt: string}> */
     public array $calls = [];
 
     /**
-     * @param  Closure(ProviderRequest): (array<string, mixed>|ProviderException)  $fn
+     * @param  Closure(ProviderRequest): (array<string, mixed>|ProviderException|ProviderResponse)  $fn
      */
     public function on(string $schemaName, Closure $fn): self
     {
@@ -68,6 +68,9 @@ final class ScriptedAi implements ProviderAdapter
         $out = $fn !== null ? $fn($request) : self::empty($request->schemaName);
         if ($out instanceof ProviderException) {
             throw $out;
+        }
+        if ($out instanceof ProviderResponse) {
+            return $out; // raw answer (e.g. JSON cut off at max_tokens)
         }
         $text = (string) json_encode($out, JSON_UNESCAPED_UNICODE);
 

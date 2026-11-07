@@ -71,7 +71,7 @@ class SectionWriter
                 'evidence' => $evidence,
                 'internal_links' => $sectionLinks,
             ];
-            $maxOut = max(600, min(4000, (int) ($s['word_range'][1] ?? 300) * 3));
+            $maxOut = self::outputBudget((int) ($s['word_range'][1] ?? 300));
             try {
                 $res = $this->ai->section($a, $ctx, $key.':'.$s['key'], $run, $maxOut);
             } catch (AiGatewayException|BudgetBlocked $e) {
@@ -98,6 +98,17 @@ class SectionWriter
         }
 
         return ['written' => $written, 'sections' => count($outline->sections)];
+    }
+
+    /**
+     * Output tokens for one section: Vietnamese text costs ~2 tokens per word,
+     * plus HTML tags (tables!), [E<ref>] markers, JSON escaping and notes.
+     * Only the reservation uses this number; the bill is the real usage.
+     * (The old `words × 3, min 600` cut 200-word sections off mid-JSON.)
+     */
+    public static function outputBudget(int $wordMax): int
+    {
+        return max(2000, min(8000, $wordMax * 6 + 1000));
     }
 
     public function assemble(Article $a, ArticleOutline $outline, ?string $userId = null): ArticleVersion

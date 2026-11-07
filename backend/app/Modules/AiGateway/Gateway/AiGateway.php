@@ -209,7 +209,7 @@ final class AiGateway
 
                 $latency = (int) ((hrtime(true) - $started) / 1_000_000);
 
-                return $this->complete($task, $route, $model, $price, $response, $key, $attemptNo, $isFallback, $downgraded, $promptHash, $latency, $attempts, $calledAt, $estimate);
+                return $this->complete($task, $route, $model, $price, $response, $key, $attemptNo, $isFallback, $downgraded, $promptHash, $latency, $attempts, $calledAt, $estimate, $request->maxOutputTokens);
             }
         }
 
@@ -222,7 +222,7 @@ final class AiGateway
     /**
      * @param  list<array<string, mixed>>  $attempts
      */
-    private function complete(AiTask $task, AiTaskRoute $route, AiModel $model, AiModelPrice $price, ProviderResponse $response, string $key, int $attemptNo, bool $isFallback, bool $downgraded, string $promptHash, int $latency, array $attempts, ?CarbonInterface $calledAt = null, int $estimate = 0): AiResult
+    private function complete(AiTask $task, AiTaskRoute $route, AiModel $model, AiModelPrice $price, ProviderResponse $response, string $key, int $attemptNo, bool $isFallback, bool $downgraded, string $promptHash, int $latency, array $attempts, ?CarbonInterface $calledAt = null, int $estimate = 0, ?int $maxOutputTokens = null): AiResult
     {
         // A successful answer without any usage numbers (some custom/OpenAI-compatible
         // providers omit `usage`) must never be free: charge the reservation estimate
@@ -241,9 +241,15 @@ final class AiGateway
             $json = json_decode($response->text, true);
             $errors = json_last_error() === JSON_ERROR_NONE ? $this->validator->validate($json, $task->schema) : ['$: not valid JSON'];
             if ($errors !== []) {
-                $error = new ProviderException('invalid_output', 'Model output does not match the schema: '.implode('; ', array_slice($errors, 0, 3)));
+                // The most common cause is an answer cut off at max_tokens (half a
+                // JSON document). Say so in the log and tell the caller, which may
+                // retry once with a larger output budget under a new call key.
+                $truncated = $response->finishReason === 'max_tokens';
+                $error = new ProviderException('invalid_output', ($truncated ? 'Output truncated at max_tokens ('.($maxOutputTokens ?? '?').'); ' : '')
+                    .'Model output does not match the schema: '.implode('; ', array_slice($errors, 0, 3)));
                 $this->log($task, $model, $price, $attemptNo, $isFallback, 'failed', $promptHash, $response->usage, $cost, $latency, $error, finish: $response->finishReason, providerRequestId: $response->providerRequestId);
-                throw new AiGatewayException('invalid_output', __('ai.errors.invalid_output'), requiresPaidRetry: true);
+                throw new AiGatewayException('invalid_output', __('ai.errors.invalid_output'), requiresPaidRetry: true,
+                    details: ['finish_reason' => $response->finishReason, 'max_output_tokens' => $maxOutputTokens]);
             }
         }
 

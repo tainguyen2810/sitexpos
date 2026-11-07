@@ -60,11 +60,34 @@ class AiCaller
             ));
         } catch (AiGatewayException $e) {
             $this->settle($article, $usage, $callKey, null, $e->errorCode, $e->requiresPaidRetry, $estimate);
+            if (self::truncated($e, $maxOut) && ! str_ends_with($callKey, self::LARGER)) {
+                // The answer was cut off at max_tokens: sending the same request
+                // again would fail the same way. One retry with twice the output
+                // budget, under its own call key (a new, separately counted call).
+                return $this->call($article, $step, $taskKey, $prompt, $schema, $schemaName, $callKey.self::LARGER, $workflowRunId,
+                    min(self::MAX_OUTPUT_CAP, $maxOut * 2), $system, $webSearch);
+            }
             throw $e;
         }
         $this->settle($article, $usage, $callKey, $result, null, false, $estimate);
 
         return $result;
+    }
+
+    private const LARGER = ':x2';
+
+    private const MAX_OUTPUT_CAP = 16000;
+
+    /**
+     * Invalid output because the model hit the output limit we asked for
+     * (not a lower cap of the route/model, where a bigger request changes nothing).
+     */
+    private static function truncated(AiGatewayException $e, int $maxOut): bool
+    {
+        return $e->errorCode === 'invalid_output'
+            && ($e->details['finish_reason'] ?? null) === 'max_tokens'
+            && ($e->details['max_output_tokens'] ?? null) === $maxOut
+            && $maxOut < self::MAX_OUTPUT_CAP;
     }
 
     /**
@@ -116,21 +139,26 @@ class AiCaller
         if ($usage->status !== 'started') {
             return; // already settled by an earlier delivery: never count twice
         }
-        $logged = (int) AiRequest::query()->where('call_key', mb_substr($callKey, 0, 160))->sum('cost_micro_usd');
+        $logs = AiRequest::query()->where('call_key', mb_substr($callKey, 0, 160));
+        $logged = (int) (clone $logs)->sum('cost_micro_usd');
+        // A failed call can still have been billed (e.g. output cut off at max_tokens):
+        // report the tokens the gateway logged instead of 0/0.
+        $inTokens = $result !== null ? $result->usage->inputTokens : (int) (clone $logs)->sum('input_tokens');
+        $outTokens = $result !== null ? $result->usage->outputTokens : (int) (clone $logs)->sum('output_tokens');
         $cost = $uncertain ? max($logged, $estimate) : $logged;
         if ($result !== null) {
             $cost = max($cost, $result->costMicroUsd);
         }
 
-        DB::transaction(function () use ($article, $usage, $result, $error, $cost): void {
+        DB::transaction(function () use ($article, $usage, $result, $error, $cost, $inTokens, $outTokens): void {
             $claimed = ArticleAiUsage::query()->whereKey($usage->id)->where('status', 'started')->update([
                 'status' => $result !== null ? 'succeeded' : 'failed',
                 'provider' => $result?->provider,
                 'model' => $result?->model,
                 'ai_request_id' => $result?->requestId,
-                'input_tokens' => $result !== null ? $result->usage->inputTokens : 0,
-                'output_tokens' => $result !== null ? $result->usage->outputTokens : 0,
-                'usage_reported' => $result !== null && ($result->usage->inputTokens + $result->usage->outputTokens) > 0,
+                'input_tokens' => $inTokens,
+                'output_tokens' => $outTokens,
+                'usage_reported' => ($inTokens + $outTokens) > 0,
                 'cost_micro_usd' => $cost,
                 'retries' => $result !== null ? max(0, count($result->attempts) - 1) : 0,
                 'error_code' => $error,
