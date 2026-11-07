@@ -15,8 +15,8 @@ const model = defineModel<boolean>({ default: false })
       :aria-checked="model"
       :aria-label="label"
       :disabled="disabled"
-      class="relative mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-full transition-colors"
-      :class="model ? 'bg-brand-600' : 'bg-slate-300'"
+      class="relative mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-full ring-1 ring-inset ring-slate-900/5 transition-colors duration-200"
+      :class="model ? 'bg-brand-600' : 'bg-slate-200'"
       @click="model = !model"
     >
       <span class="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all" :class="model ? 'left-[22px]' : 'left-0.5'" />

@@ -4,6 +4,10 @@ Format: `## [version] - YYYY-MM-DD`, one bullet per change. The Upgrade Wizard
 shows the sections between the installed version and the deployed code.
 Bump `config/sitex.php` → `version` together with this file.
 
+## [1.0.3] - 2026-11-06
+- Admin › AI settings redesigned: overview cards (providers ready, models enabled, routed tasks, budget), one card per provider with a switch, key status and plain-language connection health, model table grouped by provider with search/filters and a "⋯" menu, routes shown as "primary → fallbacks", budgets as cards with an alert marker, and a one-line guide per tab.
+- Whole UI (admin and customer apps): shared components restyled in the Tailwind UI look (slate palette, ring borders, buttons, inputs, badges with dots, tabs with counts, modals, sidebar and top bar). New shared `DropdownMenu` component.
+
 ## [1.0.2] - 2026-11-06
 - Docker: `update.sh` without a version upgrades to the newest release (reads the version of the `:latest` image and pins it; does nothing when already current).
 - Docker: the image ships `update.sh`; after a successful upgrade the script on the server replaces itself with the new one.

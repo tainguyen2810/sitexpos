@@ -11,24 +11,40 @@
   --color-brand-600: #2553eb;
   --color-brand-700: #1d43d8;
 
-  --color-ink: #0f172a;
-  --color-ink-muted: #475569;
-  --color-ink-subtle: #94a3b8;
+  --color-brand-300: #93b4fd;
+  --color-brand-800: #1e3aaf;
+  --color-brand-900: #1e3a8a;
+
+  /* Neutrals follow Tailwind's slate scale (Tailwind UI look). */
+  --color-ink: #0f172a;          /* slate-900 */
+  --color-ink-muted: #475569;    /* slate-600 */
+  --color-ink-subtle: #94a3b8;   /* slate-400 */
   --color-surface: #ffffff;
-  --color-surface-muted: #f6f7fb;
-  --color-line: #e2e8f0;
+  --color-surface-muted: #f8fafc; /* slate-50 */
+  --color-line: #e2e8f0;         /* slate-200 */
+  --color-line-strong: #cbd5e1;  /* slate-300 */
 
   --color-success-50: #ecfdf5;
+  --color-success-100: #d1fae5;
+  --color-success-500: #10b981;
   --color-success-600: #059669;
+  --color-success-700: #047857;
   --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-500: #f59e0b;
   --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
   --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-500: #ef4444;
   --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
 }
 
 @layer base {
-  html { font-family: var(--font-sans); }
+  html { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
   :focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 2px; }
+  input[type='checkbox'], input[type='radio'] { accent-color: var(--color-brand-600); width: 1rem; height: 1rem; }
 }
 
 /* Article content (AI Writer editor + preview). */

@@ -3,7 +3,7 @@ withDefaults(defineProps<{ title?: string; subtitle?: string; padded?: boolean }
 </script>
 
 <template>
-  <section class="rounded-xl border border-line bg-surface shadow-sm">
+  <section class="rounded-xl bg-surface shadow-xs ring-1 ring-line">
     <header v-if="title || $slots.actions" class="flex flex-wrap items-start justify-between gap-3 border-b border-line px-5 py-4">
       <div>
         <h2 v-if="title" class="text-base font-semibold text-ink">{{ title }}</h2>

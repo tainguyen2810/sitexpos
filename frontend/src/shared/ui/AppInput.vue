@@ -29,8 +29,8 @@ const id = useId()
       :disabled="disabled"
       :aria-invalid="!!error"
       :aria-describedby="error || hint ? `${id}-help` : undefined"
-      class="block w-full rounded-lg border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-surface-muted"
-      :class="error ? 'border-danger-600' : 'border-line'"
+      class="block w-full rounded-lg border-0 bg-surface px-3 py-2 text-sm text-ink shadow-xs ring-1 ring-inset placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand-600 disabled:bg-surface-muted disabled:text-ink-muted"
+      :class="error ? 'ring-danger-500' : 'ring-line-strong'"
     />
     <p v-if="error" :id="`${id}-help`" class="text-xs text-danger-600">{{ error }}</p>
     <p v-else-if="hint" :id="`${id}-help`" class="text-xs text-ink-muted">{{ hint }}</p>

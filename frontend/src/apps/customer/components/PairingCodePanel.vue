@@ -34,7 +34,7 @@ const pluginAdmin = computed(() => (props.siteUrl ? `${props.siteUrl.replace(/\/
 
 <template>
   <div class="space-y-4" data-testid="pairing-panel">
-    <div class="rounded-xl border border-line bg-surface-muted p-4 text-center">
+    <div class="rounded-xl bg-surface-muted ring-1 ring-line p-4 text-center">
       <p class="text-xs uppercase tracking-wide text-ink-subtle">{{ t('sites.pairing.code') }}</p>
       <p class="mt-1 font-mono text-3xl font-bold tracking-[0.2em]" :class="expired ? 'text-ink-subtle line-through' : 'text-ink'" data-testid="pairing-code">{{ code }}</p>
       <p class="mt-2 text-sm" :class="expired ? 'text-danger-600' : 'text-ink-muted'">

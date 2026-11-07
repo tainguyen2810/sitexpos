@@ -14,14 +14,14 @@ const props = withDefaults(
 )
 
 const classes = computed(() => [
-  'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60',
-  props.size === 'sm' ? 'px-3 py-1.5 text-sm' : 'px-4 py-2 text-sm',
+  'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
+  props.size === 'sm' ? 'px-2.5 py-1.5 text-xs' : 'px-3.5 py-2 text-sm',
   props.block ? 'w-full' : '',
   {
-    primary: 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm',
-    secondary: 'border border-line bg-surface text-ink hover:bg-surface-muted',
-    danger: 'bg-danger-600 text-white hover:bg-red-700 shadow-sm',
-    ghost: 'text-ink-muted hover:bg-surface-muted hover:text-ink',
+    primary: 'bg-brand-600 text-white shadow-xs hover:bg-brand-500 focus-visible:outline-brand-600',
+    secondary: 'bg-surface text-ink shadow-xs ring-1 ring-inset ring-line-strong hover:bg-surface-muted',
+    danger: 'bg-danger-600 text-white shadow-xs hover:bg-danger-500 focus-visible:outline-danger-600',
+    ghost: 'text-ink-muted hover:bg-slate-100 hover:text-ink',
   }[props.variant],
 ])
 </script>

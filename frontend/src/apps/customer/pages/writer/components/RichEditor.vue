@@ -120,7 +120,7 @@ const tools: { key: string; icon?: string; label: string; run: () => void }[] = 
 </script>
 
 <template>
-  <div class="rounded-xl border border-line bg-surface">
+  <div class="rounded-xl bg-surface shadow-xs ring-1 ring-line">
     <div v-if="!readonly" class="sticky top-0 z-10 flex flex-wrap gap-1 border-b border-line bg-surface p-2" role="toolbar">
       <button
         v-for="tool in tools"

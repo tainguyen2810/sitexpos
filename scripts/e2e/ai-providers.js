@@ -55,7 +55,7 @@ let failBodies = []
   step('DeepSeek provider listed')
 
   // 1. DeepSeek API key: write-only, stored encrypted, only last 4 shown.
-  await deepseek.getByRole('button', { name: 'API key' }).click()
+  await deepseek.getByRole('button', { name: /khóa API/ }).click()
   await admin.getByRole('dialog').getByLabel('API key').fill('sk-e2e-deepseek-not-real-7788')
   await admin.getByRole('dialog').getByRole('button', { name: 'Lưu thay đổi' }).click()
   await deepseek.getByText('Khóa lưu trên hệ thống (…7788)').waitFor()
@@ -85,8 +85,8 @@ let failBodies = []
   await conn.getByText('Kết nối được').waitFor({ timeout: 30000 })
   await conn.getByText('Nhà cung cấp trả về 2 mô hình.').waitFor()
   await admin.getByRole('dialog').getByText('Đóng', { exact: true }).click()
-  await mock.getByRole('button', { name: 'Bật', exact: true }).click()
-  await mock.getByText('Tắt', { exact: true }).waitFor()
+  await mock.getByRole('switch').click()
+  await mock.getByText('Đang bật', { exact: true }).waitFor()
   await admin.screenshot({ path: `${shots}/31-custom-provider.png`, fullPage: true })
   step('custom provider added, connection OK (2 models), enabled')
 
@@ -100,7 +100,7 @@ let failBodies = []
   await md.getByRole('button', { name: 'Xác nhận' }).click()
   const row = admin.getByTestId('model-list').locator('tr', { hasText: 'mockllm/mock-mini' })
   await row.waitFor()
-  await row.getByRole('button', { name: 'Bảng giá' }).click()
+  await row.getByRole('button', { name: 'Thêm giá' }).click()
   const pd = admin.getByRole('dialog')
   await pd.getByLabel('Giá input ($ / 1M token)', { exact: true }).fill('0.30')
   await pd.getByLabel('Giá output ($ / 1M token)', { exact: true }).fill('1.20')
@@ -127,7 +127,8 @@ let failBodies = []
   step('Test Model succeeded with JSON, tokens and cost')
 
   // 6. Edit the Model ID.
-  await row.getByRole('button', { name: 'Sửa', exact: true }).click()
+  await row.getByRole('button', { name: 'Thêm thao tác' }).click()
+  await row.getByRole('menuitem', { name: 'Sửa' }).click()
   const ed = admin.getByRole('dialog')
   await ed.getByLabel('Model ID (đúng như tài liệu API)').fill('mock-large')
   await ed.getByRole('button', { name: 'Lưu thay đổi' }).click()

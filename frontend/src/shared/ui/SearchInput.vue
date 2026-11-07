@@ -13,7 +13,7 @@ const model = defineModel<string>({ default: '' })
       v-model="model"
       type="search"
       :placeholder="placeholder ?? $t('common.search')"
-      class="block w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-3 text-sm placeholder:text-ink-subtle focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+      class="block w-full rounded-lg border-0 bg-surface py-2 pl-9 pr-3 text-sm shadow-xs ring-1 ring-inset ring-line-strong placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand-600"
     />
   </label>
 </template>

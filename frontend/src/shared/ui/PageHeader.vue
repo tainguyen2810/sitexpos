@@ -21,7 +21,7 @@ defineProps<{ title: string; description?: string; crumbs?: Crumb[] }>()
     </nav>
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="min-w-0">
-        <h1 class="text-xl font-semibold text-ink sm:text-2xl">{{ title }}</h1>
+        <h1 class="text-xl font-semibold tracking-tight text-ink sm:text-2xl">{{ title }}</h1>
         <p v-if="description" class="mt-1 max-w-3xl text-sm text-ink-muted">{{ description }}</p>
       </div>
       <div v-if="$slots.actions" class="flex flex-wrap items-center gap-2"><slot name="actions" /></div>
