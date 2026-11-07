@@ -15,11 +15,15 @@ use SiteXPost\Modules\Writer\Support\WriterSettings;
 
 /**
  * Conditions for a human to approve a version (FACT-CHECK-POLICY.md §6).
- * Blocking: unresolved CRITICAL claims, sections not fact-checked since
- * their last edit, a running workflow, quality below the policy minimum,
- * duplicate recommendation "reject", placeholder text ("Cần xác minh"
- * cells, talk about missing sources). HIGH unresolved claims need an
- * explicit acknowledgement. AI scores alone never approve anything.
+ * Blocking: a running workflow, quality below the policy minimum, duplicate
+ * recommendation "reject", placeholder text ("Cần xác minh" cells, talk
+ * about missing sources).
+ * Fact-check is a WARNING, not a wall (v1.0.11, product owner decision):
+ * unresolved CRITICAL claims — and HIGH ones when the workspace requires it
+ * — only need the approver's explicit acknowledgement; sections not
+ * re-checked since their last edit are a plain warning. The auto-approver
+ * still refuses all of these, so nothing unverified is approved without a
+ * person. AI scores alone never approve anything.
  */
 class ApprovalGate
 {
@@ -44,10 +48,15 @@ class ApprovalGate
             $blocking[] = ['code' => 'workflow_running', 'message' => 'Đang có tác vụ AI chạy trên bài viết.'];
         }
         if ($stats['unresolved_critical'] > 0) {
-            $blocking[] = ['code' => 'critical_unresolved', 'message' => "Còn {$stats['unresolved_critical']} khẳng định CRITICAL chưa được xác minh."];
+            $item = ['code' => 'critical_unresolved', 'message' => "Còn {$stats['unresolved_critical']} nhận định rất quan trọng chưa có nguồn xác minh."];
+            if ($ackHighRisk) {
+                $warnings[] = $item;
+            } else {
+                $blocking[] = $item + ['requires_ack' => true];
+            }
         }
         if ($stats['unchecked_sections'] !== []) {
-            $blocking[] = ['code' => 'sections_not_checked', 'message' => 'Có phần đã sửa nhưng chưa kiểm chứng lại: '.implode(', ', $stats['unchecked_sections'])];
+            $warnings[] = ['code' => 'sections_not_checked', 'message' => 'Có phần đã sửa nhưng chưa kiểm chứng lại: '.implode(', ', $stats['unchecked_sections'])];
         }
         $current = $a->current_version_id !== null ? ArticleVersion::query()->find($a->current_version_id) : null;
         if ($current !== null && ($ph = PlaceholderDetector::scan($current->content_html))['hollow']) {
@@ -65,7 +74,7 @@ class ApprovalGate
             $blocking[] = ['code' => 'duplicate_reject', 'message' => 'Kiểm tra trùng lặp đề xuất loại bài này; hãy chọn quyết định trùng lặp trước.'];
         }
         if ($stats['unresolved_high'] > 0) {
-            $item = ['code' => 'high_unresolved', 'message' => "Còn {$stats['unresolved_high']} khẳng định HIGH chưa được xác minh."];
+            $item = ['code' => 'high_unresolved', 'message' => "Còn {$stats['unresolved_high']} nhận định quan trọng chưa có nguồn xác minh."];
             if ((bool) $this->settings->get('require_ack_for_high_risk', $a->workspace_id) && ! $ackHighRisk) {
                 $blocking[] = $item + ['requires_ack' => true];
             } else {

@@ -60,8 +60,6 @@ final class Batches
                 $code = 'article_not_found';
             } elseif ($a['status'] !== 'APPROVED') {
                 $code = 'article_not_approved';
-            } elseif ($a['unresolved_critical'] > 0 || $a['unresolved_high'] > 0) {
-                $code = 'unresolved_claims';
             } elseif (PublishingJob::query()->where('active_key', $siteId.':'.$id)->exists()) {
                 $code = 'active_job_exists';
             } elseif (WordPressPostMapping::query()->where('site_id', $siteId)->where('article_id', $id)->where('is_current', true)->whereNotNull('wp_post_id')->exists()) {

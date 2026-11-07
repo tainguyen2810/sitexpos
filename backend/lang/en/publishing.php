@@ -8,6 +8,7 @@ return [
         'site_ok' => 'Website thuộc workspace, đang kết nối và tài khoản WordPress được phép đăng.',
         'article_approved_ok' => 'Bài viết đã được người duyệt phê duyệt.',
         'fact_check_ok' => 'Không còn nhận định nghiêm trọng / cao chưa xử lý.',
+        'fact_check_warn' => 'Warning: some claims have no verifying source; the approver acknowledged them when approving.',
         'seo_ok' => 'Không có lỗi SEO chặn đăng.',
         'media_ok' => 'Ảnh đã sẵn sàng và có alt text.',
         'policy_ok' => 'Chế độ đăng được chính sách website cho phép.',

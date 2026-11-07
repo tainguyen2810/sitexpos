@@ -15,6 +15,8 @@ import PageHeader from '@/shared/ui/PageHeader.vue'
 import ProgressBar from '@/shared/ui/ProgressBar.vue'
 import Tabs from '@/shared/ui/Tabs.vue'
 import AddSourcesForm from './components/AddSourcesForm.vue'
+import NextStepBar from './components/NextStepBar.vue'
+import SeoScoreCard from './components/SeoScoreCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import WorkflowProgress from './components/WorkflowProgress.vue'
 import OverviewTab from './tabs/OverviewTab.vue'
@@ -135,6 +137,7 @@ async function saveBudget() {
             <AppButton v-if="isActiveWorkflow(article.workflow)" size="sm" variant="secondary" :loading="acting" @click="cancelWorkflow">{{ t('writer.article.cancelWorkflow') }}</AppButton>
           </div>
         </AppCard>
+        <div class="space-y-4">
         <AppCard>
           <p class="text-sm text-ink-muted">{{ t('writer.article.budget') }}</p>
           <p class="mt-1 text-lg font-semibold tabular-nums">{{ formatUsd(article.budget.spent_micro_usd) }} <span class="text-sm font-normal text-ink-muted">/ {{ formatUsd(article.budget.limit_micro_usd) }}</span></p>
@@ -142,7 +145,11 @@ async function saveBudget() {
           <p class="mt-2 text-xs text-ink-muted">{{ t('writer.article.updated') }}: {{ formatDateTime(article.updated_at) }}</p>
           <AppButton v-if="canEdit && !['APPROVED', 'CANCELLED'].includes(article.status)" class="mt-2" size="sm" variant="ghost" @click="openBudget">{{ t('writer.article.raiseBudget') }}</AppButton>
         </AppCard>
+        <SeoScoreCard />
+        </div>
       </div>
+
+      <NextStepBar @goto="(k) => (tab = k)" />
 
       <Tabs v-model="tab" :tabs="tabs" class="mb-4" />
       <KeepAlive :max="3">

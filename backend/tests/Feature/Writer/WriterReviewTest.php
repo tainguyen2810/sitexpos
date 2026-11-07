@@ -78,8 +78,10 @@ it('approves only with the publish permission and invalidates the approval when 
     $a = articleJson($t, $id);
     expect($a['status'])->toBe('NEEDS_HUMAN_REVIEW')->and($a['approved_version_id'])->toBeNull()
         ->and(inResearchTenant($t, fn () => EditorialApproval::query()->where('decision', 'approved')->sole()->invalidated_at))->not->toBeNull();
+    // Fact-check is a warning (v1.0.11): unchecked sections warn, they do not block.
     $check = articleJson($t, $id, 'approval');
-    expect(collect($check['blocking'])->pluck('code')->all())->toContain('sections_not_checked');
+    expect(collect($check['warnings'])->pluck('code')->all())->toContain('sections_not_checked')
+        ->and(collect($check['blocking'])->pluck('code')->all())->not->toContain('sections_not_checked');
 
     // Saving against a stale base version is a conflict, nothing is lost.
     $this->actingAs($t['editor'])->postJson(writerUrl($t, "articles/{$id}/versions"), ['content_html' => $html.'<p>x</p>', 'base_version_id' => $versionId])
@@ -89,11 +91,11 @@ it('approves only with the publish permission and invalidates the approval when 
     $this->actingAs($t['editor'])->postJson(writerUrl($t, "articles/{$id}/workflows"), ['kind' => 'recheck'])->assertStatus(202);
     $a = articleJson($t, $id);
     expect($a['status'])->toBe('NEEDS_HUMAN_REVIEW');
-    expect(articleJson($t, $id, 'approval')['blocking'])->not->toContain(fn ($b) => $b['code'] === 'sections_not_checked');
+    expect(collect(articleJson($t, $id, 'approval')['warnings'])->pluck('code')->all())->not->toContain('sections_not_checked');
     $this->actingAs($t['owner'])->postJson(writerUrl($t, "articles/{$id}/approve"), ['version_id' => $a['current_version_id'], 'acknowledge_high_risk' => true])->assertOk();
 });
 
-it('blocks approval while a CRITICAL claim is unresolved; manual verification needs an approver and evidence', function () {
+it('warns about an unresolved CRITICAL claim and needs an explicit acknowledgement; manual verification needs an approver and evidence', function () {
     $t = writerTenant();
     $t['ai']->on('article_section', fn (ProviderRequest $r) => ['html' => '<p>Theo Nghị định 13/2023/NĐ-CP, cửa hàng phải xin phép trước khi thu thập dữ liệu cá nhân của khách.</p>', 'used_evidence_refs' => [], 'notes' => []]);
     $id = writtenArticle($t);
@@ -102,9 +104,14 @@ it('blocks approval while a CRITICAL claim is unresolved; manual verification ne
     expect($critical)->not->toBeNull()->and($critical['status'])->toBe('INSUFFICIENT_EVIDENCE');
 
     $check = articleJson($t, $id, 'approval');
-    expect(collect($check['blocking'])->pluck('code')->all())->toContain('critical_unresolved');
-    $this->actingAs($t['owner'])->postJson(writerUrl($t, "articles/{$id}/approve"), ['version_id' => articleJson($t, $id)['current_version_id'], 'acknowledge_high_risk' => true])
+    $critical_item = collect($check['blocking'])->firstWhere('code', 'critical_unresolved');
+    expect($critical_item)->not->toBeNull()->and($critical_item['requires_ack'])->toBeTrue();
+    $this->actingAs($t['owner'])->postJson(writerUrl($t, "articles/{$id}/approve"), ['version_id' => articleJson($t, $id)['current_version_id'], 'acknowledge_high_risk' => false])
         ->assertStatus(422)->assertJsonPath('error.code', 'approval_blocked');
+    // With the acknowledgement it is only a warning.
+    $acked = $this->actingAs($t['owner'])->getJson(writerUrl($t, "articles/{$id}/approval").'?acknowledge_high_risk=1')->assertOk()->json('data');
+    expect(collect($acked['blocking'])->pluck('code')->all())->not->toContain('critical_unresolved')
+        ->and(collect($acked['warnings'])->pluck('code')->all())->toContain('critical_unresolved');
 
     $url = writerUrl($t, "articles/{$id}/claims/{$critical['id']}/verify");
     $this->actingAs($t['editor'])->postJson($url, ['verdict' => 'VERIFIED', 'note' => 'Đã đối chiếu văn bản gốc.', 'reference_url' => 'https://vanban.chinhphu.vn/nd-13-2023'])->assertForbidden();

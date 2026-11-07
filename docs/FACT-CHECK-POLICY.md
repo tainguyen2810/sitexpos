@@ -36,16 +36,21 @@ Model có thể **nâng** mức rủi ro, không thể hạ dưới mức sàn.
 - Claim CRITICAL chỉ người có quyền duyệt (`content.publish`) được xác minh; claim khác cần quyền sửa (`content.edit`).
 
 ## 5. Điều kiện duyệt bài (ApprovalGate)
+**Từ v1.0.11 (ADR-030): kiểm chứng là cảnh báo, không phải bức tường.** Thiếu nguồn xác minh không chặn người duyệt; người duyệt chỉ cần xác nhận đã xem cảnh báo.
+
 Chặn duyệt khi:
 - bài không ở trạng thái chờ duyệt, chưa có nội dung, hoặc đang có workflow AI chạy;
-- còn claim **CRITICAL** chưa `VERIFIED`;
-- có section đã sửa nhưng chưa kiểm chứng lại;
 - chưa chạy đánh giá chất lượng cho phiên bản hiện tại, hoặc điểm < `min_quality_score_for_approval` (50);
 - kiểm tra trùng lặp đề xuất loại và người dùng chưa chọn quyết định;
-- còn claim **HIGH** chưa xác minh và chưa xác nhận (`acknowledge_high_risk`) khi `require_ack_for_high_risk` bật;
 - phiên bản hiện tại còn nội dung giữ chỗ (`placeholder_content`, v1.0.6): ≥ 2 ô bảng kiểu "Cần xác minh" hoặc ≥ 2 câu nói về việc thiếu nguồn. Viết thận trọng là bỏ ý không có bằng chứng, không phải thay nó bằng "cần xác minh".
 
-Cảnh báo (không chặn): claim `INSUFFICIENT_EVIDENCE`/`PENDING` mức thấp hơn.
+Cần xác nhận (`acknowledge_high_risk`, mục chặn có `requires_ack`; có xác nhận thì chuyển thành cảnh báo):
+- còn claim **CRITICAL** chưa `VERIFIED`;
+- còn claim **HIGH** chưa xác minh khi `require_ack_for_high_risk` bật.
+
+Cảnh báo (không chặn): section đã sửa nhưng chưa kiểm chứng lại; claim `INSUFFICIENT_EVIDENCE`/`PENDING`.
+
+Lần duyệt lưu `checks.acknowledged_high_risk` + toàn bộ cảnh báo vào `editorial_approvals` và audit `writer.article_approved`, nên luôn biết ai đã duyệt bài còn cảnh báo. Cổng `fact_check` khi đăng WordPress (PublishingGates) cũng chỉ ghi cảnh báo (`details.warning = true`), không chặn.
 
 Điểm chất lượng **không bao giờ** là điều kiện duyệt duy nhất. Mọi chỉnh sửa sau khi duyệt làm mất hiệu lực phê duyệt.
 
@@ -55,8 +60,8 @@ Code: `Pipeline/AutoApprover.php`. Mặc định **tắt**.
 - Super Admin bật `auto_approve_enabled` (cho cả nền tảng hoặc từng workspace) và đặt `auto_approve_min_quality` (mặc định 75).
 - Khách chọn `approval_mode = auto` cho từng bài (wizard, bulk, hoặc đổi ở tab Tổng quan). Chọn `auto` khi chính sách đang tắt → 422.
 - Sau khi workflow viết hoặc kiểm chứng lại chạy xong, hệ thống chỉ tự duyệt khi **đủ tất cả** điều kiện:
-  - ApprovalGate (§5) không còn mục chặn, và **không** dùng xác nhận rủi ro HIGH;
-  - không còn claim CRITICAL hoặc HIGH chưa xác minh, không có claim `CONTRADICTED`/`OUTDATED`;
+  - ApprovalGate (§5) không còn mục chặn, và **không** dùng xác nhận rủi ro;
+  - không còn claim CRITICAL hoặc HIGH chưa xác minh, không có section chưa kiểm chứng lại, không có claim `CONTRADICTED`/`OUTDATED` (tự duyệt vẫn nghiêm ngặt: không có người thì không có gì chưa kiểm chứng được duyệt);
   - điểm chất lượng ≥ max(`auto_approve_min_quality`, `min_quality_score_for_approval`);
   - kiểm tra trùng lặp đề xuất `create_new` (hoặc chưa có kết quả trùng).
 - Không đủ điều kiện → bài ở `NEEDS_HUMAN_REVIEW`, lý do lưu trong `settings.auto_approve_result.reasons` và hiện ở tab Tổng quan.

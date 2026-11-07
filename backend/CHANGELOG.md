@@ -4,6 +4,11 @@ Format: `## [version] - YYYY-MM-DD`, one bullet per change. The Upgrade Wizard
 shows the sections between the installed version and the deployed code.
 Bump `config/sitex.php` → `version` together with this file.
 
+## [1.0.11] - 2026-11-07
+- **"Bước tiếp theo" on the article page:** one clear action for where the article is: approve (with the reasons when it cannot be approved yet) → "Đăng lên WordPress" (choose WordPress draft / publish now / schedule in a small dialog, draft by default) → progress, the reason when a publish is stuck, and a link to the post once it is on WordPress.
+- **Fact-check is a warning, not a wall:** claims without a verifying source no longer block approval or publishing. The approver ticks "Tôi đã xem cảnh báo kiểm chứng…" and can approve; sections not re-checked after an edit are a warning. The approval stores the acknowledgement and warnings (audit). Auto-approval is unchanged and still refuses any unverified claim.
+- **SEO score on the article page:** the SEO checklist score (0–100, errors and warnings) next to the AI budget, scored automatically for the current version, with "Chấm lại" and a link to the details. It is a technical checklist, not a ranking guarantee.
+
 ## [1.0.10] - 2026-11-07
 - **New look for both apps** (customer and admin), matching the approved demo design. No API or database change.
 - **App shell:** grouped side menu (Nội dung · Tối ưu & đăng bài · Website · Tài khoản; admin: Khách hàng · AI · Phân hệ · Vận hành) with live badges (articles awaiting review, failed publishes + conflicts, agent proposals, broken sites); search box for pages and articles (Ctrl+K); a bell listing what needs you; "Viết bài mới" button always visible; remaining credits in the sidebar; floating "Viết bài" button on mobile.
