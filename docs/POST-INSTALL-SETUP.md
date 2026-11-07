@@ -9,7 +9,7 @@ Trạng thái mỗi bước do **máy chủ tính từ cấu hình thật** (kh�
 | # | Bước | Bắt buộc | COMPLETE khi | Làm ở đâu |
 |---|---|---|---|---|
 | 1 | Thông tin chung | Có | Có tên thương hiệu và email hỗ trợ | Ngay trong bước (logo PNG/JPG/WebP ≤ 512 KB, không nhận SVG) |
-| 2 | Nhà cung cấp AI | Có | Ít nhất 1 provider bật, có khóa, circuit không mở | Cấu hình AI (khóa lưu mã hóa, không hiển thị lại) |
+| 2 | Nhà cung cấp AI | Có | Ít nhất 1 provider bật, có khóa, circuit không mở | Nhà cung cấp & mô hình (khóa lưu mã hóa, không hiển thị lại); Cấu hình AI để bật bên đang dùng |
 | 3 | Model AI cho từng tác vụ | Có (cho phép cảnh báo) | Mọi tác vụ có route bật và model sẵn sàng: gợi ý chủ đề, phân tích nguồn, dàn ý, viết bài, kiểm chứng, rà soát SEO, ảnh, SEO Agent, SEO Copilot. `BLOCKED` khi bước 2 chưa xong | Cấu hình AI |
 | 4 | Email (SMTP) | Có | Đã gửi email thử thành công | Ngay trong bước. Chọn "theo .env" hoặc nhập SMTP; mật khẩu chỉ ghi, không đọc lại. Gửi thử chạy trong hàng đợi (202) |
 | 5 | Gói dịch vụ | Có | Có ít nhất 1 gói `active` đã phát hành | Nút "Tạo bản nháp gói chuẩn" tạo Free/Starter/Pro/Business **không có giá**; nhập giá ở Gói & thanh toán |

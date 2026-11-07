@@ -4,6 +4,13 @@ Format: `## [version] - YYYY-MM-DD`, one bullet per change. The Upgrade Wizard
 shows the sections between the installed version and the deployed code.
 Bump `config/sitex.php` → `version` together with this file.
 
+## [1.0.8] - 2026-11-07
+- Admin › AI settings › Routes: each task shows the model that will really run ("Runs on"), whether that is the primary or fallback #n, and the numbered chain with skipped models struck through (no API key, disabled, no price, paused). Banner when tasks run on fallbacks or cannot run; filters (on primary / on fallback / cannot run), search, grouping by feature, Vietnamese task names.
+- Route editor: ordered model list (drag or arrows, add/remove) with a live "this task will run on …" preview; advanced options folded.
+- New admin page **Providers & models** (`/ai/providers`, permission `platform.ai.manage`): every provider in one list, keyed ones first; API key, connection test, settings (timeout, retries), custom OpenAI-compatible providers; each provider expands into its models with prices, an on/off switch, test call, edit and delete, plus "Add model for <provider>". The Providers and Models tabs moved here from AI settings.
+- **AI settings** now shows only providers that have an API key, under "Providers in use", each with a switch (In use / Not in use) and the number of tasks it runs; providers without a key are named in one line with a link to enter a key. Tabs: Routes and Budgets. The route editor's model pickers list only models of keyed providers.
+- Overview card "Tasks that can run" counts tasks on fallbacks and tasks that cannot run.
+
 ## [1.0.7] - 2026-11-07
 - Every text AI task can now run with only an Anthropic (Claude) key: Claude Sonnet is added as the last fallback on the routes that had no Claude model (`writer.claims`, `writer.seo_review`, `writer.final_review`, `keywords.expand`, `research.profile`, `analytics.recommend`, `agent.plan`, `copilot.answer`). A migration appends it on existing installs; routes you already re-routed keep your choice. Providers without a key are skipped at no cost.
 

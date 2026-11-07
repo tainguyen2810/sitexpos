@@ -143,7 +143,7 @@ const blocking = computed(() => (Array.isArray(d.value.blocking) ? (d.value.bloc
           </tbody>
         </table>
       </div>
-      <RouterLink to="/ai/settings" class="text-sm font-medium text-brand-700 hover:underline">{{ t('sys.common.open') }} →</RouterLink>
+      <RouterLink to="/ai/providers" class="text-sm font-medium text-brand-700 hover:underline">{{ t('sys.common.open') }} →</RouterLink>
     </div>
 
     <!-- 3. AI models per task -->

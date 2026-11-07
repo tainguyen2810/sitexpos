@@ -47,7 +47,7 @@ let failBodies = []
   await admin.getByRole('button', { name: 'Xác nhận' }).click()
   await admin.getByRole('button', { name: 'Tiếp tục' }).click()
 
-  await admin.getByRole('link', { name: 'Cấu hình AI' }).click()
+  await admin.getByRole('link', { name: 'Nhà cung cấp & mô hình' }).click()
   const list = admin.getByTestId('provider-list')
   await list.waitFor()
   const deepseek = list.locator('li', { hasText: 'DeepSeek' })
@@ -58,7 +58,7 @@ let failBodies = []
   await deepseek.getByRole('button', { name: /khóa API/ }).click()
   await admin.getByRole('dialog').getByLabel('API key').fill('sk-e2e-deepseek-not-real-7788')
   await admin.getByRole('dialog').getByRole('button', { name: 'Lưu thay đổi' }).click()
-  await deepseek.getByText('Khóa lưu trên hệ thống (…7788)').waitFor()
+  await deepseek.getByText('•••• 7788').waitFor()
   step('DeepSeek key saved; UI shows only …7788')
 
   // 2. Test Connection to the real DeepSeek API (this sandbox has no route to it → an honest error).
@@ -85,14 +85,13 @@ let failBodies = []
   await conn.getByText('Kết nối được').waitFor({ timeout: 30000 })
   await conn.getByText('Nhà cung cấp trả về 2 mô hình.').waitFor()
   await admin.getByRole('dialog').getByText('Đóng', { exact: true }).click()
-  await mock.getByRole('switch').click()
-  await mock.getByText('Đang bật', { exact: true }).waitFor()
+  await mock.getByRole('button', { name: 'Bật', exact: true }).click()
+  await mock.getByText('Đang dùng', { exact: true }).first().waitFor()
   await admin.screenshot({ path: `${shots}/31-custom-provider.png`, fullPage: true })
   step('custom provider added, connection OK (2 models), enabled')
 
   // 4. Model on the custom provider + time-of-day price.
-  await admin.getByRole('tab', { name: 'Mô hình & giá' }).click()
-  await admin.getByRole('button', { name: 'Thêm mô hình' }).click()
+  await mock.getByRole('button', { name: 'Thêm mô hình cho Mock LLM' }).click()
   const md = admin.getByRole('dialog')
   await md.getByLabel('Nhà cung cấp').selectOption({ label: 'Mock LLM' })
   await md.getByLabel('Model ID (đúng như tài liệu API)').fill('mock-mini')
@@ -140,10 +139,19 @@ let failBodies = []
   if (leaked.length) throw new Error(`API responses leaked a key (${leaked.length})`)
   step(`no API key in ${apiBodies.length} admin API responses`)
 
+  // 7. AI settings lists only keyed providers (DeepSeek and Mock LLM now have keys) with an in-use switch.
+  await admin.getByRole('link', { name: 'Cấu hình AI' }).click()
+  const inUse = admin.getByTestId('providers-in-use')
+  await inUse.locator('li', { hasText: 'Mock LLM' }).getByRole('switch').waitFor()
+  await inUse.locator('li', { hasText: 'DeepSeek' }).waitFor()
+  await admin.screenshot({ path: `${shots}/36-ai-settings-in-use.png`, fullPage: true })
+  step('AI settings shows only providers that have a key')
+
+  await admin.getByRole('link', { name: 'Nhà cung cấp & mô hình' }).click()
+  await admin.getByTestId('provider-list').waitFor()
   await admin.setViewportSize({ width: 390, height: 844 })
-  await admin.getByRole('tab', { name: 'Nhà cung cấp' }).click()
   await admin.screenshot({ path: `${shots}/35-providers-mobile.png`, fullPage: true })
-  step('providers tab on a phone')
+  step('providers page on a phone')
 
   await browser.close()
 })().catch(async (e) => {
