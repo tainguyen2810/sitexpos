@@ -73,7 +73,7 @@ async function run(reason: string) {
       <ErrorState v-else-if="list.error.value" :error="list.error.value" @retry="list.reload" />
       <EmptyState v-else-if="!list.items.value.length" icon="card" :title="t('billAdmin.common.empty')" />
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full text-sm">
+        <table class="data-table min-w-full text-sm">
           <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('billAdmin.common.workspace') }}</th><th class="px-4 py-2">{{ t('billAdmin.subs.plan') }}</th><th class="px-4 py-2">{{ t('billAdmin.subs.status') }}</th><th class="px-4 py-2 text-right">{{ t('bill.overview.price') }}</th><th class="px-4 py-2">{{ t('billAdmin.subs.periodEnd') }}</th><th /></tr></thead>
           <tbody class="divide-y divide-line">
             <tr v-for="s in list.items.value" :key="s.id">

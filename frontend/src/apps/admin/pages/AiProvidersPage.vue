@@ -366,7 +366,7 @@ const tierOptions = computed(() => (['economy', 'standard', 'premium'] as const)
           <div v-if="forced || isOpen(p)" class="border-t border-line bg-surface-muted/50 px-5 py-4">
             <p v-if="!p.has_api_key && p.driver !== 'fake'" class="mb-3 flex items-center gap-2 text-xs text-warning-700"><AppIcon name="alert" :size="14" />{{ $t('aiAdmin.ui.needKeyFirst', { name: p.name }) }}</p>
             <div v-if="items.length" class="overflow-x-auto rounded-lg bg-surface ring-1 ring-line">
-              <table class="w-full min-w-[820px] table-fixed text-sm" data-testid="model-list">
+              <table class="data-table w-full min-w-[820px] table-fixed text-sm" data-testid="model-list">
                 <colgroup><col class="w-[30%]" /><col class="w-[11%]" /><col class="w-[19%]" /><col class="w-[16%]" /><col class="w-[9%]" /><col /></colgroup>
                 <thead class="border-b border-line text-left text-xs font-semibold text-ink-muted">
                   <tr>

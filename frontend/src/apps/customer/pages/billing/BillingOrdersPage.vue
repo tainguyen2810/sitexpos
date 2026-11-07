@@ -47,7 +47,7 @@ function printDoc() {
       <ErrorState v-else-if="orders.error.value" :error="orders.error.value" @retry="orders.reload" />
       <EmptyState v-else-if="!orders.items.value.length" icon="receipt" :title="t('bill.orders.empty')" />
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full text-sm">
+        <table class="data-table min-w-full text-sm">
           <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
             <tr><th class="px-4 py-2">{{ t('bill.orders.reference') }}</th><th class="px-4 py-2">{{ t('bill.orders.purpose') }}</th><th class="px-4 py-2 text-right">{{ t('bill.orders.amount') }}</th><th class="px-4 py-2">{{ t('bill.orders.status') }}</th><th class="px-4 py-2">{{ t('bill.orders.created') }}</th><th /></tr>
           </thead>

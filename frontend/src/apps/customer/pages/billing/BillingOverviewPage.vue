@@ -137,7 +137,7 @@ async function setReminders(on: boolean) {
           </ul>
         </AppCard>
         <AppCard :title="t('bill.overview.features')">
-          <ul class="">
+          <ul class="grid grid-cols-2 gap-2 text-sm">
             <li v-for="(on, key) in ent?.features ?? {}" :key="key" class="flex items-center gap-2">
               <AppBadge :tone="on ? 'success' : 'neutral'">{{ on ? '✓' : '—' }}</AppBadge>{{ t(`bill.features.${key}`) }}
             </li>

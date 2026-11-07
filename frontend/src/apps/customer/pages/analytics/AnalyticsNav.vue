@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import SubNav from '@/shared/ui/SubNav.vue'
 import { useWorkspaceStore } from '../../stores/workspace'
 import { AGENT_NAV, ANALYTICS_NAV, useAnalytics } from './useAnalytics'
 
@@ -22,19 +23,14 @@ onMounted(() => void loadSites())
 </script>
 
 <template>
-  <div class="-mt-2 mb-6 space-y-3">
-    <nav class="flex gap-1 overflow-x-auto border-b border-line" :aria-label="section === 'agent' ? t('ag.title') : t('an.title')">
-      <RouterLink
-        v-for="i in items"
-        :key="i.key"
-        :to="{ name: i.route, params: { workspaceId: ws.current!.id }, query: siteId ? { site: siteId } : {} }"
-        class="whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium"
-        :class="props.active === i.key ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-muted hover:text-ink'"
-        :data-testid="`an-nav-${i.key}`"
-      >
-        {{ i.label }}
-      </RouterLink>
-    </nav>
+  <div class="-mt-2 mb-6 space-y-4">
+    <SubNav
+      class="!mb-0 !mt-0"
+      :items="items.map((i) => ({ key: i.key, label: i.label, to: { name: i.route, params: { workspaceId: ws.current!.id }, query: siteId ? { site: siteId } : {} }, testid: `an-nav-${i.key}` }))"
+      :active="props.active"
+      :label="section === 'agent' ? t('ag.title') : t('an.title')"
+      :max="section === 'agent' ? 6 : 5"
+    />
     <div v-if="siteSelect && sites.length" class="flex flex-wrap items-center gap-2 text-sm">
       <label for="an-site" class="text-ink-muted">{{ t('an.common.site') }}</label>
       <select id="an-site" v-model="siteId" class="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm" data-testid="an-site-select">

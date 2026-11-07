@@ -161,7 +161,7 @@ function lim(n: number | undefined) {
             <AppButton v-if="!p.live_subscriptions" size="sm" variant="danger" @click="toDelete = { id: p.id, name: p.name }">{{ t('billAdmin.plans.delete') }}</AppButton>
           </div>
           <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
+            <table class="data-table min-w-full text-sm">
               <thead class="text-left text-xs uppercase text-ink-muted">
                 <tr><th class="py-1 pr-3">v</th><th class="py-1 pr-3">{{ t('billAdmin.plans.status') }}</th><th class="py-1 pr-3 text-right">{{ t('billAdmin.plans.monthly') }}</th><th class="py-1 pr-3 text-right">{{ t('billAdmin.plans.yearly') }}</th><th class="py-1 pr-3 text-right">{{ t('billAdmin.plans.included') }}</th><th class="py-1 pr-3">{{ t('bill.resources.websites') }}</th><th class="py-1 pr-3">{{ t('bill.resources.articles') }}</th><th /></tr>
               </thead>
@@ -194,7 +194,7 @@ function lim(n: number | undefined) {
       <ErrorState v-else-if="packages.error.value" :error="packages.error.value" @retry="packages.run" />
       <EmptyState v-else-if="!packages.data.value?.length" icon="coins" :title="t('billAdmin.common.empty')" />
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full text-sm">
+        <table class="data-table min-w-full text-sm">
           <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('billAdmin.plans.packages.code') }}</th><th class="px-4 py-2">{{ t('billAdmin.plans.packages.name') }}</th><th class="px-4 py-2 text-right">Credits</th><th class="px-4 py-2 text-right">{{ t('billAdmin.plans.packages.price') }}</th><th class="px-4 py-2">{{ t('billAdmin.plans.packages.status') }}</th><th /></tr></thead>
           <tbody class="divide-y divide-line">
             <tr v-for="p in packages.data.value" :key="p.id">
@@ -216,7 +216,7 @@ function lim(n: number | undefined) {
       <ErrorState v-else-if="policies.error.value" :error="policies.error.value" @retry="policies.run" />
       <p v-else-if="!policies.data.value?.length" class="px-4 py-6 text-sm text-warning-600">{{ t('billAdmin.plans.policies.none') }}</p>
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full text-sm">
+        <table class="data-table min-w-full text-sm">
           <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('billAdmin.plans.policies.version') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.plans.policies.perCredit') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.plans.policies.markup') }}</th><th class="px-4 py-2 text-right">{{ t('billAdmin.plans.policies.min') }}</th><th class="px-4 py-2">{{ t('billAdmin.plans.policies.effective') }}</th></tr></thead>
           <tbody class="divide-y divide-line">
             <tr v-for="p in policies.data.value" :key="p.id">
@@ -256,7 +256,7 @@ function lim(n: number | undefined) {
         </div>
         <div class="space-y-3">
           <p class="text-sm font-medium">{{ t('billAdmin.plans.limits') }}</p>
-          <div class="">
+          <div class="mb-3 flex flex-wrap gap-2">
             <AppInput v-for="r in RESOURCES" :key="r" v-model="ver.limits[r]" type="number" :label="t(`bill.resources.${r}`)" />
           </div>
           <p class="text-sm font-medium">{{ t('billAdmin.plans.features') }}</p>

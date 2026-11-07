@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { ARTICLE_STATUSES, BUSY_STATUSES, CONTENT_TYPES, formatUsd, writerApi } from '@/shared/api/writer'
 import { siteApi } from '@/shared/api/sites'
 import { useAsync } from '@/shared/composables/useAsync'
@@ -25,7 +26,8 @@ import { usePolling, useWriterPerms } from './useWriter'
 const { t } = useI18n()
 const { workspaceId: id, canEdit } = useWriterPerms()
 
-const status = ref('')
+const route = useRoute()
+const status = ref(typeof route.query.status === 'string' ? route.query.status : '')
 const type = ref('')
 const site = ref('')
 const sort = ref('updated')
@@ -70,7 +72,7 @@ const siteName = (sid: string) => sites.data.value?.find((s) => s.id === sid)?.n
     </PageHeader>
     <WriterNav active="library" />
 
-    <div v-if="overview.data.value" class=" ">
+    <div v-if="overview.data.value" class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
       <div class="rounded-xl bg-surface shadow-xs ring-1 ring-line p-4">
         <p class="text-sm text-ink-muted">{{ t('writer.overview.quota') }}</p>
         <p class="mt-2 text-2xl font-semibold tabular-nums">{{ overview.data.value.quota.used }}<span class="text-base text-ink-muted">/{{ overview.data.value.quota.limit }}</span></p>

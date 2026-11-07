@@ -60,7 +60,7 @@ async function submit() {
       <ErrorState v-else-if="list.error.value" :error="list.error.value" @retry="list.reload" />
       <EmptyState v-else-if="!list.items.value.length" icon="check" :title="t('billAdmin.common.empty')" />
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full text-sm">
+        <table class="data-table min-w-full text-sm">
           <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><tr><th class="px-4 py-2">{{ t('billAdmin.recon.occurred') }}</th><th class="px-4 py-2">{{ t('billAdmin.recon.external') }}</th><th class="px-4 py-2">{{ t('billAdmin.recon.memo') }}</th><th class="px-4 py-2 text-right">{{ t('bill.orders.amount') }}</th><th class="px-4 py-2">{{ t('bill.orders.status') }}</th><th /></tr></thead>
           <tbody class="divide-y divide-line">
             <tr v-for="tx in list.items.value" :key="tx.id">

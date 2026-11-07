@@ -75,7 +75,7 @@ async function setStatus(s: Schedule, status: Schedule['status']) {
           <AppBadge v-if="s.consecutive_failures" tone="warning">{{ t('ag.schedules.failures', { n: s.consecutive_failures }) }}</AppBadge>
           <AppBadge v-if="s.is_demo">DEMO</AppBadge>
         </div>
-        <dl class="">
+        <dl class="grid grid-cols-2 gap-y-1 text-sm">
           <dt class="text-ink-muted">{{ t('ag.schedules.next') }}</dt><dd>{{ formatDateTime(s.next_run_at, s.timezone) }}</dd>
           <dt class="text-ink-muted">{{ t('ag.schedules.last') }}</dt><dd>{{ formatDateTime(s.last_run_at, s.timezone) }} <span v-if="s.last_status" class="text-xs text-ink-muted">({{ t(`ag.schedules.lastStatus.${s.last_status}`, s.last_status) }})</span></dd>
         </dl>

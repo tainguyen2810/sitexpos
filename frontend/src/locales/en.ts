@@ -15,6 +15,8 @@ export default {
     title: 'Websites',
     subtitle: 'WordPress websites connected to this workspace through the SiteX Post plugin.',
     add: 'Add website',
+    statusLabel: 'Status',
+    contentCount: 'Synced content',
     addTitle: 'Add a WordPress website',
     addSubmit: 'Create pairing code',
     name: 'Display name',

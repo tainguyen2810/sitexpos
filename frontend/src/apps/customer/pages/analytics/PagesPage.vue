@@ -49,7 +49,7 @@ onSite(reload)
         <ErrorState v-else-if="d.s.error.value" :error="d.s.error.value" @retry="d.s.run" />
         <EmptyState v-else-if="!d.s.data.value?.data.length" icon="chart" :title="t('an.common.noData')" />
         <div v-else class="overflow-x-auto">
-          <table class="min-w-full text-sm">
+          <table class="data-table min-w-full text-sm">
             <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
               <tr>
                 <th class="px-4 py-2">{{ t(`an.filters.${d.key}`) }}</th>

@@ -154,7 +154,7 @@ function onJobChanged(j: PublishingJob) {
       <ErrorState v-else-if="error" :error="error" @retry="loadArticles" />
       <EmptyState v-else-if="!articles.length" icon="send" :title="t('p6.pub.center.empty')" :description="t('p6.pub.center.emptyHint')" />
       <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[44rem] text-left text-sm" data-testid="publish-articles">
+        <table class="data-table w-full min-w-[44rem] text-left text-sm" data-testid="publish-articles">
           <thead class="border-b border-line text-xs text-ink-muted"><tr><th class="w-8 px-5 py-2" /><th class="px-2">{{ t('p6.common.article') }}</th><th class="px-2">{{ t('p6.pub.center.factCheck') }}</th><th class="px-2">WordPress</th><th class="px-2">{{ t('p6.pub.center.activeJob') }}</th><th class="px-5 text-right">{{ t('common.actions') }}</th></tr></thead>
           <tbody class="divide-y divide-line">
             <tr v-for="a in articles" :key="a.id">
@@ -165,7 +165,7 @@ function onJobChanged(j: PublishingJob) {
               <td class="px-2"><button v-if="a.active_job" type="button" @click="openJob = a.active_job.id"><AppBadge :tone="jobTone(a.active_job.status)">{{ t(`p6.pub.status.${a.active_job.status}`) }}</AppBadge></button></td>
               <td class="whitespace-nowrap px-5 text-right">
                 <AppButton size="sm" variant="ghost" @click="openPreview(a)">{{ t('p6.pub.center.preview') }}</AppButton>
-                <AppButton v-if="canEdit && !a.active_job" size="sm" variant="secondary" data-testid="open-create-job" @click="openCreate(a)">{{ a.wordpress ? t('p6.pub.center.update') : t('p6.pub.center.publish') }}</AppButton>
+                <AppButton v-if="canEdit && !a.active_job" size="sm" data-testid="open-create-job" @click="openCreate(a)">{{ a.wordpress ? t('p6.pub.center.update') : t('p6.pub.center.publish') }}</AppButton>
               </td>
             </tr>
           </tbody>

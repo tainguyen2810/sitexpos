@@ -31,7 +31,7 @@ const monthly = computed(() => RESOURCES.filter((r) => data.value?.entitlements[
       <AppCard :title="t('bill.usage.byCategory')" :subtitle="formatDate(data.period_start)" :padded="false">
         <EmptyState v-if="!data.by_category.length" icon="sparkles" :title="t('bill.usage.empty')" />
         <div v-else class="overflow-x-auto">
-          <table class="min-w-full text-sm">
+          <table class="data-table min-w-full text-sm">
             <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
               <tr><th class="px-4 py-2" /><th class="px-4 py-2 text-right">{{ t('bill.usage.calls') }}</th><th class="px-4 py-2 text-right">{{ t('bill.usage.charged') }}</th></tr>
             </thead>

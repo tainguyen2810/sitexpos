@@ -133,7 +133,7 @@ async function cancelArticle() {
         <ErrorState v-else-if="usage.error.value" :error="usage.error.value" @retry="usage.run" />
         <p v-else-if="!usage.data.value?.breakdown.length" class="text-sm text-ink-muted">{{ t('common.noData') }}</p>
         <div v-else class="overflow-x-auto">
-          <table class="w-full text-left text-xs">
+          <table class="data-table w-full text-left text-xs">
             <thead class="text-ink-muted"><tr><th class="py-1 pr-2">{{ t('writer.article.steps') }}</th><th class="pr-2">{{ t('writer.article.calls') }}</th><th class="pr-2">{{ t('writer.article.tokens') }}</th><th class="pr-2">{{ t('writer.article.fetches') }}</th><th class="text-right">USD</th></tr></thead>
             <tbody class="divide-y divide-line">
               <tr v-for="r in usage.data.value.breakdown" :key="`${r.step}:${r.task_key}:${r.model}`">
@@ -156,7 +156,7 @@ async function cancelArticle() {
           :hint="autoEnabled ? t('writer.autoApprove.hint', { min: opts.data.value?.auto_approve.min_quality ?? 0 }) : undefined" />
         <p v-if="autoResult?.approved && a.status === 'APPROVED'" class="mt-2 rounded bg-success-50 p-2 text-xs text-success-600" data-testid="auto-approved">{{ t('writer.autoApprove.approved') }}</p>
         <p v-else-if="autoResult && !autoResult.approved" class="mt-2 rounded bg-warning-50 p-2 text-xs text-warning-600" data-testid="auto-skipped">{{ t('writer.autoApprove.skipped', { reasons: autoReasons }) }}</p>
-        <dl class=" ">
+        <dl class="mt-3 grid grid-cols-2 gap-2 text-sm">
           <div><dt class="text-ink-muted">{{ t('writer.article.keyword') }}</dt><dd>{{ a.primary_keyword }}</dd></div>
           <div><dt class="text-ink-muted">{{ t('writer.article.type') }}</dt><dd>{{ t(`writer.contentType.${a.content_type}`) }}</dd></div>
         </dl>

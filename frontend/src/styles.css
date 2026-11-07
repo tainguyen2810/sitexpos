@@ -45,6 +45,24 @@
   html { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
   :focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 2px; }
   input[type='checkbox'], input[type='radio'] { accent-color: var(--color-brand-600); width: 1rem; height: 1rem; }
+  /* One look for every native field; per-field utility classes still win. */
+  select, textarea, input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='color'], [type='hidden']) {
+    border: 1px solid var(--color-line-strong);
+    border-radius: .5rem;
+    background-color: var(--color-surface);
+    padding: .5rem .75rem;
+    font-size: .875rem;
+    line-height: 1.25rem;
+    color: var(--color-ink);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  select { padding-right: 2rem; }
+  select:focus, textarea:focus, input:not([type='checkbox'], [type='radio']):focus {
+    outline: none;
+    border-color: var(--color-brand-500);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand-500) 20%, transparent);
+  }
+  ::placeholder { color: var(--color-ink-subtle); }
 }
 
 /* Article content (AI Writer editor + preview). */
@@ -65,4 +83,31 @@
   .article-content blockquote { border-left: 3px solid var(--color-line); padding-left: 1rem; color: var(--color-ink-muted); }
   .article-content .callout, .article-content .cta { background: var(--color-surface-muted); border-radius: .5rem; padding: .75rem 1rem; margin: .75rem 0; }
   .article-content .callout-warning { background: var(--color-warning-50); }
+}
+
+/*
+ * Data tables (every list in both apps carries `data-table`). Spacing, header
+ * style and row dividers are UNLAYERED on purpose: unlayered CSS wins over
+ * Tailwind's utility layer, so older per-cell `px-2 py-2` classes no longer
+ * make rows cramped. Alignment and colours stay overridable (base layer).
+ */
+.data-table { border-collapse: collapse; }
+.data-table > thead > tr > th {
+  padding: .75rem .875rem;
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-line);
+}
+.data-table > tbody > tr > td { padding: .875rem .875rem; vertical-align: middle; }
+.data-table > tbody > tr + tr > td { border-top: 1px solid var(--color-line); }
+.data-table > thead > tr > th:first-child, .data-table > tbody > tr > td:first-child { padding-left: 1.25rem; }
+.data-table > thead > tr > th:last-child, .data-table > tbody > tr > td:last-child { padding-right: 1.25rem; }
+.data-table > tbody > tr { transition: background-color .1s; }
+.data-table > tbody > tr:hover { background: color-mix(in srgb, var(--color-surface-muted) 70%, transparent); }
+@layer base {
+  .data-table > thead > tr > th { text-align: left; color: var(--color-ink-muted); }
 }

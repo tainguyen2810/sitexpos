@@ -111,7 +111,7 @@ const tone = (s: string) => (s === 'succeeded' ? 'success' : s === 'failed' || s
           <AppSelect v-model="sites.siteId.value" :label="t('p6.common.site')" :options="sites.options.value" />
           <ArticlePicker v-model="form.article_id" :articles="articles" :label="t('p6.media.gen.article')" />
           <AppSelect v-model="form.image_type" :label="t('p6.media.gen.type')" :options="opts(IMAGE_TYPES, 'p6.media.imageType')" />
-          <div class="">
+          <div class="grid gap-6 lg:grid-cols-5">
             <AppSelect v-model="form.aspect_ratio" :label="t('p6.media.gen.ratio')" :options="ratioOpts" />
             <AppSelect v-model="form.style" :label="t('p6.media.gen.style')" :options="opts(IMAGE_STYLES, 'p6.media.style')" />
             <AppSelect v-model="form.quality" :label="t('p6.media.gen.quality')" :options="[{ value: 'standard', label: t('p6.media.quality.standard') }, { value: 'high', label: t('p6.media.quality.high') }]" />

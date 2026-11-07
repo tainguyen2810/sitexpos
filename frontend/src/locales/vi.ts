@@ -5,9 +5,12 @@ import p6 from './phase6.vi'
 import billing from './billing.vi'
 import analytics from './analytics.vi'
 import system from './system.vi'
+import shell from './shell.vi'
 export default {
   common: {
     appName: 'SiteX Post',
+    total: 'Tổng',
+    more: 'Thêm',
     save: 'Lưu thay đổi',
     saving: 'Đang lưu…',
     cancel: 'Hủy',
@@ -143,6 +146,8 @@ export default {
     aiProviders: 'Nhà cung cấp & mô hình',
     jobs: 'Hàng đợi & job',
     openMenu: 'Mở menu',
+    closeMenu: 'Đóng menu',
+    main: 'Điều hướng chính',
     switchWorkspace: 'Chuyển workspace',
     createWorkspace: 'Tạo workspace mới',
   },
@@ -198,6 +203,8 @@ export default {
     emptyBody: 'Thêm website WordPress đầu tiên, cài plugin SiteX Post rồi nhập mã kết nối.',
     back: 'Danh sách website',
     lastHealth: 'Kiểm tra gần nhất',
+    statusLabel: 'Trạng thái',
+    contentCount: 'Nội dung đã đồng bộ',
     lastError: 'Lỗi gần nhất',
     issuesCount: '{n} cảnh báo',
     pendingHelp: 'Website đang chờ kết nối. Tạo mã kết nối rồi nhập vào trang SiteX Post trong WordPress (wp-admin).',
@@ -1144,4 +1151,5 @@ export default {
   ...billing,
   ...analytics,
   ...system,
+  ...shell,
 } as const

@@ -51,7 +51,7 @@ function duration(r: HistoryRow): string {
       <ErrorState v-else-if="list.error.value" :error="list.error.value" class="p-5" @retry="list.reload" />
       <EmptyState v-else-if="!list.items.value.length" icon="clock" :title="t('writer.history.empty')" />
       <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[40rem] text-left text-sm" data-testid="history-table">
+        <table class="data-table w-full min-w-[40rem] text-left text-sm" data-testid="history-table">
           <thead class="border-b border-line text-xs text-ink-muted">
             <tr><th class="px-5 py-2">{{ t('writer.history.article') }}</th><th class="px-2">{{ t('writer.history.kind') }}</th><th class="px-2">{{ t('common.status') }}</th><th class="px-2">{{ t('writer.article.steps') }}</th><th class="px-2">{{ t('writer.history.duration') }}</th><th class="px-5 text-right">{{ t('common.createdAt') }}</th></tr>
           </thead>

@@ -134,7 +134,7 @@ function toggleList(list: 'allowed_actions' | 'forbidden_actions', tool: ToolNam
             <label class="flex flex-col gap-1"><span class="text-xs text-ink-muted">{{ t('ag.config.maxDaily') }}</span><input v-model="form.max_daily_tasks" type="number" min="0" max="200" :disabled="!canConfigure" class="rounded-lg border border-line bg-surface px-2 py-1.5" /></label>
             <label class="flex flex-col gap-1"><span class="text-xs text-ink-muted">{{ t('ag.config.maxSpend') }}</span><input v-model="spendUsd" type="number" min="0" step="0.01" :disabled="!canConfigure" class="rounded-lg border border-line bg-surface px-2 py-1.5" /></label>
             <label class="flex flex-col gap-1"><span class="text-xs text-ink-muted">{{ t('ag.config.maxRefreshes') }}</span><input v-model="form.max_monthly_refreshes" type="number" min="0" max="200" :disabled="!canConfigure" class="rounded-lg border border-line bg-surface px-2 py-1.5" /></label>
-            <div class="">
+            <div class="mb-6 flex flex-wrap items-center gap-3">
               <label class="flex flex-col gap-1"><span class="text-xs text-ink-muted">{{ t('ag.config.windowStart') }}</span><input v-model="form.publish_window_start" type="number" min="0" max="23" :disabled="!canConfigure" class="rounded-lg border border-line bg-surface px-2 py-1.5" /></label>
               <label class="flex flex-col gap-1"><span class="text-xs text-ink-muted">{{ t('ag.config.windowEnd') }}</span><input v-model="form.publish_window_end" type="number" min="0" max="24" :disabled="!canConfigure" class="rounded-lg border border-line bg-surface px-2 py-1.5" /></label>
             </div>
@@ -145,7 +145,7 @@ function toggleList(list: 'allowed_actions' | 'forbidden_actions', tool: ToolNam
           <LoadingState v-if="tools.loading.value && !tools.data.value" />
           <ErrorState v-else-if="tools.error.value" :error="tools.error.value" @retry="tools.run" />
           <div v-else-if="tools.data.value" class="overflow-x-auto">
-            <table class="min-w-full text-sm" data-testid="tool-table">
+            <table class="data-table min-w-full text-sm" data-testid="tool-table">
               <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
                 <tr>
                   <th class="px-4 py-2">{{ t('ag.config.tool') }}</th>

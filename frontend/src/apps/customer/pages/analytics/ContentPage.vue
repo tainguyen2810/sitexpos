@@ -82,7 +82,7 @@ function change(cur: number, prev: number | null): number | null {
         <ErrorState v-else-if="clusters.error.value" :error="clusters.error.value" @retry="clusters.run" />
         <EmptyState v-else-if="!clusters.data.value?.data.length" icon="target" :title="t('an.content.noClusters')" />
         <div v-else class="overflow-x-auto">
-          <table class="min-w-full text-sm">
+          <table class="data-table min-w-full text-sm">
             <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
               <tr><th class="px-4 py-2">{{ t('an.content.cluster') }}</th><th class="px-4 py-2 text-right">{{ t('an.content.ideas') }}</th><th class="px-4 py-2 text-right">{{ t('an.content.published') }}</th></tr>
             </thead>

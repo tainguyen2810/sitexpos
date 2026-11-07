@@ -175,7 +175,7 @@ const statusTone = (s: string) => (s === 'accepted' ? 'success' : s === 'rejecte
 
     <AppModal :open="!!picking" :title="t('p6.media.art.chooseImage')" width="xl" @close="picking = null">
       <EmptyState v-if="!library.length" icon="image" :title="t('p6.media.lib.empty')" />
-      <ul v-else class=" ">
+      <ul v-else class="divide-y divide-line">
         <li v-for="a in library" :key="a.id">
           <button type="button" class="block w-full text-left disabled:opacity-40" :disabled="!!picking && !placementAllowsAsset(picking.slot, a)" @click="choose(a)">
             <img :src="a.thumbnail_url ?? ''" :alt="a.alt_text ?? ''" class="h-24 w-full rounded object-cover" />

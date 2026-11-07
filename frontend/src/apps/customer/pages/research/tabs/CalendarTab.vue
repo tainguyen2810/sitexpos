@@ -183,10 +183,10 @@ const inMonth = (day: string) => view.value === 'week' || day.slice(0, 7) === an
       <ErrorState v-else-if="error" :error="error" class="p-5" @retry="load" />
       <div v-else class="overflow-x-auto">
         <div class="min-w-[720px]">
-          <div class="">
+          <div class="grid gap-6 xl:grid-cols-4">
             <div v-for="w in weekdays" :key="w" class="py-2">{{ w }}</div>
           </div>
-          <div v-for="(week, wi) in weeks" :key="wi" class="">
+          <div v-for="(week, wi) in weeks" :key="wi" class="grid grid-cols-7 border-b border-line last:border-b-0">
             <div
               v-for="day in week"
               :key="day"

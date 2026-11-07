@@ -57,7 +57,7 @@ const hostOf = (u: string) => {
   <ErrorState v-else-if="dossier.error.value" :error="dossier.error.value" @retry="dossier.run" />
   <EmptyState v-else-if="!dossier.data.value" icon="search" :title="t('writer.research.empty')" :description="t('writer.research.emptyBody')" />
   <div v-else class="space-y-4">
-    <div class=" ">
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
       <StatCard :label="t('writer.research.questions')" :value="dossier.data.value.questions_count" icon="list" />
       <StatCard :label="t('writer.research.sources')" :value="t('writer.research.usable', { usable: dossier.data.value.usable_sources_count, total: dossier.data.value.sources_count })" icon="globe" />
       <StatCard :label="t('writer.research.evidence')" :value="dossier.data.value.evidence_count" icon="shieldCheck" :hint="t('writer.research.rejected', { n: dossier.data.value.rejected_evidence_count })" />

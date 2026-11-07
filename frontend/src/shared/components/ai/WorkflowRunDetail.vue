@@ -36,7 +36,7 @@ const usage = computed(() => out.value?.usage ?? {})
       <p v-else class="mt-1 whitespace-pre-wrap break-words" data-testid="run-text">{{ out.text }}</p>
     </div>
 
-    <dl v-if="out && out.model" class=" " data-testid="run-usage">
+    <dl v-if="out && out.model" class="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4" data-testid="run-usage">
       <div><dt class="text-xs text-ink-muted">{{ $t('ai.model') }}</dt><dd class="font-medium">{{ out.model_key ?? out.model }}</dd></div>
       <div><dt class="text-xs text-ink-muted">{{ $t('ai.cost') }}</dt><dd class="font-medium">{{ formatUsd(out.cost_micro_usd) }}</dd></div>
       <div><dt class="text-xs text-ink-muted">{{ $t('ai.tokensIn') }}</dt><dd>{{ formatTokens(usage.input_tokens) }}</dd></div>

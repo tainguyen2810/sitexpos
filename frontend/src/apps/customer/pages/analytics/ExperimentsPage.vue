@@ -84,7 +84,7 @@ const changeOptions = computed(() => CHANGE_TYPES.map((c) => ({ value: c, label:
           {{ t('an.experiments.baseline') }}: {{ formatDate(e.baseline_start) }} – {{ formatDate(e.baseline_end) }} · {{ t('an.experiments.observation') }}: {{ e.observation_days }} {{ t('an.common.days') }} ({{ t('an.common.until') }} {{ formatDate(e.observation_end) }})
         </p>
         <div class="overflow-x-auto">
-          <table class="min-w-full text-sm">
+          <table class="data-table min-w-full text-sm">
             <thead class="text-left text-xs uppercase text-ink-muted">
               <tr><th /><th class="text-right">{{ t('an.experiments.before') }}</th><th class="text-right">{{ t('an.experiments.after') }}</th></tr>
             </thead>

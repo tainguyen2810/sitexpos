@@ -7,7 +7,7 @@ defineProps<{ entries: AuditLogEntry[]; showWorkspace?: boolean }>()
 
 <template>
   <div class="overflow-x-auto">
-    <table class="min-w-full divide-y divide-line text-sm">
+    <table class="data-table min-w-full divide-y divide-line text-sm">
       <thead class="bg-surface-muted text-left text-xs uppercase tracking-wide text-ink-subtle">
         <tr>
           <th class="px-5 py-3 font-medium">{{ $t('audit.time') }}</th>

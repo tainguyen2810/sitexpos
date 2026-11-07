@@ -4,6 +4,16 @@ Format: `## [version] - YYYY-MM-DD`, one bullet per change. The Upgrade Wizard
 shows the sections between the installed version and the deployed code.
 Bump `config/sitex.php` → `version` together with this file.
 
+## [1.0.10] - 2026-11-07
+- **New look for both apps** (customer and admin), matching the approved demo design. No API or database change.
+- **App shell:** grouped side menu (Nội dung · Tối ưu & đăng bài · Website · Tài khoản; admin: Khách hàng · AI · Phân hệ · Vận hành) with live badges (articles awaiting review, failed publishes + conflicts, agent proposals, broken sites); search box for pages and articles (Ctrl+K); a bell listing what needs you; "Viết bài mới" button always visible; remaining credits in the sidebar; floating "Viết bài" button on mobile.
+- **Customer overview:** "Việc cần bạn xử lý", a quick-start checklist, 4 KPI cards, real Google clicks chart (empty state when Search Console is not connected; no made-up numbers), article pipeline, recent articles and sites.
+- **Admin overview:** workspaces, users, 30-day AI cost and failed jobs; AI cost per day chart; system health list (worst first); shortcuts. Each block appears only for staff allowed to see it.
+- Section tabs: long tab bars keep the first tabs and move the rest into a "Thêm" menu.
+- Tables and form fields share one style (spacing, header, hover, focus ring); the Websites page is a table with status, versions, synced content and last check.
+- Links from the bell/badges open filtered lists (articles awaiting review, failed publishes).
+- Fix: restored layout classes that a Phase 9 change had removed from about 30 elements (media library grid, detail lists, research overview), which made several pages look unstyled.
+
 ## [1.0.9] - 2026-11-07
 - **AI Writer, simpler:** "Viết bài mới" is now one page with three questions (topic, style, length Short/Medium/Long), three plain-language switches (illustrations, look things up on the Internet, link to older posts) and an optional "Tùy chỉnh thêm" section where every field explains itself; empty means the AI decides. Default review mode is "review the final article". Tabs: Viết bài mới · Bài đã viết · Văn phong (Viết nhiều bài and Lịch sử moved to the right).
 - **Styles page:** "Your styles" (cards with where each was learned from) and 7 **ready-made styles** (Thân thiện, Chuyên gia, Hướng dẫn từng bước, Bán hàng, Kể chuyện, Tin tức ngắn gọn, Trang trọng) that can be used directly or copied into your own style.

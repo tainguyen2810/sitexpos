@@ -62,7 +62,7 @@ async function start() {
       <ErrorState v-else-if="error" :error="error" @retry="run" />
       <EmptyState v-else-if="!data?.data.length" icon="cpu" :title="t('ag.runs.empty')" />
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full text-sm">
+        <table class="data-table min-w-full text-sm">
           <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
             <tr>
               <th class="px-4 py-2">{{ t('ag.runs.kind') }}</th>

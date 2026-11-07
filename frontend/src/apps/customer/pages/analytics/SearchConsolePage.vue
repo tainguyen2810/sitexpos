@@ -119,7 +119,7 @@ function runTone(s: SyncRun['status']): 'success' | 'warning' | 'danger' | 'bran
     </EmptyState>
     <div v-else class="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <AppCard v-for="s in sites" :key="s.id" :title="s.name" :subtitle="s.url" :data-testid="`gsc-site-${s.id}`">
-        <dl class="">
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
           <dt class="text-ink-muted">{{ t('an.connections.gsc') }}</dt>
           <dd><AppBadge :tone="statusTone(s.search_console.status)">{{ t(`an.connections.status.${s.search_console.status}`, s.search_console.status) }}</AppBadge></dd>
           <dt class="text-ink-muted">{{ t('an.connections.account') }}</dt>
@@ -157,7 +157,7 @@ function runTone(s: SyncRun['status']): 'success' | 'warning' | 'danger' | 'bran
       <ErrorState v-else-if="runs.error.value" :error="runs.error.value" @retry="runs.run" />
       <EmptyState v-else-if="!runs.data.value?.data.length" icon="refresh" :title="t('an.connections.noRuns')" />
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full text-sm">
+        <table class="data-table min-w-full text-sm">
           <thead class="bg-surface-muted text-left text-xs uppercase text-ink-muted">
             <tr>
               <th class="px-4 py-2">{{ t('an.connections.kind') }}</th>

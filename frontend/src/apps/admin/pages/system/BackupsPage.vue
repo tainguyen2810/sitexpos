@@ -103,7 +103,7 @@ const verifyTone = (s: string | null) => (s === 'verified' ? 'success' : s === '
         <div class="flex items-center justify-end p-3"><AppButton size="sm" variant="secondary" :loading="view.loading.value" @click="view.run">{{ t('sys.common.refresh') }}</AppButton></div>
         <EmptyState v-if="!view.data.value.items.length" :title="t('sys.backups.empty')" icon="server" />
         <div v-else class="overflow-x-auto">
-          <table class="w-full text-sm">
+          <table class="data-table w-full text-sm">
             <thead class="border-y border-line text-left text-xs text-ink-muted">
               <tr><th class="px-4 py-2">{{ t('sys.backups.file') }}</th><th class="px-4">{{ t('sys.backups.trigger') }}</th><th class="px-4">{{ t('sys.backups.size') }}</th><th class="px-4">{{ t('sys.backups.status') }}</th><th class="px-4" /></tr>
             </thead>
