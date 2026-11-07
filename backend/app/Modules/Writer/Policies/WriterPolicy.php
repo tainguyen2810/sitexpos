@@ -16,6 +16,8 @@ use SiteXPost\Modules\Workspace\Enums\Permission;
  *    claims of LOW–HIGH risk and request changes;
  *  - OWNER / ADMIN (content.publish) approve articles and verify CRITICAL
  *    claims manually.
+ *  - OWNER / ADMIN (content.publish) also manage the source filter
+ *    (prefer / block domains), because it changes what counts as evidence.
  * Child rows are reached only through their article (scoped bindings).
  */
 final class WriterPolicy
@@ -45,6 +47,11 @@ final class WriterPolicy
     public function approve(User $user, Model $model): bool
     {
         return $this->owns($model) && $this->context->can(Permission::ContentPublish);
+    }
+
+    public function manageSources(User $user): bool
+    {
+        return $this->context->can(Permission::ContentPublish);
     }
 
     private function owns(Model $model): bool

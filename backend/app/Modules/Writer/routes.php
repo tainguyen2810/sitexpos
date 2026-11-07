@@ -8,6 +8,7 @@ use SiteXPost\Modules\Writer\Http\Controllers\ArticleResearchController;
 use SiteXPost\Modules\Writer\Http\Controllers\ArticleReviewController;
 use SiteXPost\Modules\Writer\Http\Controllers\BatchController;
 use SiteXPost\Modules\Writer\Http\Controllers\PresetController;
+use SiteXPost\Modules\Writer\Http\Controllers\SourceRuleController;
 use SiteXPost\Modules\Writer\Http\Controllers\WriterWorkspaceController;
 
 // ---- Customer API (tenant) ----
@@ -23,6 +24,10 @@ Route::prefix('api/v1/workspaces/{workspace}/writer')
         Route::get('ideas', [WriterWorkspaceController::class, 'ideas'])->name('ideas');
         Route::get('estimate', [WriterWorkspaceController::class, 'estimate'])->name('estimate');
         Route::get('history', [WriterWorkspaceController::class, 'history'])->name('history');
+
+        Route::get('source-rules', [SourceRuleController::class, 'index'])->name('source_rules.index');
+        Route::post('source-rules', [SourceRuleController::class, 'store'])->name('source_rules.store');
+        Route::delete('source-rules/{sourceRule}', [SourceRuleController::class, 'destroy'])->name('source_rules.destroy');
 
         Route::get('presets', [PresetController::class, 'index'])->name('presets.index');
         Route::post('presets', [PresetController::class, 'store'])->name('presets.store');

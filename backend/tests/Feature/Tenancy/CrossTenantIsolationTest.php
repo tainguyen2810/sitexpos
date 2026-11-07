@@ -137,7 +137,7 @@ it('returns 404 when tenant A uses its own workspace with tenant B child ids', f
     ['a' => $a, 'b' => $b, 'ids' => $ids] = twoTenants();
 
     foreach (tenantRoutes() as [$method, $uri]) {
-        if (! preg_match('/\{(member|invitation|jobRun|site|workflowRun|campaign|notification|article|preset|batch|articleRef|asset|imageJob|auditRun|suggestion|publishingBatch|mapping|publishingJob|conflict|paymentOrder|billingDocument|opportunity|decay|recommendation|experiment|refreshJob|report|copilotQuery|agentRun|agentTask|automationSchedule)\}/', $uri)) {
+        if (! preg_match('/\{(member|invitation|jobRun|site|workflowRun|campaign|notification|article|preset|sourceRule|batch|articleRef|asset|imageJob|auditRun|suggestion|publishingBatch|mapping|publishingJob|conflict|paymentOrder|billingDocument|opportunity|decay|recommendation|experiment|refreshJob|report|copilotQuery|agentRun|agentTask|automationSchedule)\}/', $uri)) {
             continue;
         }
         $url = fillUri($uri, $a['workspace']->id, $ids);

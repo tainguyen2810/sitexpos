@@ -469,6 +469,10 @@ export interface Usage {
   breakdown: { step: string; task_key: string; model: string | null; calls: number; input_tokens: number; output_tokens: number; cost_micro_usd: number; fetches: number; failed: number }[]
 }
 
+export type SourceRuleMode = 'prefer' | 'block'
+export interface SourceRule { id: string; domain: string; mode: SourceRuleMode; note: string | null; created_at: string | null }
+export interface SourceRulesMeta { platform_blocked: string[]; max_rules: number; high_risk_min_independent_sources: number; can_manage: boolean }
+
 export interface PresetFact { text: string; provenance: Provenance; source_url?: string | null }
 export interface Preset {
   id: string
@@ -655,6 +659,11 @@ export const writerApi = {
   duplicateDecision: (ws: string, id: string, decision: DuplicateDecision, note?: string | null) =>
     api.post<Envelope<Article>>(`${A(ws, id)}/duplicate-decision`, { decision, note }).then((r) => r.data),
   usage: (ws: string, id: string) => api.get<Envelope<Usage>>(`${A(ws, id)}/usage`).then((r) => r.data),
+
+  sourceRules: (ws: string) => api.get<{ data: SourceRule[]; meta: SourceRulesMeta }>(`${W(ws)}/source-rules`),
+  saveSourceRule: (ws: string, data: { domain: string; mode: SourceRuleMode; note?: string | null }) =>
+    api.post<Envelope<SourceRule>>(`${W(ws)}/source-rules`, data).then((r) => r.data),
+  deleteSourceRule: (ws: string, id: string) => api.delete<void>(`${W(ws)}/source-rules/${e(id)}`),
 
   presets: (ws: string, query: Query = {}) => api.get<Envelope<Preset[]>>(`${W(ws)}/presets`, { query }).then((r) => r.data),
   preset: (ws: string, id: string) => api.get<Envelope<Preset>>(`${W(ws)}/presets/${e(id)}`).then((r) => r.data),

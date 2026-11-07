@@ -207,6 +207,7 @@ class WriterAi
             .($webSearch
                 ? 'Hãy DÙNG công cụ tìm kiếm web (nhiều truy vấn, cả tiếng Việt và tiếng Anh) và chỉ trả về URL xuất hiện trong kết quả tìm kiếm. '
                 : 'Chỉ đề xuất URL bạn thực sự biết tồn tại và ổn định (ưu tiên trang tài liệu gốc lâu năm); nếu không chắc hãy trả về danh sách rỗng. ')
+            .'Nếu dữ liệu có preferred_domains: tìm trên các tên miền đó TRƯỚC (vẫn có thể thêm nguồn khác). Nếu có blocked_domains: KHÔNG đề xuất URL thuộc các tên miền đó (hệ thống sẽ loại). '
             .'Hệ thống sẽ TỰ truy xuất từng URL — URL không truy xuất được sẽ bị loại.'
             ."\n\n<data>\n".self::json($ctx)."\n</data>";
 

@@ -264,6 +264,9 @@ Tiền tố `/api/v1/workspaces/{ws}/writer`. Danh sách dùng envelope cursor `
 | GET · POST · GET · PATCH · DELETE | `/presets` · `/presets/{p}` | `presets` trả `{data: [...]}` (không phân trang). Mỗi fact của brand voice có `provenance` |
 | POST | `/presets/{p}/learn-style` | v1.0.5. Body `{site_id?, content_item_ids?[], samples?[{title?, text}]}` (tổng 2–20 bài) → **202** `{data: {job_run}}`. Kết quả vào `style_draft`; `PATCH /presets/{p}` với `style_profile` để áp dụng |
 | DELETE | `/presets/{p}/style-draft` | Bỏ bản phân tích chờ duyệt, trả preset |
+| GET | `/source-rules` | v1.0.11. Bộ lọc nguồn của workspace → `{data: [{id, domain, mode: prefer\|block, note, created_at}], meta: {platform_blocked[], max_rules, high_risk_min_independent_sources, can_manage}}`. Mọi thành viên đọc |
+| POST | `/source-rules` | Body `{domain, mode: prefer\|block, note?}`; `domain` nhận tên miền hoặc link bất kỳ (chuẩn hóa về tên miền, bỏ `www.`). Tên miền đã có → đổi `mode` (200), mới → 201. Tối đa 300. Chỉ OWNER/ADMIN (`content.publish`); audit `writer.source_rule_saved` |
+| DELETE | `/source-rules/{rule}` | 204. Chỉ OWNER/ADMIN; audit `writer.source_rule_deleted` |
 | GET | `/batches?status=queued\|running\|paused\|completed\|canceled\|failed` · `/batches/{b}` | |
 | POST | `/batches/preview` · `/batches` | Tối đa `max_batch_size` bài; cần email đã xác minh |
 | POST | `/batches/{b}/pause` · `/resume` · `/cancel` · `/retry` | |

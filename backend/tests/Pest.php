@@ -365,7 +365,7 @@ function researchFixture(Workspace $workspace, Site $site, string $label = 'B'):
  * Minimal Phase 5 writer rows (article + version + claim + revision +
  * preset + batch) for tenant-isolation tests.
  *
- * @return array{article: string, version: string, claim: string, revision: string, preset: string, batch: string}
+ * @return array{article: string, version: string, claim: string, revision: string, preset: string, batch: string, sourceRule: string}
  */
 function writerFixture(Workspace $workspace, Site $site, string $label = 'B'): array
 {
@@ -378,6 +378,7 @@ function writerFixture(Workspace $workspace, Site $site, string $label = 'B'): a
         };
         $W = 'SiteXPost\\Modules\\Writer\\Domain\\';
         $preset = $m($W.'WritingPreset', ['name' => 'Preset '.$label, 'tone' => 'Secret tone '.$label]);
+        $rule = $m($W.'SourceRule', ['domain' => strtolower('secret-'.$label).'.example.com', 'mode' => 'block']);
         $batch = $m($W.'WritingBatch', ['site_id' => $site->id, 'status' => 'paused', 'total' => 0, 'per_article_budget_micro_usd' => 100000]);
         $article = $m($W.'Article', ['site_id' => $site->id, 'title' => 'Secret article '.$label, 'status' => 'NEEDS_HUMAN_REVIEW', 'primary_keyword' => 'secret '.$label,
             'search_intent' => 'informational', 'content_type' => 'blog_article', 'settings' => [], 'budget_limit_micro_usd' => 100000, 'fingerprint' => sha1('a'.$label)]);
@@ -390,7 +391,7 @@ function writerFixture(Workspace $workspace, Site $site, string $label = 'B'): a
         $revision = $m($W.'ArticleRevision', ['article_id' => $article->id, 'kind' => 'editor', 'action' => 'rewrite', 'status' => 'proposed', 'section_key' => 'intro',
             'from_version_id' => $version->id, 'proposed_html' => '<p>Secret proposal '.$label.'</p>']);
 
-        return ['article' => $article->id, 'version' => $version->id, 'claim' => $claim->id, 'revision' => $revision->id, 'preset' => $preset->id, 'batch' => $batch->id];
+        return ['article' => $article->id, 'version' => $version->id, 'claim' => $claim->id, 'revision' => $revision->id, 'preset' => $preset->id, 'batch' => $batch->id, 'sourceRule' => $rule->id];
     });
 }
 
