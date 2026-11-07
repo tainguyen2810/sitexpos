@@ -16,11 +16,13 @@ use SiteXPost\Modules\Writer\Console\SyncWriter;
 use SiteXPost\Modules\Writer\Contracts\ArticleCatalog;
 use SiteXPost\Modules\Writer\Contracts\ArticleRefresh;
 use SiteXPost\Modules\Writer\Domain\Article;
+use SiteXPost\Modules\Writer\Domain\SourceRule;
 use SiteXPost\Modules\Writer\Domain\WritingBatch;
 use SiteXPost\Modules\Writer\Domain\WritingPreset;
 use SiteXPost\Modules\Writer\Policies\WriterPolicy;
 use SiteXPost\Modules\Writer\Queries\ArticleCatalogQuery;
 use SiteXPost\Modules\Writer\Queries\ArticleRefreshService;
+use SiteXPost\Modules\Writer\Support\SourceFilter;
 use SiteXPost\Modules\Writer\Support\WriterSettings;
 use SiteXPost\Modules\Writer\Workflows\DraftWorkflow;
 use SiteXPost\Modules\Writer\Workflows\OutlineWorkflow;
@@ -37,11 +39,13 @@ final class WriterServiceProvider extends ModuleServiceProvider
         Article::class => WriterPolicy::class,
         WritingPreset::class => WriterPolicy::class,
         WritingBatch::class => WriterPolicy::class,
+        SourceRule::class => WriterPolicy::class,
     ];
 
     public function register(): void
     {
         $this->app->scoped(WriterSettings::class);
+        $this->app->scoped(SourceFilter::class);
         $this->app->bind(ArticleCatalog::class, ArticleCatalogQuery::class);
         $this->app->bind(ArticleRefresh::class, ArticleRefreshService::class);
     }

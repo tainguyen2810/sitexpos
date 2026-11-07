@@ -142,7 +142,7 @@ const TONES = {
   <section v-if="visible" :class="['mb-4 rounded-xl border px-4 py-3', TONES[tone]]" data-testid="next-step">
     <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ t('writer.next.title') }}</p>
     <div class="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <!-- Review: fact-check only warns (v1.0.11); hard blockers are quality / placeholders / duplicates -->
+      <!-- Review: fact-check only warns (v1.0.12); hard blockers are quality / placeholders / duplicates -->
       <div v-if="inReview" class="min-w-0 text-sm">
         <template v-if="hardBlocking.length">
           <p class="font-medium">{{ t('writer.next.review.blocked') }}</p>

@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import SubNav from '@/shared/ui/SubNav.vue'
 import { useWorkspaceStore } from '../../../stores/workspace'
 
-const props = defineProps<{ active: 'library' | 'wizard' | 'bulk' | 'presets' | 'history' }>()
+const props = defineProps<{ active: 'library' | 'wizard' | 'bulk' | 'presets' | 'sources' | 'history' }>()
 const { t } = useI18n()
 const ws = useWorkspaceStore()
 const canEdit = computed(() => ws.can('content.edit') && !ws.current?.impersonating)
@@ -14,7 +14,7 @@ const main = computed(() => [
   { key: 'library', route: 'writer', icon: '📄' },
   { key: 'presets', route: 'writer-presets', icon: '🎨' },
 ])
-const more = computed(() => [...(canEdit.value ? [{ key: 'bulk', route: 'writer-bulk' }] : []), { key: 'history', route: 'writer-history' }])
+const more = computed(() => [...(canEdit.value ? [{ key: 'bulk', route: 'writer-bulk' }] : []), { key: 'sources', route: 'writer-sources' }, { key: 'history', route: 'writer-history' }])
 </script>
 
 <template>

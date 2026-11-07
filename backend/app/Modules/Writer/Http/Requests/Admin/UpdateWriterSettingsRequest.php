@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SiteXPost\Modules\Writer\Http\Requests\Admin;
 
 use SiteXPost\Kernel\Http\Requests\ApiRequest;
+use SiteXPost\Modules\Writer\Support\SourceFilter;
 
 final class UpdateWriterSettingsRequest extends ApiRequest
 {
@@ -34,6 +35,15 @@ final class UpdateWriterSettingsRequest extends ApiRequest
             'require_ack_for_high_risk' => ['sometimes', 'boolean'],
             'auto_approve_enabled' => ['sometimes', 'boolean'],
             'web_search_enabled' => ['sometimes', 'boolean'],
+            'serp_discovery_enabled' => ['sometimes', 'boolean'],
+            'serp_results' => $int(1, 10),
+            'blocked_source_domains' => ['sometimes', 'array', 'max:500'],
+            'blocked_source_domains.*' => ['string', 'max:253', function (string $attr, mixed $value, \Closure $fail): void {
+                if (! is_string($value) || SourceFilter::normalizeDomain($value) === null) {
+                    $fail(__('writer.errors.invalid_domain'));
+                }
+            }],
+            'high_risk_min_independent_sources' => $int(1, 3),
             'auto_approve_min_quality' => $int(0, 100),
             'abuse_articles_per_hour' => $int(1, 10000),
             'abuse_cost_per_day_micro_usd' => $int(0, 10_000_000_000),

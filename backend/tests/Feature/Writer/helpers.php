@@ -40,7 +40,11 @@ function writerTenant(array $opts = []): array
     // hand-off step, so each nesting level holds a tenant slot.
     config(['sitex.workflows.tenant_concurrency' => 10]);
     $pages = writerPages() + ($opts['pages'] ?? []);
-    $t = researchTenant('Wifi Store', ['http' => function (HttpRequest $r) use ($pages) {
+    $extra = $opts['http'] ?? null;
+    $t = researchTenant('Wifi Store', ['http' => function (HttpRequest $r) use ($pages, $extra) {
+        if ($extra !== null && ($res = $extra($r)) !== null) {
+            return $res;
+        }
         $url = strtok($r->url(), '?');
         if (isset($pages[$url])) {
             return Http::response($pages[$url], 200, ['Content-Type' => str_ends_with($url, '.txt') ? 'text/plain' : 'text/html; charset=utf-8']);

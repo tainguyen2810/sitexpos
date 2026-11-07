@@ -15,6 +15,7 @@ use SiteXPost\Modules\Workflows\Domain\WorkflowRun;
 use SiteXPost\Modules\Workspace\Domain\Workspace;
 use SiteXPost\Modules\Writer\Ai\WriterAi;
 use SiteXPost\Modules\Writer\Http\Requests\Admin\UpdateWriterSettingsRequest;
+use SiteXPost\Modules\Writer\Support\SourceFilter;
 use SiteXPost\Modules\Writer\Support\WriterSettings;
 
 /**
@@ -38,6 +39,10 @@ final class AdminWriterController
     public function updateSettings(UpdateWriterSettingsRequest $request): JsonResponse
     {
         $values = $request->validated();
+        if (isset($values['blocked_source_domains'])) {
+            $values['blocked_source_domains'] = array_values(array_unique(array_filter(array_map(
+                fn ($d) => SourceFilter::normalizeDomain((string) $d), (array) $values['blocked_source_domains']))));
+        }
         $this->assertBudgetOrder($values, null);
         $before = $this->settings->all();
         $this->settings->save(null, $values, (string) $request->user()?->getAuthIdentifier());

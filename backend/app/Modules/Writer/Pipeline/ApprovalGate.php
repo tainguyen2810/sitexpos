@@ -18,7 +18,7 @@ use SiteXPost\Modules\Writer\Support\WriterSettings;
  * Blocking: a running workflow, quality below the policy minimum, duplicate
  * recommendation "reject", placeholder text ("Cần xác minh" cells, talk
  * about missing sources).
- * Fact-check is a WARNING, not a wall (v1.0.11, product owner decision):
+ * Fact-check is a WARNING, not a wall (v1.0.12, product owner decision):
  * unresolved CRITICAL claims — and HIGH ones when the workspace requires it
  * — only need the approver's explicit acknowledgement; sections not
  * re-checked since their last edit are a plain warning. The auto-approver

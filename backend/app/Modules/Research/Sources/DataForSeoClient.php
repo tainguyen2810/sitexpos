@@ -14,6 +14,8 @@ use SiteXPost\Modules\Research\Support\ResearchSettings;
  * Admin → Research, stored encrypted), live endpoints:
  *  - keywords_data/google_ads/search_volume/live → tasks[0].result[] {keyword, search_volume, cpc, monthly_searches}
  *  - dataforseo_labs/google/bulk_keyword_difficulty/live → tasks[0].result[0].items[] {keyword, keyword_difficulty}
+ *  - serp/google/organic/live/regular → tasks[0].result[0].items[] {type, rank_group, url, title, domain}
+ *    (verified 2026-11-07; billed per SERP of up to 10 results, depth default 10)
  * Live endpoints allow 12 requests/minute per account.
  */
 class DataForSeoClient
@@ -83,6 +85,36 @@ class DataForSeoClient
         foreach ((array) ($data['tasks'][0]['result'][0]['items'] ?? []) as $item) {
             if (is_array($item) && is_string($item['keyword'] ?? null) && isset($item['keyword_difficulty'])) {
                 $out[mb_strtolower($item['keyword'])] = max(0, min(100, (int) $item['keyword_difficulty']));
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Google organic top results (featured snippets / ads skipped).
+     *
+     * @return list<array{rank: int, url: string, title: string, domain: string}>
+     *
+     * @throws ProviderUnavailable
+     */
+    public function organic(string $keyword, string $country, string $language, int $limit = 10): array
+    {
+        $data = $this->post('/serp/google/organic/live/regular', [[
+            'keyword' => mb_substr($keyword, 0, 700),
+            'location_code' => self::LOCATIONS[strtoupper($country)] ?? throw new ProviderUnavailable('unsupported_location', 'Location not mapped for DataForSEO'),
+            'language_code' => $language,
+            'depth' => 10,
+        ]]);
+        $out = [];
+        foreach ((array) ($data['tasks'][0]['result'][0]['items'] ?? []) as $item) {
+            if (! is_array($item) || ($item['type'] ?? '') !== 'organic' || ! is_string($item['url'] ?? null) || preg_match('#^https?://#i', $item['url']) !== 1) {
+                continue;
+            }
+            $out[] = ['rank' => (int) ($item['rank_group'] ?? count($out) + 1), 'url' => mb_substr($item['url'], 0, 1000),
+                'title' => mb_substr((string) ($item['title'] ?? ''), 0, 300), 'domain' => mb_substr((string) ($item['domain'] ?? ''), 0, 253)];
+            if (count($out) >= $limit) {
+                break;
             }
         }
 

@@ -39,7 +39,7 @@ Một bài chỉ có **một job đang hoạt động trên mỗi website**: c�
 |---|---|
 | `site` | website không thuộc workspace, chưa ghép nối, tài khoản WP không có quyền đăng, bài thuộc website khác |
 | `article_approved` | bài chưa `APPROVED` ở Writer; lúc thực thi: nội dung đã đổi so với phiên bản được duyệt (`content_changed_since_approval`) |
-| `fact_check` | chỉ cảnh báo từ v1.0.11 (ADR-030): còn claim CRITICAL/HIGH chưa giải quyết thì ghi `details.warning`, không chặn — người duyệt bài đã xác nhận |
+| `fact_check` | chỉ cảnh báo từ v1.0.12 (ADR-030): còn claim CRITICAL/HIGH chưa giải quyết thì ghi `details.warning`, không chặn — người duyệt bài đã xác nhận |
 | `seo` | audit có mục **BLOCKED** (luôn chặn); có **ERROR** khi website bật `require_seo_pass` và đích là `publish` |
 | `media` | ảnh được gán chưa `ready` hoặc thiếu alt; thiếu ảnh đại diện khi `require_media_ready` và đích là `publish` |
 | `policy` | kill switch nền tảng (`publishing_enabled=false`), auto chưa bật, update khi không có bài / không cho phép, tạo mới khi bài đã đăng (`already_published_use_update`) |

@@ -23,7 +23,7 @@ Model có thể **nâng** mức rủi ro, không thể hạ dưới mức sàn.
 
 | Verdict | Điều kiện |
 |---|---|
-| `VERIFIED` | ≥ 1 đoạn trích hỗ trợ hợp lệ, chứa **mọi định danh chính xác** của claim (model, phiên bản, số + đơn vị), không có đoạn mâu thuẫn. HIGH/CRITICAL cần nguồn có độ tin cậy ≥ `high_risk_min_reliability` (60). |
+| `VERIFIED` | ≥ 1 đoạn trích hỗ trợ hợp lệ, chứa **mọi định danh chính xác** của claim (model, phiên bản, số + đơn vị), không có đoạn mâu thuẫn. HIGH/CRITICAL cần nguồn có độ tin cậy ≥ `high_risk_min_reliability` (60) **và** (v1.0.11) ≥ `high_risk_min_independent_sources` (2) website khác nhau cùng hỗ trợ, trừ khi một nguồn là chính thức (`manufacturer`, `regulator`); thiếu → `NEEDS_HUMAN_REVIEW` với ghi chú `needs_independent_sources: n/2`. |
 | `CONTRADICTED` | Có đoạn trích mâu thuẫn thật. |
 | `INSUFFICIENT_EVIDENCE` | Không có bằng chứng hợp lệ (gồm cả trường hợp model nói "sai" nhưng không có đoạn mâu thuẫn — ghi chú `not_found_is_not_false`). |
 | `OUTDATED` | Claim nhạy thời gian (`price`, `version`, `release_date`, `legal`) mà bằng chứng mới nhất cũ hơn `outdated_after_months` (24). |
@@ -36,7 +36,7 @@ Model có thể **nâng** mức rủi ro, không thể hạ dưới mức sàn.
 - Claim CRITICAL chỉ người có quyền duyệt (`content.publish`) được xác minh; claim khác cần quyền sửa (`content.edit`).
 
 ## 5. Điều kiện duyệt bài (ApprovalGate)
-**Từ v1.0.11 (ADR-030): kiểm chứng là cảnh báo, không phải bức tường.** Thiếu nguồn xác minh không chặn người duyệt; người duyệt chỉ cần xác nhận đã xem cảnh báo.
+**Từ v1.0.12 (ADR-030): kiểm chứng là cảnh báo, không phải bức tường.** Thiếu nguồn xác minh không chặn người duyệt; người duyệt chỉ cần xác nhận đã xem cảnh báo.
 
 Chặn duyệt khi:
 - bài không ở trạng thái chờ duyệt, chưa có nội dung, hoặc đang có workflow AI chạy;
@@ -67,3 +67,12 @@ Code: `Pipeline/AutoApprover.php`. Mặc định **tắt**.
 - Không đủ điều kiện → bài ở `NEEDS_HUMAN_REVIEW`, lý do lưu trong `settings.auto_approve_result.reasons` và hiện ở tab Tổng quan.
 - Phê duyệt tự động ghi `editorial_approvals` với `user_id = null`, `checks.auto = true`, audit `writer.article_auto_approved`. Mọi chỉnh sửa sau đó làm mất hiệu lực giống phê duyệt của người.
 - Tự duyệt **không** đăng bài lên WordPress.
+
+## 7. Bộ lọc nguồn & top 10 Google (v1.0.11)
+Code: `Support/SourceFilter.php`, `Actions/ManageSourceRules.php`, `Research/Contracts/SerpResults.php` (`Research/Sources/SerpLookup.php`).
+
+- **Nguồn tin cậy** (AI Writer → Nguồn tin cậy, bảng `writer_source_rules`): mỗi workspace có danh sách tên miền `prefer` và `block`; Super Admin có thêm `blocked_source_domains` cho cả nền tảng. Một tên miền khớp chính nó và mọi tên miền con. Chặn luôn thắng ưu tiên.
+- **Chặn:** URL thuộc tên miền bị chặn không bao giờ được tải hay dùng làm bằng chứng — kiểm khi thêm ứng viên, trước khi tải và với URL cuối sau redirect. URL người dùng dán vẫn được ghi lại với `retrieval_status = blocked_policy`, `error_code = source_blocked` để họ thấy lý do; ứng viên AI/Google bị bỏ qua và ghi cảnh báo `blocked_sources:n`.
+- **Ưu tiên:** AI tìm nguồn được dặn tìm trên các tên miền này trước (và tránh tên miền bị chặn); nguồn ưu tiên được cộng 15 điểm tin cậy (chỉ dấu `preferred_source`). Ưu tiên **không** thay thế đoạn trích nguyên văn, cũng không tính là nguồn chính thức.
+- **Top 10 Google:** khi Super Admin bật `serp_discovery_enabled` (mặc định bật) **và** đã cấu hình DataForSEO (Admin → Research), bước `discover` lấy tối đa `serp_results` (10) kết quả organic của từ khóa chính (bỏ quảng cáo, featured snippet và chính website của khách), để lại ít nhất 2 chỗ cho nguồn AI tìm. Đây chỉ là **ứng viên** (`discovered_via = serp`): vẫn qua bộ lọc, tải, chấm điểm và kiểm nguyên văn như mọi nguồn. Thiếu khóa/lỗi → bỏ qua, AI vẫn tự tìm (cảnh báo `serp_failed:<code>` khi lỗi). API chính thức Custom Search của Google đã đóng với khách mới (ngừng 01/01/2027) nên không dùng. Bài trên top 10 thường của đối thủ: chỉ lấy dữ kiện có nguồn, không chép câu chữ.
+- **2 nguồn độc lập** cho claim HIGH/CRITICAL (§3). Quy tắc này chỉ đổi verdict; cách verdict ảnh hưởng tới duyệt bài vẫn theo §5.

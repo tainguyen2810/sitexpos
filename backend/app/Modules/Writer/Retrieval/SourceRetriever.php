@@ -9,6 +9,7 @@ use SiteXPost\Modules\Research\Contracts\PublicWebFetcher;
 use SiteXPost\Modules\Research\Crawler\FetchException;
 use SiteXPost\Modules\Writer\Domain\EvidenceSnapshot;
 use SiteXPost\Modules\Writer\Domain\EvidenceSource;
+use SiteXPost\Modules\Writer\Support\SourceFilter;
 use SiteXPost\Modules\Writer\Support\WriterSettings;
 
 /**
@@ -19,7 +20,9 @@ use SiteXPost\Modules\Writer\Support\WriterSettings;
  * - captcha / paywall / login walls are recorded as blocked, never bypassed;
  * - the text snapshot is stored with its SHA-256 so a claim can be
  *   re-verified later against exactly what was read;
- * - snapshots are cached PER WORKSPACE (no cross-tenant source sharing).
+ * - snapshots are cached PER WORKSPACE (no cross-tenant source sharing);
+ * - the source filter applies to the URL and to the final URL after
+ *   redirects (blocked → never used); preferred domains get a bonus.
  */
 class SourceRetriever
 {
@@ -27,6 +30,7 @@ class SourceRetriever
         private readonly PublicWebFetcher $fetcher,
         private readonly PageExtractor $extractor,
         private readonly WriterSettings $settings,
+        private readonly SourceFilter $filter,
     ) {}
 
     public static function hashUrl(string $url): string
@@ -39,6 +43,9 @@ class SourceRetriever
      */
     public function retrieve(EvidenceSource $source, ?string $siteHost, array $brandTokens, ?string $declaredType = null): EvidenceSource
     {
+        if ($this->filter->blocked($source->workspace_id, $source->url)) {
+            return $this->block($source, null);
+        }
         $hours = $this->settings->int('source_cache_hours');
         $cached = EvidenceSnapshot::query()->where('url_hash', $source->url_hash)->where('fetched_at', '>=', now()->subHours($hours))->latest('fetched_at')->first();
 
@@ -92,6 +99,9 @@ class SourceRetriever
      */
     private function apply(EvidenceSource $source, EvidenceSnapshot $snap, ?string $siteHost, array $brandTokens, ?string $declaredType, bool $fromCache): EvidenceSource
     {
+        if ($this->filter->blocked($source->workspace_id, $snap->url)) {
+            return $this->block($source, $snap->url);
+        }
         $meta = $snap->meta ?? [];
         $type = SourceClassifier::type($source->url, $siteHost, $brandTokens, $declaredType);
         $injection = InjectionScanner::scan($snap->content_text);
@@ -99,6 +109,10 @@ class SourceRetriever
             'published_at' => $meta['published_at'] ?? null, 'modified_at' => $meta['modified_at'] ?? null, 'author' => $meta['author'] ?? null,
             'text_length' => mb_strlen($snap->content_text), 'injection' => $injection,
         ], $this->settings->int('outdated_after_months'));
+        if ($this->filter->preferred($source->workspace_id, $snap->url) || $this->filter->preferred($source->workspace_id, $source->url)) {
+            $rel['score'] = min(100, $rel['score'] + SourceFilter::PREFER_BONUS);
+            $rel['indicators'][] = 'preferred_source';
+        }
 
         $source->forceFill([
             'final_url' => $snap->url,
@@ -117,6 +131,14 @@ class SourceRetriever
             'license_note' => $meta['license'] ?? null,
             'snapshot_id' => $snap->id,
         ])->save();
+
+        return $source;
+    }
+
+    private function block(EvidenceSource $source, ?string $finalUrl): EvidenceSource
+    {
+        $source->forceFill(['retrieval_status' => 'blocked_policy', 'error_code' => 'source_blocked', 'retrieved_at' => now(),
+            'final_url' => $finalUrl !== null ? mb_substr($finalUrl, 0, 1000) : $source->final_url])->save();
 
         return $source;
     }

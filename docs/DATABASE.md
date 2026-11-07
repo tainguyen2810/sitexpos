@@ -291,6 +291,7 @@ Một migration `app/Modules/Writer/Database/Migrations/2026_11_10_000100_create
 
 | Bảng | Vai trò |
 |---|---|
+| `writer_source_rules` | v1.0.11. Bộ lọc nguồn: `workspace_id`, `domain` (đã chuẩn hóa, unique theo workspace), `mode` (`prefer` \| `block`), `note`, `created_by`. Danh sách chặn chung của nền tảng nằm ở `writer_settings.values.blocked_source_domains` |
 | `writing_presets` | Brand voice: giọng văn, cụm từ cấm/ưu tiên, CTA, `facts[]` mỗi fact có `provenance` (`user_provided`, `website_extracted`, `source_verified`, `ai_inferred`). v1.0.5: `style_profile` (văn phong đã áp dụng), `style_draft` (bản AI phân tích chờ duyệt), `style_sources` (tiêu đề/URL/số từ bài mẫu, không lưu nội dung), `style_learned_at`; `defaults.auto_images`, `defaults.min_images` |
 | `writing_batches`, `writing_batch_items` | Lô viết bài, trạng thái từng bài |
 | `articles` | Bài viết: `status` (13 trạng thái của `ArticleStatus`), cấu hình wizard, ngân sách, `current_version_id`, `duplicate_check`, bộ đếm claim chưa xử lý |
