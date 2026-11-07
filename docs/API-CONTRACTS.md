@@ -420,7 +420,7 @@ Yêu cầu `platform_role` + 2FA đã xác nhận. User thường nhận **404**
 | POST | `/ai/models/{id}/test` ✦ | SUPER_ADMIN, 10/phút — một lời gọi thật có tính phí (≤ 200 token ra), `prompt?`, `structured?`; trả `ok`, `text`, `json`, `usage`, `cost_micro_usd`, `finish_reason`, hoặc `error_code` đã lọc secret |
 | GET · POST | `/ai/models/{id}/prices` ✦ | SUPER_ADMIN — tạo version giá mới (không sửa version cũ); tùy chọn `offpeak_*` + `peak_windows` (phải đi cùng nhau, `to` > `from`) |
 | DELETE | `/ai/models/{id}/prices/{price}` ✦ | SUPER_ADMIN — chỉ version chưa hiệu lực, nếu không 409 `price_version_locked` |
-| GET · PATCH | `/ai/routes` · `/ai/routes/{id}` ✦ | SUPER_ADMIN — chuỗi model, queue, timeout, `max_attempts`, `allow_paid_retry` |
+| GET · PATCH | `/ai/routes` · `/ai/routes/{id}` ✦ | SUPER_ADMIN — `tier` (premium/standard/economy), `pinned_model_id` (null = tự động theo mức), queue, timeout, `max_attempts`, `allow_paid_retry`; GET trả thêm `kind`, `requires_web_search`, `pinned_model`, `resolved` {status exact/substitute/blocked/off, runs_on, blocked_reason, pinned_reason, candidates[]} (v1.0.13, ADR-031) |
 | GET | `/ai/budgets` ✦ | SUPER_ADMIN, BILLING_ADMIN |
 | PUT · DELETE | `/ai/budgets` · `/ai/budgets/{id}` ✦ | SUPER_ADMIN — `{scope: global|workspace, workspace_id?, period: day|month, limit_micro_usd, alert_threshold_pct?, action_on_exceed?: alert|pause_batch|pause_all, is_enabled?}` (upsert theo scope + period) |
 | GET | `/jobs/overview` ✦ | SUPER_ADMIN, SUPPORT — Horizon, độ dài queue, số run theo trạng thái |

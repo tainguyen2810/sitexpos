@@ -9,7 +9,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use SiteXPost\Kernel\Http\ApiException;
 use SiteXPost\Kernel\Tenancy\TenantContext;
+use SiteXPost\Modules\AiGateway\Domain\AiModel;
 use SiteXPost\Modules\AiGateway\Domain\AiTaskRoute;
+use SiteXPost\Modules\AiGateway\Gateway\ModelSelector;
 use SiteXPost\Modules\Audit\Audit;
 use SiteXPost\Modules\Workflows\Domain\WorkflowRun;
 use SiteXPost\Modules\Workspace\Domain\Workspace;
@@ -75,12 +77,13 @@ final class AdminWriterController
     public function routing(): JsonResponse
     {
         $keys = WriterAi::TASKS;
-        $routes = AiTaskRoute::query()->with(['primaryModel', 'economyModel'])->whereIn('task_key', $keys)->get()->keyBy('task_key');
+        $routes = AiTaskRoute::query()->whereIn('task_key', $keys)->get()->keyBy('task_key');
+        $models = AiModel::query()->with('provider')->get();
+        $selector = app(ModelSelector::class);
 
         return new JsonResponse(['data' => array_map(fn (string $k) => ($r = $routes->get($k)) === null ? ['task_key' => $k, 'configured' => false] : [
             'task_key' => $k, 'configured' => true, 'route_id' => $r->id, 'is_enabled' => $r->is_enabled, 'queue' => $r->queue,
-            'primary_model' => $r->primaryModel?->only(['id', 'model_key', 'display_name']), 'economy_model' => $r->economyModel?->only(['id', 'model_key', 'display_name']),
-            'fallback_model_ids' => $r->fallback_model_ids ?? [], 'max_output_tokens' => $r->max_output_tokens, 'max_attempts' => $r->max_attempts,
+            'tier' => $r->tier, 'runs_on' => ($res = $selector->resolve($r, $models))['runs_on'], 'status' => $res['status'], 'max_output_tokens' => $r->max_output_tokens, 'max_attempts' => $r->max_attempts,
             'allow_paid_retry' => $r->allow_paid_retry,
         ], $keys)]);
     }

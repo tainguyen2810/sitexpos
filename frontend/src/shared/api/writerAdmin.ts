@@ -29,9 +29,9 @@ export interface RouteRow {
   route_id?: string
   is_enabled?: boolean
   queue?: string
-  primary_model?: { id: string; model_key: string; display_name: string } | null
-  economy_model?: { id: string; model_key: string; display_name: string } | null
-  fallback_model_ids?: string[]
+  tier?: string
+  runs_on?: { id: string; model_key: string; display_name: string; tier: string } | null
+  status?: 'off' | 'exact' | 'substitute' | 'blocked'
   max_output_tokens?: number | null
   max_attempts?: number
   allow_paid_retry?: boolean

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\AiGateway\Domain\AiBudgetCounter;
@@ -110,17 +111,20 @@ it('blocks the gateway call when the budget is exhausted and logs it', function 
     expect($row->status)->toBe('blocked')->and($row->cost_micro_usd)->toBe(0);
 });
 
-it('routes to the economy model when a budget passes its alert threshold', function () {
-    $route = routeTask('system.test', ['fake/fake-echo'], ['economy_model_id' => aiModel('fake/fake-echo')->id]);
-    $primary = aiModel('openai/gpt-6-luna');
-    $route->forceFill(['primary_model_id' => $primary->id, 'fallback_model_ids' => []])->save();
+it('routes to the cheapest level when a budget passes its alert threshold', function () {
+    config(['sitex.ai.providers.openai.api_key' => 'sk-test-openai-000000000000']);
+    Http::fake(['api.openai.com/*' => Http::response(['id' => 'resp_1', 'status' => 'completed', 'output' => [
+        ['type' => 'message', 'content' => [['type' => 'output_text', 'text' => 'ok']]],
+    ], 'usage' => ['input_tokens' => 5, 'output_tokens' => 2]])]);
+    $route = routeTask('system.test', ['openai/gpt-6.1-terra', 'openai/gpt-6-luna']);
+    $route->forceFill(['tier' => 'standard', 'pinned_model_id' => null])->save();
     aiBudget($this->ws->id, 1_000, 'alert', alertPct: 50);
     $this->budgets->reserve('warm', $this->ws->id, 600);
     $this->budgets->commit('warm', 600);
 
     $result = app(TenantContext::class)->runAs($this->ws, null, fn () => app(AiGateway::class)->execute(new AiTask('system.test', 'hi', 'eco-1')));
 
-    expect($result->modelKey)->toBe('fake/fake-echo')->and($result->downgraded)->toBeTrue();
+    expect($result->modelKey)->toBe('openai/gpt-6-luna')->and($result->downgraded)->toBeTrue();
 });
 
 /**

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { adminAiApi, formatUsd, usdToMicro, type AiBudget, type AiModel, type AiProvider, type AiRoute, type BudgetAction } from '@/shared/api/ai'
+import { adminAiApi, formatUsd, usdToMicro, MODEL_TIERS, type AiBudget, type AiModel, type AiProvider, type AiRoute, type BudgetAction, type ModelTier, type RouteCandidate, type RouteResolution } from '@/shared/api/ai'
 import { ApiError } from '@/shared/api/client'
 import { useAsync } from '@/shared/composables/useAsync'
 import { useApiForm } from '@/shared/composables/useApiForm'
@@ -74,7 +74,6 @@ const tabItems = computed(() => {
 // ---- providers in use: only the ones that have an API key; switch them on/off as needed ----
 const keyedProviders = computed(() => list(providers).filter((p) => p.has_api_key)
   .sort((a, b) => providerRank(a) - providerRank(b) || a.name.localeCompare(b.name)))
-const keyedIds = computed(() => new Set(keyedProviders.value.map((p) => p.id)))
 const switching = ref<string | null>(null)
 async function toggleProvider(p: AiProvider) {
   switching.value = p.id
@@ -83,66 +82,42 @@ async function toggleProvider(p: AiProvider) {
 }
 const resetCircuit = (p: AiProvider) => guarded(() => adminAiApi.resetCircuit(p.id), providers.run)
 
-// ---- routes ----
+// ---- routes (v1.0.13): each task picks a model LEVEL; the server says which model really runs ----
 const routeEdit = ref<AiRoute | null>(null)
 const routeForm = useApiForm()
-const routeDraft = ref({ chain: [] as string[], economy: '', max_output_tokens: '', max_attempts: '', allow_paid_retry: false, priority: 'batch', is_enabled: true })
-// Pickers list only models of providers that have an API key (plus whatever the route already uses).
-const pickable = (m: AiModel) => keyedIds.value.has(m.provider.id)
-const modelOptions = computed(() => list(models).filter((m) => pickable(m) || m.id === routeDraft.value.economy)
-  .map((m) => ({ value: m.id, label: `${m.display_name} · ${m.provider.name}${m.is_enabled ? '' : ' (off)'}` })))
+const routeDraft = ref({ tier: 'standard' as ModelTier, pinned: '', max_output_tokens: '', max_attempts: '', allow_paid_retry: false, priority: 'batch', is_enabled: true })
 function openRoute(r: AiRoute) {
   routeForm.reset()
   routeEdit.value = r
-  routeAdd.value = ''
   routeDraft.value = {
-    chain: [r.primary_model?.id, ...r.fallback_models.map((m) => m.id)].filter((x): x is string => !!x),
-    economy: r.economy_model?.id ?? '',
+    tier: r.tier, pinned: r.pinned_model?.id ?? '',
     max_output_tokens: String(r.max_output_tokens), max_attempts: String(r.max_attempts), allow_paid_retry: r.allow_paid_retry,
     priority: r.priority, is_enabled: r.is_enabled,
   }
 }
-// Ordered model chain editor: 1 = primary, the rest are fallbacks tried top-down.
-const routeAdd = ref('')
-function moveInChain(i: number, delta: number) {
-  const c = [...routeDraft.value.chain]
-  const j = i + delta
-  if (j < 0 || j >= c.length) return
-  ;[c[i], c[j]] = [c[j] as string, c[i] as string]
-  routeDraft.value.chain = c
+// Same order as the backend ModelSelector: chosen level, then cheaper, then stronger.
+const TIER_ORDER: Record<ModelTier, ModelTier[]> = { premium: ['premium', 'standard', 'economy'], standard: ['standard', 'economy', 'premium'], economy: ['economy', 'standard', 'premium'] }
+function previewRun(r: AiRoute, tier: ModelTier, pinnedId: string): RouteCandidate | null {
+  const order = TIER_ORDER[tier]
+  const rank = (c: RouteCandidate) => (c.id === pinnedId ? -1 : order.indexOf(c.tier as ModelTier) < 0 ? 9 : order.indexOf(c.tier as ModelTier))
+  return [...r.resolved.candidates].map((c, i) => ({ c, i })).sort((x, y) => rank(x.c) - rank(y.c) || x.i - y.i).map((x) => x.c).find((c) => !c.reason) ?? null
 }
-function removeFromChain(i: number) {
-  routeDraft.value.chain = routeDraft.value.chain.filter((_, k) => k !== i)
-}
-function addToChain() {
-  if (routeAdd.value && !routeDraft.value.chain.includes(routeAdd.value)) routeDraft.value.chain = [...routeDraft.value.chain, routeAdd.value]
-  routeAdd.value = ''
-}
-const dragFrom = ref<number | null>(null)
-function dropOn(i: number) {
-  const from = dragFrom.value
-  dragFrom.value = null
-  if (from === null || from === i) return
-  const c = [...routeDraft.value.chain]
-  const [m] = c.splice(from, 1)
-  c.splice(i, 0, m as string)
-  routeDraft.value.chain = c
-}
-const addableModels = computed(() => list(models).filter((m) => pickable(m) && !routeDraft.value.chain.includes(m.id))
-  .map((m) => {
-    const reason = skipReason(m, routeEdit.value?.task_key ?? '')
-    return { value: m.id, label: `${m.display_name} · ${m.provider.name}${reason ? ` — ${t(`aiAdmin.ui.skip.${reason}`)}` : ''}` }
-  }))
-const draftEffective = computed(() => {
-  const key = routeEdit.value?.task_key ?? ''
-  return routeDraft.value.chain.map((id) => modelById.value.get(id)).find((m) => m && !skipReason(m, key)) ?? null
+const draftRun = computed(() => (routeEdit.value ? previewRun(routeEdit.value, routeDraft.value.tier, routeDraft.value.pinned) : null))
+// Pin picker: models of keyed providers only (plus whatever is pinned now).
+const pinOptions = computed(() => {
+  const r = routeEdit.value
+  if (!r) return []
+  return r.resolved.candidates.filter((c) => c.reason !== 'no_key' || c.id === routeDraft.value.pinned)
+    .map((c) => ({ value: c.id, label: `${c.display_name} · ${c.provider} · ${tierLabel(c.tier)}${c.reason ? ` — ${t(`aiAdmin.ui.skip.${c.reason}`)}` : ''}` }))
 })
+const tierLabel = (tier: string) => (te(`aiAdmin.tiers.${tier}`) ? t(`aiAdmin.tiers.${tier}`) : tier)
+const TIER_TONE: Record<string, string> = { premium: 'bg-violet-50 text-violet-700 ring-violet-600/20', standard: 'bg-brand-50 text-brand-700 ring-brand-600/20', economy: 'bg-success-50 text-success-700 ring-success-600/20' }
 async function saveRoute() {
   const r = routeEdit.value
   if (!r) return
   const d = routeDraft.value
   const ok = await routeForm.submit(() => adminAiApi.updateRoute(r.id, {
-    primary_model_id: d.chain[0] ?? '', economy_model_id: d.economy || null, fallback_model_ids: d.chain.slice(1),
+    tier: d.tier, pinned_model_id: d.pinned || null,
     max_output_tokens: Number(d.max_output_tokens), max_attempts: Number(d.max_attempts), allow_paid_retry: d.allow_paid_retry,
     priority: d.priority, is_enabled: d.is_enabled,
   }))
@@ -152,41 +127,20 @@ async function saveRoute() {
   await routes.run()
 }
 
-// ---- route readiness: which model will really run (mirrors AiRouter::eligible + AiGateway skips) ----
-type SkipReason = 'provider_off' | 'no_key' | 'model_off' | 'no_price' | 'circuit_open' | 'wrong_kind'
-const providerById = computed(() => new Map(list(providers).map((p) => [p.id, p])))
-const modelById = computed(() => new Map(list(models).map((m) => [m.id, m])))
-function skipReason(m: AiModel, taskKey: string): SkipReason | null {
-  const p = providerById.value.get(m.provider.id)
-  if (p && !p.is_enabled) return 'provider_off'
-  if (p && !p.has_api_key) return 'no_key'
-  if (!m.is_enabled) return 'model_off'
-  const image = taskKey === 'media.image'
-  if (image ? !m.capabilities.image_generation : m.kind !== 'text') return 'wrong_kind'
-  if (!m.current_price) return 'no_price'
-  if (p && p.circuit.state === 'open') return 'circuit_open'
-  return null
+type RouteView = { route: AiRoute; run: RouteCandidate | null; status: RouteResolution['status'] }
+const routeViews = computed<RouteView[]>(() => list(routes).map((r) => ({ route: r, run: r.resolved.runs_on, status: r.resolved.status })))
+function runNote(v: RouteView): string {
+  const r = v.route
+  if (r.pinned_model && r.resolved.pinned_reason && v.run) {
+    return t('aiAdmin.ui.pinnedSkipped', { name: r.pinned_model.display_name, reason: t(`aiAdmin.ui.skip.${r.resolved.pinned_reason}`) })
+  }
+  if (v.status === 'exact') return r.pinned_model ? t('aiAdmin.ui.runsPinned') : t('aiAdmin.ui.runsExact')
+  return t('aiAdmin.ui.runsSubstitute', { want: tierLabel(r.tier), got: tierLabel(v.run?.tier ?? '') })
 }
-type ChainItem = { id: string; name: string; reason: SkipReason | null; runs: boolean }
-type RouteView = { route: AiRoute; chain: ChainItem[]; runIndex: number; status: 'primary' | 'fallback' | 'blocked' | 'off' }
-const routeViews = computed<RouteView[]>(() => list(routes).map((r) => {
-  const refs = [r.primary_model, ...r.fallback_models].filter((x): x is NonNullable<typeof x> => !!x)
-  let runIndex = -1
-  const chain = refs.map((ref, i) => {
-    const m = modelById.value.get(ref.id)
-    const reason = m ? skipReason(m, r.task_key) : 'model_off'
-    if (!reason && runIndex < 0) runIndex = i
-    return { id: ref.id, name: m?.display_name ?? ref.model_key, reason, runs: false }
-  })
-  const run = chain[runIndex]
-  if (run) run.runs = true
-  const status = !r.is_enabled ? 'off' : runIndex < 0 ? 'blocked' : runIndex === 0 ? 'primary' : 'fallback'
-  return { route: r, chain, runIndex, status }
-}))
-const routeFilter = ref<'all' | 'primary' | 'fallback' | 'blocked'>('all')
+const routeFilter = ref<'all' | 'exact' | 'substitute' | 'blocked'>('all')
 const routeSearch = ref('')
 const routeCounts = computed(() => {
-  const c = { all: routeViews.value.length, primary: 0, fallback: 0, blocked: 0 }
+  const c = { all: routeViews.value.length, exact: 0, substitute: 0, blocked: 0 }
   for (const v of routeViews.value) if (v.status !== 'off') c[v.status]++
   return c
 })
@@ -213,7 +167,7 @@ const routeGroups = computed(() => {
 const readyProviderNames = computed(() => readyProviders.value.filter((p) => p.driver !== 'fake').map((p) => p.name))
 const missingProviderNames = computed(() => list(providers).filter((p) => p.driver !== 'fake' && !p.has_api_key).map((p) => p.name))
 
-const runningOn = (p: AiProvider) => routeViews.value.filter((v) => v.status !== 'off' && v.status !== 'blocked' && modelById.value.get(v.chain[v.runIndex]?.id ?? '')?.provider.id === p.id).length
+const runningOn = (p: AiProvider) => routeViews.value.filter((v) => v.status !== 'off' && v.run && v.run.provider === p.name).length
 
 // ---- budgets ----
 const budgetOpen = ref(false)
@@ -283,9 +237,9 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
       </div>
       <div class="rounded-xl bg-surface p-5 shadow-xs ring-1 ring-line">
         <dt class="text-sm font-medium text-ink-muted">{{ $t('aiAdmin.ui.sumRoutesRunnable') }}</dt>
-        <dd class="mt-2 flex items-baseline gap-1.5"><span class="text-3xl font-semibold tracking-tight tabular-nums">{{ routeCounts.primary + routeCounts.fallback }}</span><span class="text-sm text-ink-subtle">/ {{ list(routes).length }}</span></dd>
-        <p v-if="routeCounts.blocked" class="mt-1 text-xs text-danger-700">{{ $t('aiAdmin.ui.sumRoutesBlocked', { n: routeCounts.blocked }) }}<template v-if="routeCounts.fallback"> · {{ $t('aiAdmin.ui.sumRoutesFallback', { n: routeCounts.fallback }) }}</template></p>
-        <p v-else-if="routeCounts.fallback" class="mt-1 text-xs text-warning-700">{{ $t('aiAdmin.ui.sumRoutesFallback', { n: routeCounts.fallback }) }}</p>
+        <dd class="mt-2 flex items-baseline gap-1.5"><span class="text-3xl font-semibold tracking-tight tabular-nums">{{ routeCounts.exact + routeCounts.substitute }}</span><span class="text-sm text-ink-subtle">/ {{ list(routes).length }}</span></dd>
+        <p v-if="routeCounts.blocked" class="mt-1 text-xs text-danger-700">{{ $t('aiAdmin.ui.sumRoutesBlocked', { n: routeCounts.blocked }) }}<template v-if="routeCounts.substitute"> · {{ $t('aiAdmin.ui.sumRoutesFallback', { n: routeCounts.substitute }) }}</template></p>
+        <p v-else-if="routeCounts.substitute" class="mt-1 text-xs text-warning-700">{{ $t('aiAdmin.ui.sumRoutesFallback', { n: routeCounts.substitute }) }}</p>
         <p v-else class="mt-1 text-xs text-success-700">{{ $t('aiAdmin.ui.sumRoutesAllPrimary') }}</p>
       </div>
       <div class="rounded-xl bg-surface p-5 shadow-xs ring-1 ring-line">
@@ -364,11 +318,11 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
         <LoadingState v-if="routes.loading.value && !routes.data.value" />
         <ErrorState v-else-if="routes.error.value" :error="routes.error.value" @retry="routes.run" />
         <template v-else>
-          <div v-if="routeCounts.fallback || routeCounts.blocked" class="mx-5 mb-4 flex flex-col gap-3 rounded-xl bg-warning-50 p-4 ring-1 ring-inset ring-warning-600/20 sm:flex-row sm:items-start" data-testid="route-readiness">
+          <div v-if="routeCounts.substitute || routeCounts.blocked" class="mx-5 mb-4 flex flex-col gap-3 rounded-xl bg-warning-50 p-4 ring-1 ring-inset ring-warning-600/20 sm:flex-row sm:items-start" data-testid="route-readiness">
             <AppIcon name="alert" :size="20" class="mt-0.5 shrink-0 text-warning-600" />
             <div class="flex-1 text-sm text-warning-700">
               <p class="font-semibold">{{ readyProviderNames.length ? $t('aiAdmin.ui.rdOnly', { names: readyProviderNames.join(', ') }) : $t('aiAdmin.ui.rdNone') }}</p>
-              <p class="mt-1">{{ $t('aiAdmin.ui.rdBody', { fb: routeCounts.fallback, bl: routeCounts.blocked }) + (missingProviderNames.length ? ' ' + $t('aiAdmin.ui.rdFix', { names: missingProviderNames.join(', ') }) : '') }}</p>
+              <p class="mt-1">{{ $t('aiAdmin.ui.rdBody', { fb: routeCounts.substitute, bl: routeCounts.blocked }) + (missingProviderNames.length ? ' ' + $t('aiAdmin.ui.rdFix', { names: missingProviderNames.join(', ') }) : '') }}</p>
             </div>
             <AppButton size="sm" variant="secondary" class="shrink-0" @click="$router.push('/ai/providers')">{{ $t('aiAdmin.ui.rdGo') }}</AppButton>
           </div>
@@ -376,9 +330,9 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
           <div class="flex flex-col gap-2 px-5 pb-4 lg:flex-row lg:items-center">
             <div class="flex flex-wrap gap-2" role="group" :aria-label="$t('aiAdmin.ui.status')">
               <button
-                v-for="f in (['all', 'primary', 'fallback', 'blocked'] as const)" :key="f" type="button" :aria-pressed="routeFilter === f"
+                v-for="f in (['all', 'exact', 'substitute', 'blocked'] as const)" :key="f" type="button" :aria-pressed="routeFilter === f"
                 class="rounded-full px-3 py-1 text-sm font-medium ring-1 ring-inset transition-colors"
-                :class="routeFilter === f ? 'bg-ink text-white ring-ink' : { all: 'text-ink-muted ring-line-strong', primary: 'text-success-700 ring-success-600/30', fallback: 'text-warning-700 ring-warning-600/30', blocked: 'text-danger-700 ring-danger-600/30' }[f] + ' bg-surface hover:bg-surface-muted'"
+                :class="routeFilter === f ? 'bg-ink text-white ring-ink' : { all: 'text-ink-muted ring-line-strong', exact: 'text-success-700 ring-success-600/30', substitute: 'text-warning-700 ring-warning-600/30', blocked: 'text-danger-700 ring-danger-600/30' }[f] + ' bg-surface hover:bg-surface-muted'"
                 @click="routeFilter = f"
               >{{ $t(`aiAdmin.ui.rf.${f}`) }} · {{ routeCounts[f] }}</button>
             </div>
@@ -387,17 +341,18 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
 
           <EmptyState v-if="!routeGroups.length" icon="search" :title="$t('aiAdmin.ui.noTaskMatch')" />
           <div v-else data-testid="route-list">
-            <div class="hidden border-y border-line bg-surface-muted px-5 py-2 text-xs font-semibold text-ink-muted lg:grid lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1.6fr)_auto] lg:gap-6">
-              <span>{{ $t('aiAdmin.taskKey') }}</span><span>{{ $t('aiAdmin.ui.runsOn') }}</span><span>{{ $t('aiAdmin.ui.tryOrder') }}</span><span class="w-12" />
+            <p class="mx-5 mb-3 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-700 ring-1 ring-inset ring-brand-600/15" data-testid="tier-note">{{ $t('aiAdmin.ui.autoNote') }}</p>
+            <div class="hidden border-y border-line bg-surface-muted px-5 py-2 text-xs font-semibold text-ink-muted lg:grid lg:grid-cols-[minmax(0,1.4fr)_8rem_minmax(0,1.6fr)_auto] lg:gap-6">
+              <span>{{ $t('aiAdmin.taskKey') }}</span><span>{{ $t('aiAdmin.ui.colLevel') }}</span><span>{{ $t('aiAdmin.ui.runsOn') }}</span><span class="w-16" />
             </div>
             <section v-for="g in routeGroups" :key="g.key">
               <h3 class="flex items-center gap-2 border-b border-line px-5 pb-2 pt-4 text-sm font-semibold text-ink">{{ $t(`aiAdmin.ui.groups.${g.key}`) }} <span class="text-xs font-normal text-ink-subtle">{{ $t('aiAdmin.ui.tasksCount', { n: g.items.length }) }}</span></h3>
               <ul class="divide-y divide-line">
                 <li
                   v-for="v in g.items" :key="v.route.id"
-                  class="grid grid-cols-1 gap-3 border-l-4 px-5 py-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1.6fr)_auto] lg:items-center lg:gap-6"
-                  :class="{ primary: 'border-success-500', fallback: 'border-warning-500', blocked: 'border-danger-500 bg-danger-50/40', off: 'border-line bg-surface-muted/60' }[v.status]"
-                  :data-task="v.route.task_key"
+                  class="grid grid-cols-1 gap-3 border-l-4 px-5 py-3 lg:grid-cols-[minmax(0,1.4fr)_8rem_minmax(0,1.6fr)_auto] lg:items-center lg:gap-6"
+                  :class="{ exact: 'border-success-500', substitute: 'border-warning-500', blocked: 'border-danger-500 bg-danger-50/40', off: 'border-line bg-surface-muted/60' }[v.status]"
+                  :data-task="v.route.task_key" :data-status="v.status"
                 >
                   <div class="min-w-0">
                     <p class="flex flex-wrap items-center gap-2 font-medium text-ink">
@@ -407,43 +362,32 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
                       <span v-if="v.route.allow_paid_retry" class="inline-flex items-center gap-1 text-xs font-normal text-warning-700" :title="$t('aiAdmin.allowPaidRetryHint')"><AppIcon name="alert" :size="12" />{{ $t('aiAdmin.ui.paidRetryOn') }}</span>
                     </p>
                     <p v-if="taskDesc(v.route)" class="mt-0.5 text-xs text-ink-muted">{{ taskDesc(v.route) }}</p>
-                    <p class="mt-0.5 font-mono text-[11px] text-ink-subtle">{{ v.route.task_key }}</p>
+                    <p class="mt-0.5 font-mono text-[11px] text-ink-subtle">{{ v.route.task_key }}<template v-if="v.route.requires_web_search"> · {{ $t('aiAdmin.ui.needsWebSearch') }}</template></p>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <span v-if="v.route.kind === 'image'" class="text-xs text-ink-muted">{{ $t('aiAdmin.ui.imageTask') }}</span>
+                    <span v-else class="rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset" :class="TIER_TONE[v.route.tier]">{{ tierLabel(v.route.tier) }}</span>
+                    <span v-if="v.route.pinned_model" class="text-[11px] text-ink-subtle" :title="$t('aiAdmin.ui.pinTitle')">📌 {{ v.route.pinned_model.display_name }}</span>
                   </div>
                   <div>
                     <template v-if="v.status === 'blocked'">
                       <p class="flex items-center gap-1.5 font-medium text-danger-700"><span class="size-2 rounded-full bg-danger-500" />{{ $t('aiAdmin.ui.cannotRun') }}</p>
-                      <p class="text-xs text-danger-700">{{ v.chain.length ? $t('aiAdmin.ui.cannotRunHint') : $t('aiAdmin.ui.noPrimary') }}</p>
+                      <p class="text-xs text-danger-700">{{ $t(`aiAdmin.ui.blocked.${v.route.resolved.blocked_reason ?? 'no_model'}`) }}</p>
                     </template>
                     <template v-else-if="v.status === 'off'">
                       <p class="text-ink-muted">{{ $t('aiAdmin.ui.routeOff') }}</p>
                     </template>
                     <template v-else>
-                      <p class="flex items-center gap-1.5 font-medium text-ink"><span class="size-2 rounded-full bg-success-500" />{{ v.chain[v.runIndex]?.name }}</p>
-                      <p v-if="v.status === 'primary'" class="text-xs text-success-700">✓ {{ $t('aiAdmin.ui.isPrimary') }}</p>
-                      <p v-else class="text-xs text-warning-700">↪ {{ $t('aiAdmin.ui.isFallback', { n: v.runIndex + 1 }) }}</p>
+                      <p class="flex items-center gap-1.5 font-medium" :class="v.status === 'exact' ? 'text-ink' : 'text-warning-700'"><span class="size-2 rounded-full" :class="v.status === 'exact' ? 'bg-success-500' : 'bg-warning-500'" />{{ v.run?.display_name }}</p>
+                      <p class="text-xs" :class="v.status === 'exact' && !v.route.resolved.pinned_reason ? 'text-success-700' : 'text-ink-muted'">{{ runNote(v) }}</p>
                     </template>
                   </div>
-                  <div>
-                    <ol class="flex flex-wrap items-center gap-1 text-xs">
-                      <li
-                        v-for="(c, i) in v.chain" :key="c.id"
-                        class="rounded-md px-1.5 py-0.5 ring-1 ring-inset"
-                        :class="c.runs ? 'bg-success-50 font-medium text-success-700 ring-success-600/30' : c.reason ? 'bg-surface-muted text-ink-subtle line-through ring-line' : 'bg-surface text-ink-muted ring-line'"
-                        :title="c.reason ? $t(`aiAdmin.ui.skip.${c.reason}`) : ''"
-                      ><span class="mr-1 opacity-70">{{ i + 1 }}</span>{{ c.name }}</li>
-                    </ol>
-                    <p v-if="v.route.economy_model" class="mt-1 text-xs text-ink-subtle">{{ $t('aiAdmin.ui.economyModel', { m: modelById.get(v.route.economy_model.id)?.display_name ?? v.route.economy_model.model_key }) }}</p>
-                  </div>
                   <div class="lg:text-right">
-                    <AppButton size="sm" :variant="v.status === 'blocked' ? 'primary' : 'secondary'" @click="openRoute(v.route)">{{ $t('common.edit') }}</AppButton>
+                    <AppButton size="sm" :variant="v.status === 'blocked' ? 'primary' : 'secondary'" @click="openRoute(v.route)">{{ v.route.kind === 'image' ? $t('common.edit') : $t('aiAdmin.ui.changeLevel') }}</AppButton>
                   </div>
                 </li>
               </ul>
             </section>
-            <div class="flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-line px-5 py-3 text-xs text-ink-muted">
-              <span class="flex items-center gap-1.5"><span class="rounded-md bg-success-50 px-1.5 text-success-700 ring-1 ring-inset ring-success-600/30">1 …</span>{{ $t('aiAdmin.ui.legendRun') }}</span>
-              <span class="flex items-center gap-1.5"><span class="rounded-md bg-surface-muted px-1.5 text-ink-subtle line-through ring-1 ring-inset ring-line">2 …</span>{{ $t('aiAdmin.ui.legendSkip') }}</span>
-            </div>
           </div>
         </template>
       </div>
@@ -482,46 +426,32 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
       <form id="route-form" class="space-y-5" novalidate @submit.prevent="saveRoute">
         <p v-if="routeForm.formError.value" class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600" role="alert">{{ routeForm.formError.value }}</p>
         <p class="-mt-2 font-mono text-xs text-ink-subtle">{{ routeEdit?.task_key }}</p>
-        <fieldset>
-          <legend class="text-sm font-semibold text-ink">{{ $t('aiAdmin.ui.chainTitle') }}</legend>
-          <p class="text-xs text-ink-muted">{{ $t('aiAdmin.ui.chainHint') }} {{ $t('aiAdmin.ui.keyedOnlyHint') }}</p>
-          <ol class="mt-3 space-y-2" data-testid="route-chain">
-            <li
-              v-for="(id, i) in routeDraft.chain" :key="id" draggable="true"
-              class="flex items-center gap-3 rounded-lg bg-surface px-3 py-2 ring-1 ring-inset"
-              :class="draftEffective?.id === id ? 'ring-success-600/40' : 'ring-line'"
-              @dragstart="dragFrom = i" @dragover.prevent @drop.prevent="dropOn(i)"
+        <fieldset v-if="routeEdit?.kind !== 'image'">
+          <legend class="text-sm font-semibold text-ink">{{ $t('aiAdmin.ui.levelTitle') }}</legend>
+          <p class="text-xs text-ink-muted">{{ $t('aiAdmin.ui.levelHint') }}</p>
+          <div class="mt-3 space-y-2" role="radiogroup" data-testid="tier-picker">
+            <label
+              v-for="tier in MODEL_TIERS" :key="tier"
+              class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 ring-inset"
+              :class="routeDraft.tier === tier ? 'ring-2 ring-brand-500' : 'ring-1 ring-line hover:bg-surface-muted'"
             >
-              <span class="cursor-grab select-none text-ink-subtle" aria-hidden="true">⋮⋮</span>
-              <span class="grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold" :class="i === 0 ? 'bg-brand-600 text-white' : 'bg-slate-100 text-ink-muted'">{{ i + 1 }}</span>
-              <div class="min-w-0 flex-1">
-                <p class="text-sm font-medium" :class="modelById.get(id) && skipReason(modelById.get(id)!, routeEdit?.task_key ?? '') ? 'text-ink-subtle' : 'text-ink'">
-                  {{ modelById.get(id)?.display_name ?? id }}
-                  <span v-if="i === 0" class="ml-1 rounded bg-brand-50 px-1.5 text-[11px] font-medium text-brand-700">{{ $t('aiAdmin.primary') }}</span>
-                </p>
-                <p class="text-xs text-ink-muted">{{ modelById.get(id)?.provider.name }}</p>
-              </div>
-              <span class="hidden text-xs sm:block" :class="draftEffective?.id === id ? 'text-success-700' : 'text-ink-subtle'">
-                <template v-if="draftEffective?.id === id">✓ {{ $t('aiAdmin.ui.willRun') }}</template>
-                <template v-else-if="modelById.get(id) && skipReason(modelById.get(id)!, routeEdit?.task_key ?? '')">{{ $t(`aiAdmin.ui.skip.${skipReason(modelById.get(id)!, routeEdit?.task_key ?? '')}`) }}</template>
-              </span>
-              <span class="flex gap-1">
-                <button type="button" class="rounded p-1 text-ink-subtle ring-1 ring-inset ring-line hover:bg-slate-100 hover:text-ink disabled:opacity-30" :disabled="i === 0" :aria-label="$t('aiAdmin.ui.moveUp')" @click="moveInChain(i, -1)"><AppIcon name="chevronUp" :size="14" /></button>
-                <button type="button" class="rounded p-1 text-ink-subtle ring-1 ring-inset ring-line hover:bg-slate-100 hover:text-ink disabled:opacity-30" :disabled="i === routeDraft.chain.length - 1" :aria-label="$t('aiAdmin.ui.moveDown')" @click="moveInChain(i, 1)"><AppIcon name="chevronDown" :size="14" /></button>
-                <button type="button" class="rounded p-1 text-danger-600 ring-1 ring-inset ring-line hover:bg-danger-50" :aria-label="$t('aiAdmin.ui.removeFromChain')" @click="removeFromChain(i)"><AppIcon name="x" :size="14" /></button>
-              </span>
-            </li>
-          </ol>
-          <p v-if="routeForm.errors.primary_model_id" class="mt-1 text-xs text-danger-600">{{ routeForm.errors.primary_model_id }}</p>
-          <div class="mt-2 flex gap-2">
-            <div class="flex-1"><AppSelect v-model="routeAdd" :options="[{ value: '', label: $t('aiAdmin.ui.addToChain') }, ...addableModels]" /></div>
-            <AppButton variant="secondary" :disabled="!routeAdd" @click="addToChain"><AppIcon name="plus" :size="16" />{{ $t('aiAdmin.ui.add') }}</AppButton>
+              <input v-model="routeDraft.tier" type="radio" name="route-tier" :value="tier" class="size-4 accent-brand-600" />
+              <span class="rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset" :class="TIER_TONE[tier]">{{ tierLabel(tier) }}</span>
+              <span class="text-sm text-ink-muted">{{ $t(`aiAdmin.ui.tierHint.${tier}`) }}</span>
+            </label>
           </div>
-          <p v-if="draftEffective" class="mt-3 rounded-lg bg-success-50 px-3 py-2 text-sm text-success-700 ring-1 ring-inset ring-success-600/20">{{ $t('aiAdmin.ui.previewRun', { name: draftEffective.display_name }) }}</p>
-          <p v-else class="mt-3 rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-700 ring-1 ring-inset ring-danger-600/15">{{ $t('aiAdmin.ui.previewNone') }}</p>
+          <p v-if="routeForm.errors.tier" class="mt-1 text-xs text-danger-600">{{ routeForm.errors.tier }}</p>
         </fieldset>
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <AppSelect v-model="routeDraft.economy" :label="$t('aiAdmin.ui.economyLabel')" :options="[{ value: '', label: $t('aiAdmin.none') }, ...modelOptions]" />
+        <details class="rounded-lg ring-1 ring-line" :open="!!routeDraft.pinned || routeEdit?.kind === 'image'">
+          <summary class="cursor-pointer px-3 py-2 text-sm font-medium text-ink-muted">{{ $t('aiAdmin.ui.pinTitle') }}</summary>
+          <div class="space-y-1 border-t border-line px-3 py-3">
+            <AppSelect v-model="routeDraft.pinned" :options="[{ value: '', label: $t('aiAdmin.ui.pinAuto') }, ...pinOptions]" :error="routeForm.errors.pinned_model_id" data-testid="pin-picker" />
+            <p class="text-xs text-ink-muted">{{ $t('aiAdmin.ui.pinHint') }}</p>
+          </div>
+        </details>
+        <p v-if="draftRun" class="rounded-lg bg-success-50 px-3 py-2 text-sm text-success-700 ring-1 ring-inset ring-success-600/20" data-testid="route-preview">{{ $t('aiAdmin.ui.previewRun', { name: draftRun.display_name }) }}</p>
+        <p v-else class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-700 ring-1 ring-inset ring-danger-600/15" data-testid="route-preview">{{ $t(routeEdit?.requires_web_search ? 'aiAdmin.ui.blocked.needs_web_search' : 'aiAdmin.ui.previewNone') }}</p>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <AppInput v-model="routeDraft.max_output_tokens" type="number" :label="$t('aiAdmin.ui.maxOutputLabel')" :error="routeForm.errors.max_output_tokens" />
           <AppSelect v-model="routeDraft.priority" :label="$t('aiAdmin.ui.priorityLabel')" :options="priorityOptions" />
         </div>
@@ -536,7 +466,7 @@ const priorityOptions = computed(() => (['interactive', 'batch'] as const).map((
       </form>
       <template #footer>
         <AppButton variant="secondary" @click="routeEdit = null">{{ $t('common.cancel') }}</AppButton>
-        <AppButton type="submit" form="route-form" :disabled="!routeDraft.chain.length" :loading="routeForm.submitting.value">{{ $t('common.save') }}</AppButton>
+        <AppButton type="submit" form="route-form" :loading="routeForm.submitting.value">{{ $t('common.save') }}</AppButton>
       </template>
     </AppModal>
 

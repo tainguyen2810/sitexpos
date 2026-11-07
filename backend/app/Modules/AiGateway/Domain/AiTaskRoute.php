@@ -10,15 +10,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * Routing rule for one task type: primary model, ordered fallbacks, a
- * cheaper model used when a budget passes its alert threshold, limits and
- * the paid-retry policy.
+ * Routing rule for one task type: the model level (`tier`), an optional
+ * pinned model, limits and the paid-retry policy. Models are picked from the
+ * level by Gateway\ModelSelector (v1.0.13, ADR-031).
+ *
+ * `primary_model_id`, `economy_model_id` and `fallback_model_ids` are the
+ * pre-1.0.13 explicit model chain. They are kept (additive migrations only,
+ * see UPGRADE-GUIDE) but are no longer read for routing.
  *
  * @property string $id
  * @property string $task_key
  * @property string|null $description
  * @property string $queue
  * @property string $priority
+ * @property string $tier
+ * @property string $kind
+ * @property bool $requires_web_search
+ * @property string|null $pinned_model_id
  * @property string $primary_model_id
  * @property string|null $economy_model_id
  * @property list<string>|null $fallback_model_ids
@@ -31,6 +39,7 @@ use Illuminate\Support\Carbon;
  * @property bool $is_enabled
  * @property Carbon $created_at
  * @property Carbon $updated_at
+ * @property-read AiModel|null $pinnedModel
  * @property-read AiModel $primaryModel
  * @property-read AiModel|null $economyModel
  */
@@ -41,7 +50,7 @@ class AiTaskRoute extends Model
     public const PRIORITIES = ['interactive', 'batch'];
 
     protected $fillable = [
-        'description', 'queue', 'priority', 'primary_model_id', 'economy_model_id', 'fallback_model_ids',
+        'description', 'queue', 'priority', 'tier', 'pinned_model_id', 'primary_model_id', 'economy_model_id', 'fallback_model_ids',
         'max_input_tokens', 'max_output_tokens', 'temperature', 'timeout_seconds', 'max_attempts', 'allow_paid_retry', 'is_enabled',
     ];
 
@@ -54,6 +63,7 @@ class AiTaskRoute extends Model
         $route = new self;
         $route->forceFill([
             'task_key' => $taskKey, 'description' => null, 'queue' => 'default', 'priority' => 'interactive',
+            'tier' => 'standard', 'kind' => 'text', 'requires_web_search' => false, 'pinned_model_id' => null,
             'economy_model_id' => null, 'fallback_model_ids' => [], 'max_input_tokens' => 4000, 'max_output_tokens' => 512,
             'temperature' => null, 'timeout_seconds' => null, 'max_attempts' => 1, 'allow_paid_retry' => false, 'is_enabled' => true,
         ]);
@@ -72,7 +82,16 @@ class AiTaskRoute extends Model
             'max_attempts' => 'integer',
             'allow_paid_retry' => 'boolean',
             'is_enabled' => 'boolean',
+            'requires_web_search' => 'boolean',
         ];
+    }
+
+    /**
+     * @return BelongsTo<AiModel, $this>
+     */
+    public function pinnedModel(): BelongsTo
+    {
+        return $this->belongsTo(AiModel::class, 'pinned_model_id');
     }
 
     /**

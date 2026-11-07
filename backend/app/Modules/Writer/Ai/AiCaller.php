@@ -6,7 +6,6 @@ namespace SiteXPost\Modules\Writer\Ai;
 
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use SiteXPost\Modules\AiGateway\Domain\AiModel;
 use SiteXPost\Modules\AiGateway\Domain\AiRequest;
 use SiteXPost\Modules\AiGateway\Domain\AiTaskRoute;
 use SiteXPost\Modules\AiGateway\Gateway\AiGateway;
@@ -14,6 +13,7 @@ use SiteXPost\Modules\AiGateway\Gateway\AiGatewayException;
 use SiteXPost\Modules\AiGateway\Gateway\AiResult;
 use SiteXPost\Modules\AiGateway\Gateway\AiTask;
 use SiteXPost\Modules\AiGateway\Gateway\CostCalculator;
+use SiteXPost\Modules\AiGateway\Gateway\ModelSelector;
 use SiteXPost\Modules\Writer\Domain\Article;
 use SiteXPost\Modules\Writer\Domain\ArticleAiUsage;
 
@@ -34,6 +34,7 @@ class AiCaller
     public function __construct(
         private readonly AiGateway $gateway,
         private readonly CostCalculator $costs,
+        private readonly ModelSelector $selector,
     ) {}
 
     /**
@@ -91,7 +92,8 @@ class AiCaller
     }
 
     /**
-     * Worst-case cost of one call on this route (highest-priced candidate).
+     * Worst-case cost of one call on this route: the highest-priced usable
+     * model of the level that would answer first.
      */
     public function estimate(string $taskKey, int $promptChars, int $maxOut, bool $webSearch = false): int
     {
@@ -99,11 +101,10 @@ class AiCaller
         if ($route === null) {
             return 0;
         }
-        $ids = array_values(array_filter([$route->primary_model_id, $route->economy_model_id, ...($route->fallback_model_ids ?? [])], 'is_string'));
         $tokens = (int) ceil($promptChars / max(1, (int) config('sitex.ai.chars_per_token', 3)));
         $out = min($maxOut, (int) $route->max_output_tokens);
         $max = 0;
-        foreach (AiModel::query()->whereIn('id', $ids)->where('is_enabled', true)->get() as $model) {
+        foreach ($this->selector->estimateModels($route, $webSearch) as $model) {
             $price = $model->priceAt();
             if ($price !== null) {
                 $max = max($max, $this->costs->estimate($price, $tokens, $out, $webSearch ? 1 : 0));
@@ -115,20 +116,15 @@ class AiCaller
 
     /**
      * Whether a call with web search can be routed for this task: the route
-     * is on and at least one enabled model of an enabled provider on it
-     * declares the `web_search` capability (otherwise the gateway would
+     * is on and at least one enabled model of an enabled provider it can
+     * pick from declares the `web_search` capability (otherwise the gateway would
      * reject the call with no_model_available).
      */
     public function canWebSearch(string $taskKey): bool
     {
         $route = AiTaskRoute::query()->where('task_key', $taskKey)->where('is_enabled', true)->first();
-        if ($route === null) {
-            return false;
-        }
-        $ids = array_values(array_filter([$route->primary_model_id, $route->economy_model_id, ...($route->fallback_model_ids ?? [])], 'is_string'));
 
-        return AiModel::query()->with('provider')->whereIn('id', $ids)->where('is_enabled', true)->get()
-            ->contains(fn (AiModel $m) => $m->provider !== null && $m->provider->is_enabled && $m->supports('web_search'));
+        return $route !== null && $this->selector->usable($route, webSearch: true) !== [];
     }
 
     private function open(Article $article, string $step, string $taskKey, string $callKey, ?string $runId, int $estimate): ArticleAiUsage
