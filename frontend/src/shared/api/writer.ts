@@ -481,12 +481,24 @@ export interface Preset {
   geographic_context: string | null
   editorial_guidelines: string | null
   cta: string | null
-  defaults: { content_type?: string; target_words?: number; research_depth?: Depth; content_depth?: Depth; tone?: string; budget_limit_micro_usd?: number }
+  defaults: {
+    content_type?: string; target_words?: number; research_depth?: Depth; content_depth?: Depth; tone?: string; budget_limit_micro_usd?: number
+    auto_images?: boolean | null; min_images?: number | null
+  }
   is_demo: boolean
+  style_profile: StyleProfile | null
+  style_draft: (StyleProfile & { generated_at?: string; model?: string; cost_micro_usd?: number; sample_count?: number }) | null
+  style_sources: { used?: { type: string; title: string; url: string | null; words: number }[]; skipped?: { title: string; url: string | null; code: string }[] } | null
+  style_learned_at: string | null
   created_at: string | null
   updated_at: string | null
 }
-export type PresetInput = Partial<Omit<Preset, 'id' | 'is_demo' | 'created_at' | 'updated_at'>>
+export type PresetInput = Partial<Omit<Preset, 'id' | 'is_demo' | 'created_at' | 'updated_at' | 'style_draft' | 'style_sources' | 'style_learned_at'>>
+
+export const STYLE_TEXT_FIELDS = ['summary', 'tone', 'addressing', 'sentence_style', 'paragraph_style', 'intro_pattern', 'conclusion_pattern', 'heading_style', 'formatting'] as const
+export const STYLE_LIST_FIELDS = ['vocabulary', 'signature_phrases', 'avoid', 'dos', 'donts'] as const
+export type StyleProfile = { [K in (typeof STYLE_TEXT_FIELDS)[number]]?: string } & { [K in (typeof STYLE_LIST_FIELDS)[number]]?: string[] }
+export interface LearnStyleInput { site_id?: string | null; content_item_ids?: string[]; samples?: { title?: string | null; text: string }[] }
 
 export interface BatchItem { id: string; position: number; title: string; content_idea_id: string | null; article_id: string | null; status: string; attempts: number; error: ErrorRef | null }
 export interface Batch {
@@ -610,6 +622,9 @@ export const writerApi = {
   createPreset: (ws: string, data: PresetInput) => api.post<Envelope<Preset>>(`${W(ws)}/presets`, data).then((r) => r.data),
   updatePreset: (ws: string, id: string, data: PresetInput) => api.patch<Envelope<Preset>>(`${W(ws)}/presets/${e(id)}`, data).then((r) => r.data),
   deletePreset: (ws: string, id: string) => api.delete<void>(`${W(ws)}/presets/${e(id)}`),
+  learnStyle: (ws: string, id: string, data: LearnStyleInput) =>
+    api.post<Envelope<{ job_run: { id: string; status: string; type: string } }>>(`${W(ws)}/presets/${e(id)}/learn-style`, data).then((r) => r.data.job_run),
+  discardStyleDraft: (ws: string, id: string) => api.delete<Envelope<Preset>>(`${W(ws)}/presets/${e(id)}/style-draft`).then((r) => r.data),
 
   batches: (ws: string, query: Query = {}) => api.get<Paginated<Batch>>(`${W(ws)}/batches`, { query }),
   previewBatch: (ws: string, data: BatchInput) => api.post<Envelope<BatchPreview>>(`${W(ws)}/batches/preview`, data).then((r) => r.data),

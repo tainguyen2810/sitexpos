@@ -2,6 +2,7 @@
 
 return [
     'errors' => [
+        'not_enough_slots' => 'Bài chưa đủ số ảnh tối thiểu (bài quá ngắn hoặc không đủ mục phù hợp để đặt ảnh).',
         'empty_file' => 'Tệp rỗng.',
         'file_too_large' => 'Tệp vượt quá dung lượng cho phép.',
         'unsupported_type' => 'Chỉ chấp nhận ảnh JPEG, PNG, GIF hoặc WebP.',
@@ -38,6 +39,7 @@ return [
         'ai_caption' => 'Ảnh minh họa tạo bằng AI',
     ],
     'placement' => [
+        'auto_min_images' => 'Thêm để bài đủ số ảnh tối thiểu.',
         'featured_match' => 'Ảnh phù hợp nhất với tiêu đề/từ khóa chính.',
         'no_candidate' => 'Chưa có ảnh phù hợp trong thư viện — hãy chọn, tải lên hoặc tạo ảnh AI.',
         'intro_long' => 'Bài dài (> 800 từ): một ảnh mở đầu giúp người đọc định hướng.',

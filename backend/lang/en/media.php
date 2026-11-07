@@ -2,6 +2,7 @@
 
 return [
     'errors' => [
+        'not_enough_slots' => 'The article does not reach the minimum number of images (too short or not enough suitable sections).',
         'empty_file' => 'Tệp rỗng.',
         'file_too_large' => 'Tệp vượt quá dung lượng cho phép.',
         'unsupported_type' => 'Chỉ chấp nhận ảnh JPEG, PNG, GIF hoặc WebP.',
@@ -38,6 +39,7 @@ return [
         'ai_caption' => 'Ảnh minh họa tạo bằng AI',
     ],
     'placement' => [
+        'auto_min_images' => 'Added so the article reaches the minimum number of images.',
         'featured_match' => 'Ảnh phù hợp nhất với tiêu đề/từ khóa chính.',
         'no_candidate' => 'Chưa có ảnh phù hợp trong thư viện — hãy chọn, tải lên hoặc tạo ảnh AI.',
         'intro_long' => 'Bài dài (> 800 từ): một ảnh mở đầu giúp người đọc định hướng.',

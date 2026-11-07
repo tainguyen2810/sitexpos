@@ -164,6 +164,8 @@ final class AiRegistry
                 'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'fake/fake-echo'], 'max_out' => 1500],
             'writer.final_review' => ['desc' => 'Writer: final editorial review notes (advisory)', 'queue' => 'writing', 'priority' => 'batch',
                 'primary' => 'openai/gpt-6.1-terra', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['gemini/gemini-3.8-flash', 'fake/fake-echo'], 'max_out' => 1500],
+            'writer.style_profile' => ['desc' => 'Writer: learn the writing style of sample articles (style guide only, never copied text)', 'queue' => 'writing', 'priority' => 'interactive',
+                'primary' => 'anthropic/claude-sonnet-5-5', 'economy' => 'gemini/gemini-3.8-flash', 'fallbacks' => ['openai/gpt-6.1-terra', 'deepseek/deepseek-flash', 'fake/fake-echo'], 'max_out' => 3000, 'max_in' => 60000],
             // Phase 8 — SEO analytics & agent (defaults only; AI never produces metrics, it phrases and suggests).
             'analytics.recommend' => ['desc' => 'SEO recommendation wording: title/meta suggestions from GSC evidence (never metrics)', 'queue' => 'analytics', 'priority' => 'batch',
                 'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'deepseek/deepseek-flash', 'fake/fake-echo'], 'max_out' => 1500],

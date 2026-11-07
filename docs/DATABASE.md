@@ -291,7 +291,7 @@ Một migration `app/Modules/Writer/Database/Migrations/2026_11_10_000100_create
 
 | Bảng | Vai trò |
 |---|---|
-| `writing_presets` | Brand voice: giọng văn, cụm từ cấm/ưu tiên, CTA, `facts[]` mỗi fact có `provenance` (`user_provided`, `website_extracted`, `source_verified`, `ai_inferred`) |
+| `writing_presets` | Brand voice: giọng văn, cụm từ cấm/ưu tiên, CTA, `facts[]` mỗi fact có `provenance` (`user_provided`, `website_extracted`, `source_verified`, `ai_inferred`). v1.0.5: `style_profile` (văn phong đã áp dụng), `style_draft` (bản AI phân tích chờ duyệt), `style_sources` (tiêu đề/URL/số từ bài mẫu, không lưu nội dung), `style_learned_at`; `defaults.auto_images`, `defaults.min_images` |
 | `writing_batches`, `writing_batch_items` | Lô viết bài, trạng thái từng bài |
 | `articles` | Bài viết: `status` (13 trạng thái của `ArticleStatus`), cấu hình wizard, ngân sách, `current_version_id`, `duplicate_check`, bộ đếm claim chưa xử lý |
 | `article_versions`, `article_sections` | Phiên bản bất biến; section có `content_hash` để phát hiện section đổi |
@@ -322,6 +322,7 @@ Migration theo module: `Media/Database/Migrations/2026_11_11_000100_create_media
 | `media_versions` | media_asset_id, kind (`original`/`optimized`/`webp`/`avif`/`thumbnail`/`crop`), mime, width, height, bytes, sha256, storage_path, params | UNIQUE (media_asset_id, kind) |
 | `image_generation_jobs` | site_id, article_id, parent_job_id, version, image_type, section_key, aspect_ratio, style, quality, image_count, brand_colors, prompt_template, prompt, prompt_edited, status (`queued`/`running`/`succeeded`/`failed`/`blocked`/`canceled`), budget_cap_micro_usd, estimated/cost_micro_usd, provider, model, ai_request_id, **call_key** UNIQUE, result_asset_ids, job_run_id | |
 | `image_placements` | article_id, media_asset_id?, slot (`featured`/`intro`/`section`/`comparison`/`infographic`/`product`), section_key, section_heading, position, alt_text, caption, status (`suggested`/`accepted`/`rejected`), reason, origin (`engine`/`user`) | |
+| `media_autofill_runs` | v1.0.5 — một dòng/bài: article_id (unique), version_id, target, status (`running`/`completed`/`incomplete`/`failed`), filled, library_count, ai_count, pending[] ({job_id, placement_id}), error_code/message | |
 | `media_limits` (nền tảng) | scope_key (`global` / `ws:<id>`) UNIQUE, max_storage_bytes, max_uploads_per_day, max_ai_images_per_day, max_ai_cost_per_job_micro_usd, ai_images_enabled | |
 
 **Seo**

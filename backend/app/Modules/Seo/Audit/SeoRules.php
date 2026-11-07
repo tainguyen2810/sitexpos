@@ -293,6 +293,12 @@ final class SeoRules
         if ($h->images === [] && $h->words > 600) {
             return $this->issue('image_alt', 'media', AuditIssue::WARNING, 6, 'Bài dài nhưng không có ảnh minh họa.', 'Ảnh giúp ngắt đoạn văn dài.', 'Xem gợi ý vị trí ảnh.');
         }
+        $min = (int) config('sitex.media.min_article_images', 2);
+        $total = count($h->images) + 1; // + featured
+        if ($min > 0 && $total < $min) {
+            return $this->issue('image_alt', 'media', AuditIssue::WARNING, 6, "Bài có {$total} ảnh (kể cả ảnh đại diện), tối thiểu nên có {$min}.",
+                'Quy định nội dung của workspace: mỗi bài có ít nhất '.$min.' ảnh.', 'Mở Article Media Editor để thêm ảnh từ thư viện hoặc tạo ảnh AI.');
+        }
 
         return $this->issue('image_alt', 'media', AuditIssue::PASS, 6, count($h->images).' ảnh trong bài đều có alt text.', 'Đạt yêu cầu truy cập.');
     }

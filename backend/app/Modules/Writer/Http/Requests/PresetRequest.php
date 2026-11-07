@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SiteXPost\Modules\Writer\Http\Requests;
 
 use SiteXPost\Kernel\Http\Requests\ApiRequest;
+use SiteXPost\Modules\Writer\Pipeline\StyleLearner;
 
 final class PresetRequest extends ApiRequest
 {
@@ -38,7 +39,31 @@ final class PresetRequest extends ApiRequest
             'defaults.content_depth' => ['nullable', 'in:basic,standard,deep'],
             'defaults.tone' => ['nullable', 'string', 'max:120'],
             'defaults.budget_limit_micro_usd' => ['nullable', 'integer', 'min:50000'],
+            'defaults.auto_images' => ['nullable', 'boolean'],
+            'defaults.min_images' => ['nullable', 'integer', 'min:0', 'max:6'],
+            // Applied style guide (reviewed by the user; usually from a learned draft).
+            'style_profile' => ['sometimes', 'nullable', 'array'],
+            ...self::styleRules('style_profile'),
             'is_demo' => ['prohibited'],
+            'style_draft' => ['prohibited'],
+            'style_sources' => ['prohibited'],
         ];
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    public static function styleRules(string $prefix): array
+    {
+        $rules = [];
+        foreach (StyleLearner::TEXT_FIELDS as $f) {
+            $rules["{$prefix}.{$f}"] = ['nullable', 'string', 'max:800'];
+        }
+        foreach (StyleLearner::LIST_FIELDS as $f) {
+            $rules["{$prefix}.{$f}"] = ['nullable', 'array', 'max:15'];
+            $rules["{$prefix}.{$f}.*"] = ['string', 'max:200'];
+        }
+
+        return $rules;
     }
 }

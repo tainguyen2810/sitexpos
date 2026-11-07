@@ -11,6 +11,7 @@ use SiteXPost\Kernel\Http\ApiException;
 use SiteXPost\Modules\Media\Actions\Placements;
 use SiteXPost\Modules\Media\Contracts\MediaLibrary;
 use SiteXPost\Modules\Media\Domain\MediaAsset;
+use SiteXPost\Modules\Media\Domain\MediaAutofill;
 use SiteXPost\Modules\Media\Http\Requests\SavePlacementsRequest;
 use SiteXPost\Modules\Workspace\Domain\Workspace;
 use SiteXPost\Modules\Writer\Contracts\ArticleCatalog;
@@ -34,6 +35,7 @@ final class PlacementController
             'article' => ['id' => $a['id'], 'title' => $a['title'], 'site_id' => $a['site_id'], 'status' => $a['status'], 'primary_keyword' => $a['primary_keyword']],
             'sections' => array_map(fn ($s) => ['key' => $s['key'], 'heading' => $s['heading'], 'words' => str_word_count($s['text'])], ArticleDocument::split((string) ($content['html'] ?? ''))),
             'placements' => $this->library->placements($a['id'], false),
+            'autofill' => MediaAutofill::query()->where('article_id', $a['id'])->first()?->present(),
         ]]);
     }
 

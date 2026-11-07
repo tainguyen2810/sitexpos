@@ -147,6 +147,19 @@ export interface PlacementView {
   article: { id: string; title: string; site_id: string; status: string; primary_keyword: string | null }
   sections: { key: string; heading: string; words: number }[]
   placements: Placement[]
+  autofill?: Autofill | null
+}
+
+/** Auto images after a draft: library first, AI for the rest. */
+export interface Autofill {
+  status: 'running' | 'completed' | 'incomplete' | 'failed'
+  target: number
+  filled: number
+  library_count: number
+  ai_count: number
+  pending: number
+  error: { code: string; message: string | null } | null
+  updated_at: string | null
 }
 
 export interface JobRunRef { id: string; status: string }

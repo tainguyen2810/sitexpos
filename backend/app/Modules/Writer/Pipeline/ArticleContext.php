@@ -83,6 +83,9 @@ class ArticleContext
             'editorial_guidelines' => $preset?->editorial_guidelines !== null ? mb_substr($preset->editorial_guidelines, 0, 2000) : null,
             'cta' => $preset?->cta,
             'website_knowledge' => $knowledge,
+            // Learned + reviewed style guide: HOW to write (never facts, never text to copy).
+            'style_profile' => StyleLearner::isUsable($preset?->style_profile) ? array_intersect_key((array) $preset?->style_profile,
+                array_flip([...StyleLearner::TEXT_FIELDS, ...StyleLearner::LIST_FIELDS])) : null,
             'provenance_rule' => 'Chỉ "source_verified" mới được coi là đã kiểm chứng; "user_provided", "website_extracted", "ai_inferred" là thông tin cần thận trọng và không thay thế bằng chứng.',
         ];
     }
