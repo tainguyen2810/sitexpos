@@ -4,6 +4,12 @@ Format: `## [version] - YYYY-MM-DD`, one bullet per change. The Upgrade Wizard
 shows the sections between the installed version and the deployed code.
 Bump `config/sitex.php` → `version` together with this file.
 
+## [1.0.8] - 2026-11-07
+- Admin › AI settings › Routes: each task shows the model that will really run ("Runs on"), whether that is the primary or fallback #n, and the numbered chain with skipped models struck through (no API key, disabled, no price, paused). Banner when tasks run on fallbacks or cannot run; filters (on primary / on fallback / cannot run), search, grouping by feature, Vietnamese task names.
+- Route editor: ordered model list (drag or arrows, add/remove) with a live "this task will run on …" preview; advanced options folded.
+- Providers tab: list grouped into Active / Disabled / Not configured, one clear action per row, timeout and retries moved to a settings dialog with plain labels.
+- Overview card "Tasks that can run" counts tasks on fallbacks and tasks that cannot run.
+
 ## [1.0.6] - 2026-11-07
 - AI Writer no longer produces "empty" articles (tables full of "Cần xác minh", sentences like "bài này chưa có điều khoản chính thức trong tay"). When research finds fewer than 3 verbatim evidence excerpts (Super Admin setting `min_evidence_items`, 0 = off), the article stops before the brief with status "Chưa đủ nguồn" and a message saying exactly what is missing (sources not fetched, web search off, model without web search). The article page has a form to paste source URLs / turn on web search and **Research again**.
 - Source discovery uses the model's web search whenever the article allows it (now on by default) and a model routed to `writer.source_discovery` supports it (Gemini, OpenAI, Claude). DeepSeek cannot search: discovery then falls back to guessing URLs instead of failing, and the research tab says so. Research warnings are shown in plain Vietnamese.

@@ -58,7 +58,7 @@ let failBodies = []
   await deepseek.getByRole('button', { name: /khóa API/ }).click()
   await admin.getByRole('dialog').getByLabel('API key').fill('sk-e2e-deepseek-not-real-7788')
   await admin.getByRole('dialog').getByRole('button', { name: 'Lưu thay đổi' }).click()
-  await deepseek.getByText('Khóa lưu trên hệ thống (…7788)').waitFor()
+  await deepseek.getByText('•••• 7788').waitFor()
   step('DeepSeek key saved; UI shows only …7788')
 
   // 2. Test Connection to the real DeepSeek API (this sandbox has no route to it → an honest error).
@@ -85,8 +85,8 @@ let failBodies = []
   await conn.getByText('Kết nối được').waitFor({ timeout: 30000 })
   await conn.getByText('Nhà cung cấp trả về 2 mô hình.').waitFor()
   await admin.getByRole('dialog').getByText('Đóng', { exact: true }).click()
-  await mock.getByRole('switch').click()
-  await mock.getByText('Đang bật', { exact: true }).waitFor()
+  await mock.getByRole('button', { name: 'Bật', exact: true }).click()
+  await mock.getByText('Đang hoạt động', { exact: true }).waitFor()
   await admin.screenshot({ path: `${shots}/31-custom-provider.png`, fullPage: true })
   step('custom provider added, connection OK (2 models), enabled')
 
