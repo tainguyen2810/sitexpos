@@ -235,7 +235,7 @@ const choice = (active: boolean) => ['flex flex-col rounded-xl border-[1.5px] p-
                   <option v-for="s in siteOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
                 </select>
               </label>
-              <button v-if="campaigns.length" type="button" class="font-medium text-brand-600 hover:underline" :aria-expanded="showIdeas" @click="showIdeas = !showIdeas">
+              <button v-if="campaigns.length > 1 || freeIdeas > 0" type="button" class="font-medium text-brand-600 hover:underline" :aria-expanded="showIdeas" @click="showIdeas = !showIdeas">
                 💡 {{ t('writer.simple.fromIdeas', { n: freeIdeas }) }}
               </button>
             </div>

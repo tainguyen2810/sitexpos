@@ -28,7 +28,8 @@ function sourceLine(p: Preset): string {
   const n = p.style_sources?.used?.length ?? p.style_draft?.sample_count ?? 0
   if (origin && origin.type !== 'builtin') return `${STYLE_ORIGIN_ICONS[origin.type]} ${t(`writer.styles.origin.${origin.type}`)}${n ? ` · ${t('writer.styles.samples', { n })}` : ''}`
   if (origin?.type === 'builtin') return t('writer.styles.fromBuiltin', { name: t(`writer.builtin.${origin.label}.name`) })
-  return hasStyle(p) ? t('writer.styles.learned') : t('writer.styles.noLearned')
+  if (hasStyle(p)) return t('writer.styles.learned')
+  return p.tone ? p.tone : t('writer.styles.noLearned')
 }
 const isPreset = (id: string) => model.value?.kind === 'preset' && model.value.id === id
 const isBuiltin = (k: BuiltinStyleKey) => model.value?.kind === 'builtin' && model.value.key === k
