@@ -66,6 +66,27 @@ final class IndexService {
 	}
 
 	/**
+	 * Public author info (id + display name, as shown on the author archive).
+	 * Never the login, e-mail or any other account field.
+	 *
+	 * @param int $user_id WordPress user id.
+	 * @return array|null
+	 */
+	private function author( $user_id ) {
+		if ( $user_id <= 0 ) {
+			return null;
+		}
+		$user = get_userdata( $user_id );
+		if ( ! $user ) {
+			return null;
+		}
+		return array(
+			'id'   => $user_id,
+			'name' => wp_strip_all_tags( (string) $user->display_name ),
+		);
+	}
+
+	/**
 	 * @param string $type           post|page|product.
 	 * @param int    $page           Page.
 	 * @param int    $per_page       Page size.
@@ -122,6 +143,7 @@ final class IndexService {
 				'modified_gmt' => mysql2date( 'c', $post->post_modified_gmt, false ),
 				'term_ids'     => array_values( array_unique( $term_ids ) ),
 				'managed'      => '1' === (string) get_post_meta( $post->ID, PostService::META_MANAGED, true ),
+				'author'       => $this->author( (int) $post->post_author ),
 			);
 			if ( 'product' === $type ) {
 				$item['product'] = $this->product( $post->ID );

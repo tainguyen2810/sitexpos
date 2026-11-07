@@ -149,6 +149,7 @@ export interface WriterOptions {
     min_quality_score_for_approval: number
   }
   auto_approve: { enabled: boolean; min_quality: number }
+  builtin_styles?: BuiltinStyleKey[]
 }
 
 export interface WriterIdea {
@@ -171,6 +172,8 @@ export interface ArticleInput {
   campaign_id?: string | null
   content_idea_id?: string | null
   writing_preset_id?: string | null
+  builtin_style?: BuiltinStyleKey | null
+  auto_images?: boolean | null
   topic?: string | null
   title?: string | null
   primary_keyword?: string | null
@@ -488,17 +491,52 @@ export interface Preset {
   is_demo: boolean
   style_profile: StyleProfile | null
   style_draft: (StyleProfile & { generated_at?: string; model?: string; cost_micro_usd?: number; sample_count?: number }) | null
-  style_sources: { used?: { type: string; title: string; url: string | null; words: number }[]; skipped?: { title: string; url: string | null; code: string }[] } | null
+  style_sources: {
+    used?: { type: string; title: string; url: string | null; words: number }[]
+    skipped?: { title: string; url: string | null; code: string }[]
+    origin?: { type: StyleOrigin | 'builtin'; label: string | null } | null
+  } | null
   style_learned_at: string | null
   created_at: string | null
   updated_at: string | null
 }
-export type PresetInput = Partial<Omit<Preset, 'id' | 'is_demo' | 'created_at' | 'updated_at' | 'style_draft' | 'style_sources' | 'style_learned_at'>>
+export type PresetInput = Partial<Omit<Preset, 'id' | 'is_demo' | 'created_at' | 'updated_at' | 'style_draft' | 'style_sources' | 'style_learned_at'>> & { from_builtin?: BuiltinStyleKey | null }
+
+/** Ready-made styles (names/descriptions in writer.builtin.<key>). Mirrors backend BuiltinStyles::KEYS. */
+export const BUILTIN_STYLES = ['friendly', 'expert', 'step_by_step', 'sales', 'storytelling', 'news', 'formal'] as const
+export type BuiltinStyleKey = (typeof BUILTIN_STYLES)[number]
+export const BUILTIN_STYLE_ICONS: Record<BuiltinStyleKey, string> = {
+  friendly: '😊', expert: '🎓', step_by_step: '🧭', sales: '💰', storytelling: '📖', news: '📰', formal: '🏛️',
+}
+/** Where a learned style's samples came from. */
+export const STYLE_ORIGINS = ['post', 'category', 'author', 'blog', 'product', 'paste'] as const
+export type StyleOrigin = (typeof STYLE_ORIGINS)[number]
+export const STYLE_ORIGIN_ICONS: Record<StyleOrigin, string> = { post: '📄', category: '🗂️', author: '👤', blog: '📚', product: '🛒', paste: '📋' }
+
+/** Article length choices of the simple writer: label key → target words. */
+export const LENGTHS = { short: 800, medium: 1500, long: 2500 } as const
+export type LengthKey = keyof typeof LENGTHS
+export function lengthOf(words: number): LengthKey {
+  return words <= 1100 ? 'short' : words <= 2000 ? 'medium' : 'long'
+}
+/** Rough reading time (Vietnamese ≈ 220 words/minute). */
+export function readingMinutes(words: number): number {
+  return Math.max(1, Math.round(words / 220))
+}
+/** A preset counts as a "style of yours" when it has an applied style guide. */
+export function hasStyle(p: Pick<Preset, 'style_profile'>): boolean {
+  return !!p.style_profile && Object.values(p.style_profile).some((v) => (Array.isArray(v) ? v.length > 0 : !!v && String(v).trim() !== ''))
+}
 
 export const STYLE_TEXT_FIELDS = ['summary', 'tone', 'addressing', 'sentence_style', 'paragraph_style', 'intro_pattern', 'conclusion_pattern', 'heading_style', 'formatting'] as const
 export const STYLE_LIST_FIELDS = ['vocabulary', 'signature_phrases', 'avoid', 'dos', 'donts'] as const
 export type StyleProfile = { [K in (typeof STYLE_TEXT_FIELDS)[number]]?: string } & { [K in (typeof STYLE_LIST_FIELDS)[number]]?: string[] }
-export interface LearnStyleInput { site_id?: string | null; content_item_ids?: string[]; samples?: { title?: string | null; text: string }[] }
+export interface LearnStyleInput {
+  site_id?: string | null
+  content_item_ids?: string[]
+  samples?: { title?: string | null; text: string }[]
+  origin?: { type: StyleOrigin; label?: string | null } | null
+}
 
 export interface BatchItem { id: string; position: number; title: string; content_idea_id: string | null; article_id: string | null; status: string; attempts: number; error: ErrorRef | null }
 export interface Batch {
@@ -619,6 +657,7 @@ export const writerApi = {
   usage: (ws: string, id: string) => api.get<Envelope<Usage>>(`${A(ws, id)}/usage`).then((r) => r.data),
 
   presets: (ws: string, query: Query = {}) => api.get<Envelope<Preset[]>>(`${W(ws)}/presets`, { query }).then((r) => r.data),
+  preset: (ws: string, id: string) => api.get<Envelope<Preset>>(`${W(ws)}/presets/${e(id)}`).then((r) => r.data),
   createPreset: (ws: string, data: PresetInput) => api.post<Envelope<Preset>>(`${W(ws)}/presets`, data).then((r) => r.data),
   updatePreset: (ws: string, id: string, data: PresetInput) => api.patch<Envelope<Preset>>(`${W(ws)}/presets/${e(id)}`, data).then((r) => r.data),
   deletePreset: (ws: string, id: string) => api.delete<void>(`${W(ws)}/presets/${e(id)}`),

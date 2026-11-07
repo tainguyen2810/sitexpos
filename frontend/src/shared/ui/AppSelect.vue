@@ -5,6 +5,7 @@ defineProps<{
   label?: string
   options: { value: string; label: string }[]
   error?: string
+  hint?: string
   disabled?: boolean
 }>()
 
@@ -24,5 +25,6 @@ const id = useId()
       <option v-for="o in options" :key="o.value" :value="o.value">{{ o.label }}</option>
     </select>
     <p v-if="error" class="text-xs text-danger-600">{{ error }}</p>
+    <p v-else-if="hint" class="text-xs text-ink-muted">{{ hint }}</p>
   </div>
 </template>

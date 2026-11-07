@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\Writer\Http\Requests;
 
 use SiteXPost\Kernel\Http\Requests\ApiRequest;
 use SiteXPost\Modules\Writer\Pipeline\StyleLearner;
+use SiteXPost\Modules\Writer\Support\BuiltinStyles;
 
 final class PresetRequest extends ApiRequest
 {
@@ -44,6 +45,8 @@ final class PresetRequest extends ApiRequest
             // Applied style guide (reviewed by the user; usually from a learned draft).
             'style_profile' => ['sometimes', 'nullable', 'array'],
             ...self::styleRules('style_profile'),
+            // Copy a ready-made style into this preset (v1.0.9).
+            'from_builtin' => ['sometimes', 'nullable', 'string', 'in:'.implode(',', BuiltinStyles::KEYS)],
             'is_demo' => ['prohibited'],
             'style_draft' => ['prohibited'],
             'style_sources' => ['prohibited'],

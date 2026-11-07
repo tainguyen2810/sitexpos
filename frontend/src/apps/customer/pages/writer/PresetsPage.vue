@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, reactive, ref, shallowRef } from 'vue'
+import { computed, onMounted, reactive, ref, shallowRef } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { PROVENANCES, STYLE_LIST_FIELDS, STYLE_TEXT_FIELDS, splitLines, usdToMicro, writerApi, type Preset, type PresetInput, type Provenance, type StyleProfile } from '@/shared/api/writer'
+import {
+  BUILTIN_STYLES, BUILTIN_STYLE_ICONS, PROVENANCES, STYLE_LIST_FIELDS, STYLE_ORIGIN_ICONS, STYLE_TEXT_FIELDS, splitLines, usdToMicro, writerApi,
+  type BuiltinStyleKey, type Preset, type PresetInput, type Provenance, type StyleProfile,
+} from '@/shared/api/writer'
 import { siteApi } from '@/shared/api/sites'
 import { useAsync } from '@/shared/composables/useAsync'
 import { useApiForm } from '@/shared/composables/useApiForm'
-import AppCard from '@/shared/ui/AppCard.vue'
 import AppBadge from '@/shared/ui/AppBadge.vue'
 import AppButton from '@/shared/ui/AppButton.vue'
 import AppIcon from '@/shared/ui/AppIcon.vue'
@@ -26,6 +29,8 @@ import WriterNav from './components/WriterNav.vue'
 import { useWriterErrors, useWriterPerms } from './useWriter'
 
 const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
 const { workspaceId: id, canEdit } = useWriterPerms()
 const { toastError, toast } = useWriterErrors()
 const site = ref('')
@@ -145,14 +150,54 @@ async function discardDraft() {
     toastError(e)
   }
 }
+// "Dạy AI văn phong": a new style (preset null) or re-learn an existing one.
+const learnOpen = ref(false)
 const learning = shallowRef<Preset | null>(null)
-async function onLearned(presetId: string) {
-  learning.value = null
-  toast.success(t('writer.presets.learn.done'))
+function teach(p: Preset | null) {
+  learning.value = p
+  learnOpen.value = true
+}
+async function onLearned() {
+  learnOpen.value = false
+  toast.success(t('writer.styles.saved'))
+  await presets.run()
+}
+async function onLearnEdit(presetId: string) {
+  learnOpen.value = false
   await presets.run()
   const p = presets.data.value?.find((x) => x.id === presetId)
   if (p) edit(p)
 }
+onMounted(() => {
+  if (route.query.learn && canEdit.value) {
+    teach(null)
+    void router.replace({ query: { ...route.query, learn: undefined } })
+  }
+})
+
+// Ready-made styles: "Tạo bản riêng" copies one into a style you can edit.
+const copying = ref<BuiltinStyleKey | null>(null)
+async function copyBuiltin(k: BuiltinStyleKey) {
+  copying.value = k
+  try {
+    const p = await writerApi.createPreset(id.value, { name: t('writer.styles.copyName', { name: t(`writer.builtin.${k}.name`) }), from_builtin: k })
+    await presets.run()
+    edit(p)
+  } catch (e) {
+    toastError(e)
+  } finally {
+    copying.value = null
+  }
+}
+function originLine(p: Preset): string {
+  const o = p.style_sources?.origin
+  const n = p.style_sources?.used?.length ?? 0
+  if (o?.type === 'builtin') return `${t('writer.styles.fromBuiltin', { name: t(`writer.builtin.${o.label}.name`) })}`
+  if (o) return `${STYLE_ORIGIN_ICONS[o.type]} ${t(`writer.styles.origin.${o.type}`)}${o.label ? `: ${o.label}` : ''}${n ? ` · ${t('writer.styles.samples', { n })}` : ''}`
+  return n ? t('writer.styles.samples', { n }) : ''
+}
+const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('vi-VN') : '')
+const writeWith = (style: string) => ({ name: 'writer-new', params: { workspaceId: id.value }, query: { style } })
 const autoImageOptions = computed(() => [
   { value: '', label: t('writer.presets.images.platform') },
   { value: 'on', label: t('writer.presets.images.on') },
@@ -165,49 +210,75 @@ const provenanceOptions = computed(() => PROVENANCES.map((p) => ({ value: p, lab
 const formSiteOptions = computed(() => [{ value: '', label: t('writer.presets.allSites') }, ...(sites.data.value ?? []).map((s) => ({ value: s.id, label: s.name }))])
 const typeOptions = computed(() => [{ value: '', label: '—' }, ...['blog_article', 'how_to', 'product_guide', 'comparison', 'troubleshooting', 'faq', 'pillar', 'cluster', 'service', 'buying_guide'].map((c) => ({ value: c, label: t(`writer.contentType.${c}`) }))])
 const depthOptions = computed(() => [{ value: '', label: '—' }, ...(['basic', 'standard', 'deep'] as const).map((d) => ({ value: d, label: t(`writer.depth.${d}`) }))])
-const provTone = (p: Provenance) => (p === 'ai_inferred' ? 'warning' : p === 'source_verified' ? 'success' : 'neutral') as 'warning' | 'success' | 'neutral'
 </script>
 
 <template>
   <div>
-    <PageHeader :title="t('writer.presets.title')" :description="t('writer.presets.subtitle')">
-      <template #actions>
-        <AppButton v-if="canEdit" data-testid="new-preset" @click="edit(null)"><AppIcon name="plus" :size="16" /> {{ t('writer.presets.new') }}</AppButton>
-      </template>
-    </PageHeader>
+    <PageHeader :title="t('writer.simple.title')" :description="t('writer.simple.subtitle')" :crumbs="[{ label: t('writer.title'), to: `/w/${id}/writer` }, { label: t('writer.nav.presets') }]" />
     <WriterNav active="presets" />
 
-    <AppCard :padded="false">
-      <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
-        <SearchInput v-model="q" />
-        <FilterSelect :model-value="site" :label="t('nav.sites')" :options="siteOptions" @update:model-value="onSite" />
+    <!-- Styles of yours -->
+    <section class="mb-10">
+      <div class="mb-3 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-semibold">{{ t('writer.styles.mineTitle') }}</h2>
+          <p class="text-sm text-ink-muted">{{ t('writer.styles.mineHelp') }}</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <SearchInput v-if="(presets.data.value?.length ?? 0) > 6" v-model="q" />
+          <FilterSelect v-if="(sites.data.value?.length ?? 0) > 1" :model-value="site" :label="t('nav.sites')" :options="siteOptions" @update:model-value="onSite" />
+          <AppButton v-if="canEdit" data-testid="teach-new" @click="teach(null)"><AppIcon name="plus" :size="16" /> {{ t('writer.styles.teach') }}</AppButton>
+        </div>
       </div>
-      <LoadingState v-if="presets.loading.value && !presets.data.value" class="p-5" />
-      <ErrorState v-else-if="presets.error.value" :error="presets.error.value" class="p-5" @retry="presets.run" />
-      <EmptyState v-else-if="!filtered.length" icon="pen" :title="t('writer.presets.empty')" :description="t('writer.presets.subtitle')" />
-      <ul v-else class="divide-y divide-line" data-testid="preset-list">
-        <li v-for="p in filtered" :key="p.id" class="flex flex-wrap items-start gap-3 px-5 py-4">
-          <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium">{{ p.name }}
-              <AppBadge v-if="p.is_default" tone="brand">{{ t('writer.presets.default') }}</AppBadge>
+      <LoadingState v-if="presets.loading.value && !presets.data.value" />
+      <ErrorState v-else-if="presets.error.value" :error="presets.error.value" @retry="presets.run" />
+      <EmptyState v-else-if="!filtered.length" icon="pen" :title="t('writer.styles.emptyTitle')" :description="t('writer.styles.emptyHelp')">
+        <AppButton v-if="canEdit" @click="teach(null)">{{ t('writer.styles.teach') }}</AppButton>
+      </EmptyState>
+      <ul v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="preset-list">
+        <li v-for="p in filtered" :key="p.id" class="flex flex-col gap-2 rounded-xl border border-line bg-surface p-4">
+          <div class="flex items-start justify-between gap-2">
+            <h3 class="font-semibold">{{ p.name }}</h3>
+            <div class="flex shrink-0 flex-wrap justify-end gap-1">
+              <AppBadge v-if="p.is_default" tone="success">{{ t('writer.presets.default') }}</AppBadge>
               <AppBadge v-if="p.is_demo" tone="warning">{{ t('writer.demo') }}</AppBadge>
-              <AppBadge v-if="p.style_draft" tone="warning" data-testid="style-draft-badge">{{ t('writer.presets.learnedStyle.draftBadge') }}</AppBadge>
-              <AppBadge v-else-if="p.style_profile" tone="success">{{ t('writer.presets.learnedStyle.appliedBadge') }}</AppBadge>
-            </p>
-            <p class="text-xs text-ink-muted">{{ siteName(p.site_id) }}<template v-if="p.tone"> · {{ p.tone }}</template></p>
-            <ul v-if="p.facts.length" class="mt-2 space-y-1 text-xs">
-              <li v-for="(x, i) in p.facts.slice(0, 3)" :key="i" class="flex items-start gap-2"><AppBadge :tone="provTone(x.provenance)">{{ t(`writer.provenance.${x.provenance}`) }}</AppBadge> {{ x.text }}</li>
-              <li v-if="p.facts.length > 3" class="text-ink-muted">+{{ p.facts.length - 3 }}</li>
-            </ul>
+              <AppBadge v-if="p.style_draft" tone="warning" data-testid="style-draft-badge">{{ t('writer.styles.draft') }}</AppBadge>
+            </div>
           </div>
-          <div v-if="canEdit" class="flex gap-1">
-            <AppButton size="sm" variant="ghost" data-testid="learn-style-open" @click="learning = p">{{ t('writer.presets.learn.button') }}</AppButton>
-            <AppButton size="sm" variant="secondary" @click="edit(p)">{{ t('common.edit') }}</AppButton>
-            <AppButton size="sm" variant="ghost" :aria-label="t('common.delete')" @click="deleting = p"><AppIcon name="trash" :size="14" /></AppButton>
+          <p v-if="originLine(p)" class="w-fit rounded-full bg-surface-muted px-2 py-0.5 text-xs text-ink-muted">{{ originLine(p) }}</p>
+          <p class="text-sm text-ink-muted">{{ p.style_profile?.summary || p.writing_style || p.tone || t('writer.styles.noLearned') }}</p>
+          <div class="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 text-xs text-ink-muted">
+            <span>{{ p.style_learned_at ? t('writer.styles.learnedOn', { date: fmtDate(p.style_learned_at) }) : siteName(p.site_id) }}</span>
+            <span v-if="canEdit" class="flex items-center gap-2">
+              <button v-if="p.style_draft" type="button" class="font-medium text-warning-700 hover:underline" @click="edit(p)">{{ t('writer.styles.review') }}</button>
+              <button type="button" class="font-medium text-brand-600 hover:underline" data-testid="learn-style-open" @click="teach(p)">{{ t('writer.styles.relearn') }}</button>
+              <button type="button" class="font-medium text-brand-600 hover:underline" @click="edit(p)">{{ t('writer.styles.edit') }}</button>
+              <RouterLink :to="writeWith(`preset:${p.id}`)" class="font-medium text-brand-600 hover:underline">{{ t('writer.styles.use') }}</RouterLink>
+              <button type="button" class="text-ink-subtle hover:text-danger-600" :aria-label="t('common.delete')" @click="deleting = p"><AppIcon name="trash" :size="14" /></button>
+            </span>
           </div>
         </li>
       </ul>
-    </AppCard>
+    </section>
+
+    <!-- Ready-made styles -->
+    <section>
+      <h2 class="text-lg font-semibold">{{ t('writer.styles.builtinTitle') }}</h2>
+      <p class="mb-3 text-sm text-ink-muted">{{ t('writer.styles.builtinHelp') }}</p>
+      <ul class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="builtin-list">
+        <li v-for="k in BUILTIN_STYLES" :key="k" class="flex flex-col gap-2 rounded-xl border border-line bg-surface p-4">
+          <h3 class="font-semibold"><span aria-hidden="true">{{ BUILTIN_STYLE_ICONS[k] }}</span> {{ t(`writer.builtin.${k}.name`) }}</h3>
+          <p class="text-sm text-ink-muted">{{ t(`writer.builtin.${k}.desc`) }}</p>
+          <div class="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 text-xs text-ink-muted">
+            <span>{{ t(`writer.builtin.${k}.for`) }}</span>
+            <span class="flex gap-2">
+              <RouterLink v-if="canEdit" :to="writeWith(`builtin:${k}`)" class="font-medium text-brand-600 hover:underline">{{ t('writer.styles.use') }}</RouterLink>
+              <button v-if="canEdit" type="button" class="font-medium text-brand-600 hover:underline disabled:opacity-50" :disabled="copying === k" :data-testid="`copy-${k}`" @click="copyBuiltin(k)">{{ t('writer.styles.copy') }}</button>
+            </span>
+          </div>
+        </li>
+      </ul>
+    </section>
 
     <AppModal :open="open" :title="editing ? editing.name : t('writer.presets.new')" width="xl" @close="open = false">
       <form id="preset-form" class="grid grid-cols-1 gap-4 sm:grid-cols-2" novalidate @submit.prevent="save">
@@ -236,7 +307,7 @@ const provTone = (p: Provenance) => (p === 'ai_inferred' ? 'warning' : p === 'so
             <AppBadge v-if="styleFromDraft" tone="warning">{{ t('writer.presets.learnedStyle.draftBadge') }}</AppBadge>
             <AppBadge v-else-if="editing?.style_profile" tone="success">{{ t('writer.presets.learnedStyle.appliedBadge') }}</AppBadge>
             <div class="ml-auto flex gap-1">
-              <AppButton v-if="editing" size="sm" variant="ghost" @click="learning = editing">{{ t('writer.presets.learn.button') }}</AppButton>
+              <AppButton v-if="editing" size="sm" variant="ghost" @click="teach(editing)">{{ t('writer.presets.learn.button') }}</AppButton>
               <AppButton v-if="styleFromDraft" size="sm" variant="ghost" @click="discardDraft">{{ t('writer.presets.learnedStyle.discard') }}</AppButton>
               <AppButton v-else-if="editing?.style_profile" size="sm" variant="ghost" @click="clearStyle">{{ t('writer.presets.learnedStyle.clear') }}</AppButton>
             </div>
@@ -274,7 +345,7 @@ const provTone = (p: Provenance) => (p === 'ai_inferred' ? 'warning' : p === 'so
         <AppButton type="submit" form="preset-form" :loading="submitting">{{ t('common.save') }}</AppButton>
       </template>
     </AppModal>
-    <LearnStyleModal :open="!!learning" :workspace-id="id" :preset="learning" :sites="sites.data.value ?? []" @close="learning = null" @done="onLearned" />
+    <LearnStyleModal :open="learnOpen" :workspace-id="id" :preset="learning" :sites="sites.data.value ?? []" @close="learnOpen = false" @done="onLearned" @edit="onLearnEdit" />
     <ConfirmDialog :open="!!deleting" :title="t('common.delete')" :message="t('writer.presets.deleteConfirm', { name: deleting?.name ?? '' })" danger :loading="acting" @close="deleting = null" @confirm="remove" />
   </div>
 </template>

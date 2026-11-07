@@ -26,6 +26,8 @@ use SiteXPost\Kernel\Tenancy\BelongsToWorkspace;
  * @property list<int>|null $term_ids
  * @property array<string, mixed>|null $product
  * @property bool $is_managed
+ * @property int|null $author_wp_id
+ * @property string|null $author_name
  * @property Carbon|null $published_at
  * @property Carbon|null $modified_at
  * @property Carbon $synced_at
@@ -40,6 +42,7 @@ class SiteContentItem extends Model
     {
         return [
             'wp_post_id' => 'integer',
+            'author_wp_id' => 'integer',
             'term_ids' => 'array',
             'product' => 'array',
             'is_managed' => 'boolean',

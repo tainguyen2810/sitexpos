@@ -3,7 +3,7 @@
  * Plugin Name:       SiteX Post
  * Plugin URI:        https://sitexpost.com/
  * Description:       Connects this WordPress site to SiteX Post Cloud (AI SEO content). Signed, per-site connection: no WordPress password and no AI API key are ever stored here.
- * Version:           1.1.0
+ * Version:           1.2.0
  * Requires at least: 6.4
  * Requires PHP:      7.4
  * Author:            SiteX Post
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SITEX_POST_VERSION', '1.1.0' );
+define( 'SITEX_POST_VERSION', '1.2.0' );
 define( 'SITEX_POST_DB_VERSION', '1' );
 define( 'SITEX_POST_FILE', __FILE__ );
 define( 'SITEX_POST_DIR', plugin_dir_path( __FILE__ ) );

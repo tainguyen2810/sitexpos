@@ -162,7 +162,7 @@ final class FakeWordPress
     {
         $items = match ($type) {
             'post' => array_merge(
-                [['id' => 11, 'status' => 'publish', 'title' => 'Bài mẫu <script>x</script>', 'url' => $this->baseUrl.'/bai-mau/', 'slug' => 'bai-mau', 'excerpt' => 'Mô tả', 'date_gmt' => '2026-10-01T00:00:00+00:00', 'modified_gmt' => '2026-10-02T00:00:00+00:00', 'term_ids' => [1, 5], 'managed' => false]],
+                [['id' => 11, 'status' => 'publish', 'title' => 'Bài mẫu <script>x</script>', 'url' => $this->baseUrl.'/bai-mau/', 'slug' => 'bai-mau', 'excerpt' => 'Mô tả', 'date_gmt' => '2026-10-01T00:00:00+00:00', 'modified_gmt' => '2026-10-02T00:00:00+00:00', 'term_ids' => [1, 5], 'managed' => false, 'author' => ['id' => 3, 'name' => 'Nguyễn <b>Lan</b>']]],
                 array_values(array_map(fn ($p) => ['id' => $p['id'], 'status' => $p['status'], 'title' => $p['title'], 'url' => $this->baseUrl.'/?p='.$p['id'], 'slug' => '', 'excerpt' => '', 'date_gmt' => null, 'modified_gmt' => null, 'term_ids' => [], 'managed' => true], $this->posts)),
             ),
             'page' => [['id' => 12, 'status' => 'publish', 'title' => 'Giới thiệu', 'url' => 'https://evil.example.net/x', 'slug' => 'gioi-thieu', 'excerpt' => '', 'date_gmt' => null, 'modified_gmt' => null, 'term_ids' => [], 'managed' => false]],

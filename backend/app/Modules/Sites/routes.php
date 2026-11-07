@@ -29,6 +29,7 @@ Route::prefix('api/v1/workspaces/{workspace}')
 
         Route::get('sites/{site}/taxonomies', [SiteDataController::class, 'taxonomies'])->name('sites.taxonomies');
         Route::get('sites/{site}/content', [SiteDataController::class, 'content'])->name('sites.content');
+        Route::get('sites/{site}/authors', [SiteDataController::class, 'authors'])->name('sites.authors');
         Route::get('sites/{site}/logs', [SiteDataController::class, 'logs'])->name('sites.logs');
         Route::get('sites/{site}/health-checks', [SiteDataController::class, 'healthChecks'])->name('sites.health-checks');
     });

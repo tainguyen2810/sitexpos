@@ -91,6 +91,8 @@ class CreateArticle
         $settings = [
             'audience' => $data['audience'] ?? ($idea['audience'] ?? null),
             'tone' => $data['tone'] ?? ($defaults['tone'] ?? $preset?->tone),
+            'builtin_style' => $data['builtin_style'] ?? null,
+            'auto_images' => isset($data['auto_images']) ? (bool) $data['auto_images'] : null,
             'target_words' => (int) ($data['target_words'] ?? $defaults['target_words'] ?? 1500),
             'content_depth' => $data['content_depth'] ?? ($defaults['content_depth'] ?? 'standard'),
             'research_depth' => $data['research_depth'] ?? ($defaults['research_depth'] ?? 'standard'),

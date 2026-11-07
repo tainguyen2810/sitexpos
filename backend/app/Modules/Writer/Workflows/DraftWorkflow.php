@@ -171,12 +171,17 @@ final class DraftWorkflow extends ArticleWorkflow
     }
 
     /**
-     * Images to add automatically: the preset's choice, else the platform default (0 = off).
+     * Images to add automatically: the article's switch, else the preset's choice, else the platform default (0 = off).
      */
     public static function imageTarget(Article $a): int
     {
         $defaults = $a->writing_preset_id !== null ? (WritingPreset::query()->find($a->writing_preset_id)->defaults ?? []) : [];
-        $enabled = array_key_exists('auto_images', $defaults) && $defaults['auto_images'] !== null ? (bool) $defaults['auto_images'] : (bool) config('sitex.media.auto_images', true);
+        $own = $a->setting('auto_images');
+        $enabled = match (true) {
+            is_bool($own) => $own,
+            array_key_exists('auto_images', $defaults) && $defaults['auto_images'] !== null => (bool) $defaults['auto_images'],
+            default => (bool) config('sitex.media.auto_images', true),
+        };
         $min = isset($defaults['min_images']) ? (int) $defaults['min_images'] : (int) config('sitex.media.min_article_images', 2);
 
         return $enabled ? max(0, min(6, $min)) : 0;

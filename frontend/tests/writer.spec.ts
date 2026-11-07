@@ -7,7 +7,7 @@ import enMessages from '@/locales/en'
 import {
   approvalModeOf, autoApproveResult,
   formatUsd, isUnresolved, nextTab, riskTone, sectionKeyFor, splitLines, statusTone, usdToMicro, verdictNeedsEvidence, verdictTone,
-  type ArticleDetail, type Checklist, type Claim, type EditorState,
+  type ArticleDetail, type Checklist, type Claim, type EditorState, type Preset,
 } from '@/shared/api/writer'
 import { isSafeHref, sanitizeArticleHtml, wordCount } from '@/shared/utils/articleHtml'
 import { isBoolKey, isMoneyKey } from '@/shared/api/writerAdmin'
@@ -252,5 +252,62 @@ describe('DiffView', () => {
     expect(w.find('b').exists()).toBe(false)
     expect(w.get('ins').text()).toBe('<b onclick="x">mới</b>')
     expect(w.get('del').text()).toBe('cũ')
+  })
+})
+
+// ---------------------------------------------------------------- v1.0.9 simple writer & styles
+
+describe('simple writer helpers', () => {
+  it('maps word counts to the three lengths and reading time', async () => {
+    const { LENGTHS, lengthOf, readingMinutes } = await import('@/shared/api/writer')
+    expect(lengthOf(LENGTHS.short)).toBe('short')
+    expect(lengthOf(LENGTHS.medium)).toBe('medium')
+    expect(lengthOf(LENGTHS.long)).toBe('long')
+    expect(lengthOf(3000)).toBe('long')
+    expect(readingMinutes(1500)).toBe(7)
+    expect(readingMinutes(10)).toBe(1)
+  })
+
+  it('names every ready-made style and source in both languages', async () => {
+    const { BUILTIN_STYLES, STYLE_ORIGINS } = await import('@/shared/api/writer')
+    for (const m of [viMessages, enMessages]) {
+      const w = m.writer as unknown as { builtin: Record<string, { name: string; desc: string; for: string }>; styles: { origin: Record<string, string>; originHelp: Record<string, string> } }
+      for (const k of BUILTIN_STYLES) expect(w.builtin[k]?.name && w.builtin[k]?.desc && w.builtin[k]?.for).toBeTruthy()
+      for (const o of STYLE_ORIGINS) expect(w.styles.origin[o] && w.styles.originHelp[o]).toBeTruthy()
+    }
+  })
+
+  it('only counts a preset as a learned style when its guide has content', async () => {
+    const { hasStyle } = await import('@/shared/api/writer')
+    expect(hasStyle({ style_profile: null })).toBe(false)
+    expect(hasStyle({ style_profile: { tone: ' ', dos: [] } })).toBe(false)
+    expect(hasStyle({ style_profile: { tone: 'Vui' } })).toBe(true)
+  })
+})
+
+describe('StylePicker', () => {
+  const preset = (over: Partial<Preset> = {}): Preset => ({
+    id: 'p1', name: 'Giọng Cà phê Mộc', site_id: null, is_default: true, tone: null, writing_style: null, preferred_terms: [], forbidden_phrases: [], facts: [],
+    target_customers: [], geographic_context: null, editorial_guidelines: null, cta: null, defaults: {}, is_demo: false,
+    style_profile: { summary: 'Thân mật, câu ngắn' }, style_draft: null, style_sources: { used: [{ type: 'site_post', title: 'a', url: null, words: 100 }], origin: { type: 'blog', label: 'caphemoc.vn' } },
+    style_learned_at: null, created_at: null, updated_at: null, ...over,
+  })
+
+  it('shows your styles with their source, folds ready-made ones and selects one', async () => {
+    const { default: StylePicker } = await import('@/apps/customer/pages/writer/components/StylePicker.vue')
+    const w = mount(StylePicker, { props: { presets: [preset()], modelValue: null }, global: { plugins: [i18n], stubs: { RouterLink: true } } })
+    expect(w.text()).toContain('Giọng Cà phê Mộc')
+    expect(w.text()).toContain('Toàn bộ blog · 1 bài')
+    expect(w.findAll('[data-testid^="builtin-"]')).toHaveLength(3)
+    await w.get('button.text-brand-600').trigger('click') // "Xem thêm 4 kiểu"
+    expect(w.findAll('[data-testid^="builtin-"]')).toHaveLength(7)
+    await w.get('[data-testid="builtin-sales"]').trigger('click')
+    expect(w.emitted('update:modelValue')?.at(-1)).toEqual([{ kind: 'builtin', key: 'sales' }])
+  })
+
+  it('keeps a chosen ready-made style visible while folded', async () => {
+    const { default: StylePicker } = await import('@/apps/customer/pages/writer/components/StylePicker.vue')
+    const w = mount(StylePicker, { props: { presets: [], modelValue: { kind: 'builtin', key: 'formal' } }, global: { plugins: [i18n], stubs: { RouterLink: true } } })
+    expect(w.get('[data-testid="builtin-formal"]').attributes('aria-checked')).toBe('true')
   })
 })

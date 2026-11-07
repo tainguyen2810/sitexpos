@@ -11,6 +11,7 @@ use SiteXPost\Modules\Writer\Domain\Article;
 use SiteXPost\Modules\Writer\Domain\ContentBrief;
 use SiteXPost\Modules\Writer\Domain\EvidenceItem;
 use SiteXPost\Modules\Writer\Domain\WritingPreset;
+use SiteXPost\Modules\Writer\Support\BuiltinStyles;
 
 /**
  * Builds the (data-only) context blocks sent to the model. Knowledge and
@@ -67,7 +68,12 @@ class ArticleContext
             },
         ], array_slice($this->planner->knowledge($a->site_id), 0, 40));
 
-        if ($preset === null && $knowledge === []) {
+        // A preset's applied (learned) style wins; otherwise the ready-made style chosen for the article.
+        $builtin = $a->setting('builtin_style');
+        $style = StyleLearner::isUsable($preset?->style_profile)
+            ? (array) $preset?->style_profile
+            : BuiltinStyles::profile(is_string($builtin) ? $builtin : null);
+        if ($preset === null && $knowledge === [] && $style === null) {
             return null;
         }
 
@@ -84,8 +90,7 @@ class ArticleContext
             'cta' => $preset?->cta,
             'website_knowledge' => $knowledge,
             // Learned + reviewed style guide: HOW to write (never facts, never text to copy).
-            'style_profile' => StyleLearner::isUsable($preset?->style_profile) ? array_intersect_key((array) $preset?->style_profile,
-                array_flip([...StyleLearner::TEXT_FIELDS, ...StyleLearner::LIST_FIELDS])) : null,
+            'style_profile' => $style !== null ? array_intersect_key($style, array_flip([...StyleLearner::TEXT_FIELDS, ...StyleLearner::LIST_FIELDS])) : null,
             'provenance_rule' => 'Chỉ "source_verified" mới được coi là đã kiểm chứng; "user_provided", "website_extracted", "ai_inferred" là thông tin cần thận trọng và không thay thế bằng chứng.',
         ];
     }

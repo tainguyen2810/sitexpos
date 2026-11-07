@@ -4,6 +4,14 @@ Format: `## [version] - YYYY-MM-DD`, one bullet per change. The Upgrade Wizard
 shows the sections between the installed version and the deployed code.
 Bump `config/sitex.php` → `version` together with this file.
 
+## [1.0.9] - 2026-11-07
+- **AI Writer, simpler:** "Viết bài mới" is now one page with three questions (topic, style, length Short/Medium/Long), three plain-language switches (illustrations, look things up on the Internet, link to older posts) and an optional "Tùy chỉnh thêm" section where every field explains itself; empty means the AI decides. Default review mode is "review the final article". Tabs: Viết bài mới · Bài đã viết · Văn phong (Viết nhiều bài and Lịch sử moved to the right).
+- **Styles page:** "Your styles" (cards with where each was learned from) and 7 **ready-made styles** (Thân thiện, Chuyên gia, Hướng dẫn từng bước, Bán hàng, Kể chuyện, Tin tức ngắn gọn, Trang trọng) that can be used directly or copied into your own style.
+- **Teach the AI a style** in three steps: learn from one post, a category, an author, the whole blog, products or pasted text → posts are picked automatically (untick any) → the AI's summary in plain words, saved only when you click Save. One sample is now enough (was 2).
+- Site content API: filters `filter[term]`, `filter[author]`, `filter[status]`; new `GET sites/{site}/authors`. Migration adds `site_content_items.author_wp_id/author_name` (additive).
+- WordPress plugin **1.2.0**: content sync also sends each post's author (user id and public display name only). Update the plugin and run a sync to use "learn from an author".
+- New article option `auto_images` overrides the style's image default for that article.
+
 ## [1.0.8] - 2026-11-07
 - Admin › AI settings › Routes: each task shows the model that will really run ("Runs on"), whether that is the primary or fallback #n, and the numbered chain with skipped models struck through (no API key, disabled, no price, paused). Banner when tasks run on fallbacks or cannot run; filters (on primary / on fallback / cannot run), search, grouping by feature, Vietnamese task names.
 - Route editor: ordered model list (drag or arrows, add/remove) with a live "this task will run on …" preview; advanced options folded.
