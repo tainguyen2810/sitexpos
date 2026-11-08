@@ -64,8 +64,15 @@ final class AutoApprover
             $reasons[] = $b['code'];
         }
         $stats = $result['stats'];
+        // Fact-check is only a warning for a human approver; auto-approval stays strict.
+        if (($stats['unresolved_critical'] ?? 0) > 0 && ! in_array('critical_unresolved', $reasons, true)) {
+            $reasons[] = 'critical_unresolved';
+        }
         if (($stats['unresolved_high'] ?? 0) > 0 && ! in_array('high_unresolved', $reasons, true)) {
             $reasons[] = 'high_unresolved';
+        }
+        if (($stats['unchecked_sections'] ?? []) !== []) {
+            $reasons[] = 'sections_not_checked';
         }
         if (($stats['by_status']['CONTRADICTED'] ?? 0) + ($stats['by_status']['OUTDATED'] ?? 0) > 0) {
             $reasons[] = 'contradicted_or_outdated_claims';

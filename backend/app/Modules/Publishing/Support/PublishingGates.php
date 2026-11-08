@@ -71,9 +71,11 @@ final class PublishingGates
             $gates[] = $this->pass('article_approved', ['version_id' => $article['approved_version_id']]);
         }
 
-        // fact-check: no unresolved critical / high claim.
+        // fact-check: a warning, not a wall (v1.0.12). The approver already saw and acknowledged
+        // the open claims (ApprovalGate + audit); the auto-approver never approves with any.
         if ($article !== null && ($article['unresolved_critical'] > 0 || $article['unresolved_high'] > 0)) {
-            $gates[] = $this->fail('fact_check', 'unresolved_claims', ['critical' => $article['unresolved_critical'], 'high' => $article['unresolved_high']]);
+            $gates[] = ['gate' => 'fact_check', 'ok' => true, 'code' => null, 'message' => __('publishing.gates.fact_check_warn'),
+                'details' => ['warning' => true, 'critical' => $article['unresolved_critical'], 'high' => $article['unresolved_high']]];
         } else {
             $gates[] = $this->pass('fact_check');
         }

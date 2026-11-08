@@ -735,6 +735,15 @@ export function sectionKeyFor(heading: string | null, sections: Version['section
 }
 
 /** Which article tab the next human action lives on. */
+/**
+ * Fact-check is a warning (v1.0.12): unresolved CRITICAL/HIGH claims need the
+ * approver's acknowledgement, whether the server still lists them as
+ * blocking (not yet acknowledged) or already as warnings (acknowledged).
+ */
+export function needsAcknowledgement(c: Pick<Checklist, 'blocking' | 'warnings'>): boolean {
+  return c.blocking.some((b) => b.requires_ack) || c.warnings.some((w) => w.code === 'critical_unresolved' || w.code === 'high_unresolved')
+}
+
 export function nextTab(a: Pick<ArticleDetail, 'status' | 'waiting_for'>): 'research' | 'brief' | 'outline' | 'editor' | 'fact-check' | 'overview' {
   if (a.waiting_for === 'brief_approval') return 'brief'
   if (a.waiting_for === 'outline_approval') return 'outline'

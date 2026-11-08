@@ -43,7 +43,7 @@ it('saves an approved article as a WordPress draft through every gate, with SEO 
         ->and($mapping->last_synced_hash)->toBe(hash('sha256', $post['content']));
 });
 
-it('refuses to publish an unapproved article or one with open fact-check issues (no bypass)', function () {
+it('refuses to publish an unapproved article (no bypass); open fact-check issues only warn', function () {
     $t = publishingTenant();
     $draft = approvedArticle($t['workspace'], $t['site'], ['status' => 'NEEDS_HUMAN_REVIEW', 'title' => 'Bài chưa duyệt']);
     $res = createJob($this, $t, $draft, 'publish_now')->assertCreated();
@@ -51,8 +51,10 @@ it('refuses to publish an unapproved article or one with open fact-check issues 
     $this->actingAs($t['owner'])->postJson(p6url($t['workspace'], 'publishing/jobs/'.$res->json('data.id').'/approve'))->assertStatus(422)->assertJsonPath('error.code', 'gates_failed');
 
     $risky = approvedArticle($t['workspace'], $t['site'], ['critical' => 1, 'title' => 'Bài còn claim']);
-    $res = createJob($this, $t, $risky, 'publish_now')->assertCreated();
-    expect($res->json('data.blocked_reason'))->toBe('unresolved_claims');
+    $res = createJob($this, $t, $risky, 'wp_draft')->assertCreated();
+    expect($res->json('data.blocked_reason'))->not->toBe('unresolved_claims');
+    $gate = collect($res->json('data.gate_results'))->firstWhere('gate', 'fact_check');
+    expect($gate['ok'])->toBeTrue()->and($gate['details']['warning'])->toBeTrue()->and($gate['details']['critical'])->toBe(1);
     expect($t['wp']->posts)->toHaveCount(0);
 });
 

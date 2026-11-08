@@ -4,6 +4,11 @@ Format: `## [version] - YYYY-MM-DD`, one bullet per change. The Upgrade Wizard
 shows the sections between the installed version and the deployed code.
 Bump `config/sitex.php` → `version` together with this file.
 
+## [1.0.12] - 2026-11-07
+- **"Bước tiếp theo" on the article page:** one clear action for where the article is: approve (with the reasons when it cannot be approved yet) → "Đăng lên WordPress" (choose WordPress draft / publish now / schedule in a small dialog, draft by default) → progress, the reason when a publish is stuck, and a link to the post once it is on WordPress.
+- **Fact-check is a warning, not a wall:** claims without a verifying source no longer block approval or publishing. The approver ticks "Tôi đã xem cảnh báo kiểm chứng…" and can approve; sections not re-checked after an edit are a warning. The approval stores the acknowledgement and warnings (audit). Auto-approval is unchanged and still refuses any unverified claim.
+- **SEO score on the article page:** the SEO checklist score (0–100, errors and warnings) next to the AI budget, scored automatically for the current version, with "Chấm lại" and a link to the details. It is a technical checklist, not a ranking guarantee.
+
 ## [1.0.11] - 2026-11-07
 - **Trusted sources (AI Writer → Nguồn tin cậy):** each workspace lists preferred and blocked websites. Blocked sites are never fetched or used as evidence (also after redirects, and also when pasted by the user); preferred sites are suggested to the AI first and get +15 reliability. Owners/admins edit; everyone can see. New table `writer_source_rules` (additive migration), API `GET/POST/DELETE writer/source-rules`.
 - **Platform block list** for the Super Admin (Admin → AI Writer → Settings), applied to every workspace.

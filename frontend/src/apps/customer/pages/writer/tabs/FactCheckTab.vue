@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RISK_LEVELS, VERDICTS, isUnresolved, riskTone, verdictNeedsEvidence, verdictTone, writerApi, type Claim, type Evidence, type Verdict } from '@/shared/api/writer'
+import { RISK_LEVELS, VERDICTS, isUnresolved, needsAcknowledgement, riskTone, verdictNeedsEvidence, verdictTone, writerApi, type Claim, type Evidence, type Verdict } from '@/shared/api/writer'
 import { useAsync } from '@/shared/composables/useAsync'
 import { useApiForm } from '@/shared/composables/useApiForm'
 import { useCursorList } from '@/shared/composables/useCursorList'
@@ -119,7 +119,7 @@ async function requestChanges() {
     acting.value = false
   }
 }
-const needsAck = computed(() => checklist.data.value?.blocking.some((b) => b.requires_ack) || checklist.data.value?.warnings.some((w) => w.code === 'high_unresolved'))
+const needsAck = computed(() => !!checklist.data.value && needsAcknowledgement(checklist.data.value))
 const reviewer = (r: { reviewer_type: string; reviewer_model: string | null }) => `${t(`writer.reviewer.${r.reviewer_type}`, r.reviewer_type)}${r.reviewer_model ? ` (${r.reviewer_model})` : ''}`
 </script>
 
