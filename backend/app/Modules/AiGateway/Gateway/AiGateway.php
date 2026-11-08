@@ -21,6 +21,8 @@ use SiteXPost\Modules\AiGateway\Providers\ProviderRegistry;
 use SiteXPost\Modules\AiGateway\Providers\ProviderRequest;
 use SiteXPost\Modules\AiGateway\Providers\ProviderResponse;
 use SiteXPost\Modules\AiGateway\Providers\Usage;
+use SiteXPost\Modules\Workflows\Engine\JobClock;
+use SiteXPost\Modules\Workflows\Engine\StepYield;
 
 /**
  * Single entry point for every AI call (ARCHITECTURE.md §8).
@@ -48,6 +50,7 @@ final class AiGateway
         private readonly JsonSchemaValidator $validator,
         private readonly TenantContext $context,
         private readonly UsageMeter $meter,
+        private readonly JobClock $clock,
     ) {}
 
     /**
@@ -87,6 +90,9 @@ final class AiGateway
         // Whole-call deadline: retries and fallbacks must finish before the
         // queue job timeout (300 s), or the worker is killed mid-call.
         $deadline = microtime(true) + max(30, (int) config('sitex.ai.call_deadline_seconds', 240));
+        // Inside a workflow job the job itself has a time budget (JobClock):
+        // never start a provider call the worker would kill half-way.
+        $jobDeadline = $this->clock->deadline();
         $promptHash = hash('sha256', ($task->system ?? '')."\n\n".$task->prompt);
 
         foreach ($models as $index => $model) {
@@ -134,6 +140,10 @@ final class AiGateway
             $estimate = $this->costs->estimate($price, $promptTokens, $request->maxOutputTokens, $task->webSearch ? $request->maxSearches : 0, $task->kind === 'image' ? $task->imageCount : 0);
 
             for ($try = 0; $try <= $provider->max_retries; $try++) {
+                if ($jobDeadline !== null && microtime(true) + $request->timeoutSeconds > $jobDeadline && $this->clock->fitsFreshJob($request->timeoutSeconds)) {
+                    // Nothing is sent and nothing is billed: the run continues in a new job.
+                    throw new StepYield;
+                }
                 if (microtime(true) + $request->timeoutSeconds > $deadline) {
                     $attempts[] = ['model_key' => $model->model_key, 'status' => 'skipped', 'error_code' => 'deadline_exceeded'];
                     $last = new ProviderException('deadline_exceeded', 'No time left for another provider attempt.', retryable: true);

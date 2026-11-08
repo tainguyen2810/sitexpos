@@ -8,6 +8,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use SiteXPost\Modules\AiGateway\Gateway\AiGatewayException;
 use SiteXPost\Modules\Research\Support\Text;
+use SiteXPost\Modules\Workflows\Engine\StepYield;
 use SiteXPost\Modules\Writer\Ai\WriterAi;
 use SiteXPost\Modules\Writer\Domain\Article;
 use SiteXPost\Modules\Writer\Domain\ArticleClaim;
@@ -86,6 +87,11 @@ class FactChecker
                 $res = $this->ai->factCheck($a, $payload, $key.':b'.$bi, $run);
                 $model = $res->modelKey;
                 $answers = collect((array) ($res->json['results'] ?? []))->keyBy(fn ($r) => (int) ($r['claim'] ?? 0));
+            } catch (StepYield $e) {
+                // Out of time in this queue job: checked claims are kept, the rest
+                // stay PENDING and are checked by the next job.
+                $fc->forceFill(['status' => 'partial', 'claims_total' => $claims->count(), 'counts' => ['warnings' => ['continued_in_new_job']], 'model' => $model, 'finished_at' => now()])->save();
+                throw $e;
             } catch (AiGatewayException $e) {
                 $warnings[] = 'factcheck_ai_failed:'.$e->errorCode;
 

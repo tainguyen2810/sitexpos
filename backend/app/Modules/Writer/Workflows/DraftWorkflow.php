@@ -10,6 +10,7 @@ use SiteXPost\Modules\Workflows\Engine\StepFailed;
 use SiteXPost\Modules\Writer\Actions\Batches;
 use SiteXPost\Modules\Writer\Domain\Article;
 use SiteXPost\Modules\Writer\Domain\ArticleOutline;
+use SiteXPost\Modules\Writer\Domain\ArticleRevision;
 use SiteXPost\Modules\Writer\Domain\ArticleVersion;
 use SiteXPost\Modules\Writer\Domain\WritingPreset;
 use SiteXPost\Modules\Writer\Enums\ArticleStatus;
@@ -123,6 +124,28 @@ final class DraftWorkflow extends ArticleWorkflow
     {
         $max = max(0, min(5, $settings->int('max_revision_rounds', $a->workspace_id)));
         $rounds = [];
+
+        // Resume: a revised version exists but the re-check of its changed
+        // sections was cut off (the run continued in a new queue job, or an
+        // older release was killed mid-step). Finish that check first — never
+        // leave changed sections unchecked and never revise them blind.
+        $a->refresh();
+        if ($a->current_version_id !== null) {
+            $v = ArticleVersion::query()->findOrFail((string) $a->current_version_id);
+            $pending = $v->source === 'ai_revision'
+                ? collect($v->section_hashes ?? [])->reject(fn ($s) => (bool) ($s['claims_checked'] ?? false))->pluck('key')->values()->all()
+                : [];
+            if ($pending !== []) {
+                $round = (int) (ArticleRevision::query()->where('article_id', $a->id)->where('to_version_id', $v->id)->max('round') ?? $a->revision_rounds);
+                $machine->move($a, ArticleStatus::FactChecking);
+                $claims->extract($a, $v, $pending, $ctx->callKey().':resume:claims', $run->id);
+                $checker->check($a, $v, max(1, $round), $ctx->callKey().':resume:fc', $run->id, $pending);
+                Article::query()->whereKey($a->id)->update(['revision_rounds' => max($a->revision_rounds, $round)]);
+                $rounds[] = ['round' => $round, 'changed' => $pending, 'rejected' => 0, 'resumed' => true];
+                $a->refresh();
+            }
+        }
+
         for ($round = $a->revision_rounds + 1; $round <= $max; $round++) {
             $a->refresh();
             $v = ArticleVersion::query()->findOrFail((string) $a->current_version_id);
@@ -131,14 +154,16 @@ final class DraftWorkflow extends ArticleWorkflow
             }
             $machine->move($a, ArticleStatus::Revising);
             $res = $reviser->revise($a, $v, $round, $ctx->callKey().':r'.$round, $run->id);
-            Article::query()->whereKey($a->id)->update(['revision_rounds' => $round]);
             $machine->move($a, ArticleStatus::FactChecking);
             $rounds[] = ['round' => $round, 'changed' => $res['changed'], 'rejected' => $res['rejected']];
             if ($res['version'] === null) {
+                Article::query()->whereKey($a->id)->update(['revision_rounds' => $round]);
                 break; // nothing could be fixed automatically → human review
             }
             $claims->extract($a, $res['version'], $res['changed'], $ctx->callKey().':r'.$round.':claims', $run->id);
             $checker->check($a, $res['version'], $round, $ctx->callKey().':r'.$round.':fc', $run->id, $res['changed']);
+            // A round counts once its revised sections are re-checked (see resume above).
+            Article::query()->whereKey($a->id)->update(['revision_rounds' => $round]);
         }
         $a->refresh();
 
