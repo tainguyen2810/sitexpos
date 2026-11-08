@@ -150,7 +150,7 @@ final class AdminAiModelController
     {
         $row = $this->find($model);
         $used = $context->bypass(fn (): bool => AiRequest::query()->where('model_id', $row->id)->exists());
-        $routed = AiTaskRoute::query()->get()->contains(fn (AiTaskRoute $r): bool => $r->primary_model_id === $row->id
+        $routed = AiTaskRoute::query()->get()->contains(fn (AiTaskRoute $r): bool => $r->pinned_model_id === $row->id || $r->primary_model_id === $row->id
             || $r->economy_model_id === $row->id || in_array($row->id, $r->fallback_model_ids ?? [], true));
         if ($used || $routed) {
             throw ApiException::conflict('model_in_use', __('ai.errors.model_in_use'));

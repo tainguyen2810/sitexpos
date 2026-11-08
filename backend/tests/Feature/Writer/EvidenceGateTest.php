@@ -2,6 +2,7 @@
 
 use SiteXPost\Modules\AiGateway\Domain\AiModel;
 use SiteXPost\Modules\AiGateway\Domain\AiTaskRoute;
+use SiteXPost\Modules\AiGateway\Gateway\ModelSelector;
 use SiteXPost\Modules\Writer\Ai\WriterAi;
 use SiteXPost\Modules\Writer\Domain\Article;
 use SiteXPost\Modules\Writer\Domain\ArticleVersion;
@@ -25,7 +26,7 @@ require_once __DIR__.'/helpers.php';
 function discoveryCanSearch(bool $on): void
 {
     $route = AiTaskRoute::query()->where('task_key', WriterAi::TASK_DISCOVERY)->firstOrFail();
-    $ids = array_values(array_filter([$route->primary_model_id, $route->economy_model_id, ...($route->fallback_model_ids ?? [])], 'is_string'));
+    $ids = app(ModelSelector::class)->orderedIds($route);
     foreach (AiModel::query()->whereIn('id', $ids)->get() as $m) {
         $m->forceFill(['capabilities' => array_merge($m->capabilities ?? [], ['web_search' => $on])])->save();
     }

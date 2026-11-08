@@ -11,6 +11,7 @@ use SiteXPost\Modules\AiGateway\Domain\AiModel;
 use SiteXPost\Modules\AiGateway\Domain\AiProvider;
 use SiteXPost\Modules\AiGateway\Domain\AiTaskRoute;
 use SiteXPost\Modules\AiGateway\Gateway\CircuitBreaker;
+use SiteXPost\Modules\AiGateway\Gateway\ModelSelector;
 use Throwable;
 
 /**
@@ -19,7 +20,10 @@ use Throwable;
  */
 final class AiReadinessReport implements AiReadiness
 {
-    public function __construct(private readonly CircuitBreaker $breaker) {}
+    public function __construct(
+        private readonly CircuitBreaker $breaker,
+        private readonly ModelSelector $selector,
+    ) {}
 
     public function providers(): array
     {
@@ -49,7 +53,7 @@ final class AiReadinessReport implements AiReadiness
     public function routes(array $taskKeys): array
     {
         $routes = AiTaskRoute::query()->whereIn('task_key', $taskKeys)->get()->keyBy('task_key');
-        $models = AiModel::query()->with('provider')->get()->keyBy('id');
+        $models = AiModel::query()->with('provider')->get();
 
         $out = [];
         foreach ($taskKeys as $key) {
@@ -60,23 +64,21 @@ final class AiReadinessReport implements AiReadiness
 
                 continue;
             }
-            $chain = array_values(array_filter(array_merge([$route->primary_model_id, $route->economy_model_id], $route->fallback_model_ids ?? [])));
+            $ordered = $this->selector->ordered($route, false, $models);
             $ready = [];
-            foreach ($chain as $id) {
-                /** @var AiModel|null $m */
-                $m = $models->get($id);
-                if ($m !== null && $m->is_enabled && $m->provider->is_enabled && $m->provider->code !== 'fake' && $m->provider->hasApiKey()) {
+            foreach ($ordered as $m) {
+                if ($m->is_enabled && $m->provider->is_enabled && $m->provider->code !== 'fake' && $m->provider->hasApiKey()
+                    && ! ($route->requires_web_search && ! $m->supports('web_search'))) {
                     $ready[] = $m->model_key;
                 }
             }
-            /** @var AiModel|null $primary */
-            $primary = $models->get($route->primary_model_id);
+            $primary = $ordered[0] ?? null;
             $out[] = [
                 'task_key' => $key,
                 'configured' => true,
                 'enabled' => $route->is_enabled,
                 'primary' => $primary?->model_key,
-                'primary_kind' => $primary?->kind,
+                'primary_kind' => $route->kind,
                 'ready_models' => array_values(array_unique($ready)),
                 'ready' => $route->is_enabled && $ready !== [],
             ];

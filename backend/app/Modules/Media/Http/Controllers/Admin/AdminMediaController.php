@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use SiteXPost\Kernel\Tenancy\TenantContext;
 use SiteXPost\Modules\AiGateway\Domain\AiModel;
 use SiteXPost\Modules\AiGateway\Domain\AiTaskRoute;
+use SiteXPost\Modules\AiGateway\Gateway\ModelSelector;
 use SiteXPost\Modules\Audit\Audit;
 use SiteXPost\Modules\Media\Domain\MediaLimit;
 use SiteXPost\Modules\Media\Http\Requests\MediaLimitsRequest;
@@ -31,7 +32,7 @@ final class AdminMediaController
 
         return $this->context->bypass(function () use ($since, $days): JsonResponse {
             $route = AiTaskRoute::query()->where('task_key', 'media.image')->first();
-            $ids = $route !== null ? array_values(array_filter([$route->primary_model_id, $route->economy_model_id, ...($route->fallback_model_ids ?? [])], 'is_string')) : [];
+            $ids = $route !== null ? app(ModelSelector::class)->orderedIds($route) : [];
             $models = AiModel::query()->with('provider')->whereIn('id', $ids)->get()->map(fn (AiModel $m) => [
                 'model_key' => $m->model_key, 'provider' => $m->provider?->code, 'enabled' => (bool) $m->is_enabled,
                 'image_generation' => $m->supports('image_generation'), 'provider_configured' => $m->provider !== null && (bool) ($m->provider->is_enabled ?? true),

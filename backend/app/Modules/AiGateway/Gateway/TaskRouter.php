@@ -4,22 +4,22 @@ declare(strict_types=1);
 
 namespace SiteXPost\Modules\AiGateway\Gateway;
 
-use Illuminate\Support\Collection;
 use SiteXPost\Modules\AiGateway\Domain\AiModel;
 use SiteXPost\Modules\AiGateway\Domain\AiTaskRoute;
 use SiteXPost\Modules\AiGateway\Providers\ProviderRegistry;
 
 /**
- * Picks the ordered list of candidate models for a task:
- * primary → fallbacks (by route order), or economy first when a budget is
- * past its alert threshold. Disabled models/providers and models lacking a
- * required capability are removed.
+ * Picks the ordered list of candidate models for a task from the route's
+ * level (ModelSelector), cheapest level first when a budget is past its
+ * alert threshold. Disabled models/providers and models lacking a required
+ * capability are removed.
  */
 final class TaskRouter
 {
     public function __construct(
         private readonly BudgetManager $budgets,
         private readonly ProviderRegistry $registry,
+        private readonly ModelSelector $selector,
     ) {}
 
     /**
@@ -27,26 +27,29 @@ final class TaskRouter
      */
     public function candidates(AiTaskRoute $route, AiTask $task, ?string $workspaceId): array
     {
-        $ids = array_values(array_filter([$route->primary_model_id, ...($route->fallback_model_ids ?? [])], 'is_string'));
-        $downgraded = false;
-
-        if ($route->economy_model_id !== null && $this->budgets->isNearLimit($workspaceId)) {
-            $ids = [$route->economy_model_id, ...array_values(array_diff($ids, [$route->economy_model_id]))];
-            $downgraded = $ids[0] !== $route->primary_model_id;
+        $all = AiModel::query()->with('provider')->get();
+        $normal = $this->filter($this->selector->ordered($route, false, $all), $task);
+        if (! $this->budgets->isNearLimit($workspaceId)) {
+            return ['models' => $normal, 'downgraded' => false];
         }
+        $cheap = $this->filter($this->selector->ordered($route, true, $all), $task);
 
-        /** @var Collection<string, AiModel> $models */
-        $models = AiModel::query()->with('provider')->whereIn('id', array_unique($ids))->get()->keyBy('id');
+        return ['models' => $cheap, 'downgraded' => ($cheap[0] ?? null)?->id !== ($normal[0] ?? null)?->id];
+    }
 
-        $ordered = [];
-        foreach (array_unique($ids) as $id) {
-            $model = $models->get($id);
-            if ($model !== null && $this->eligible($model, $task)) {
-                $ordered[] = $model;
-            }
-        }
+    /**
+     * @param  list<AiModel>  $models
+     * @return list<AiModel>
+     */
+    private function filter(array $models, AiTask $task): array
+    {
+        $eligible = array_values(array_filter($models, fn (AiModel $m): bool => $this->eligible($m, $task)));
+        // A route spans every provider of its level: drop providers without a
+        // key up front so they are not reported as failed fallbacks. If none
+        // is configured, keep them so the gateway reports provider_not_configured.
+        $configured = array_values(array_filter($eligible, fn (AiModel $m): bool => $this->registry->for($m->provider)->isConfigured()));
 
-        return ['models' => $ordered, 'downgraded' => $downgraded];
+        return $configured !== [] ? $configured : $eligible;
     }
 
     /**

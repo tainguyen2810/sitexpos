@@ -12,6 +12,7 @@ use SiteXPost\Modules\AiGateway\Gateway\AiGateway;
 use SiteXPost\Modules\AiGateway\Gateway\AiGatewayException;
 use SiteXPost\Modules\AiGateway\Gateway\AiTask;
 use SiteXPost\Modules\AiGateway\Gateway\CostCalculator;
+use SiteXPost\Modules\AiGateway\Gateway\ModelSelector;
 use SiteXPost\Modules\Audit\Audit;
 use SiteXPost\Modules\Media\Domain\ImageGenerationJob;
 use SiteXPost\Modules\Media\Domain\MediaAsset;
@@ -49,6 +50,7 @@ final class GenerateImages
         private readonly SiteDirectory $sites,
         private readonly PlannerDirectory $planner,
         private readonly CostCalculator $costs,
+        private readonly ModelSelector $selector,
     ) {}
 
     /**
@@ -226,7 +228,7 @@ final class GenerateImages
         if ($route === null) {
             return [];
         }
-        $ids = array_values(array_filter([$route->primary_model_id, $route->economy_model_id, ...($route->fallback_model_ids ?? [])], 'is_string'));
+        $ids = $this->selector->orderedIds($route);
 
         return AiModel::query()->with('provider')->whereIn('id', $ids)->where('is_enabled', true)->get()
             ->filter(fn (AiModel $m) => $m->supports('image_generation') && ($m->provider?->code !== 'fake' || (bool) config('sitex.ai.fake_provider', false)))

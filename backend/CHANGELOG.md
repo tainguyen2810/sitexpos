@@ -4,6 +4,14 @@ Format: `## [version] - YYYY-MM-DD`, one bullet per change. The Upgrade Wizard
 shows the sections between the installed version and the deployed code.
 Bump `config/sitex.php` → `version` together with this file.
 
+## [1.0.13] - 2026-11-07
+- **Simpler AI model choice (Admin → Cấu hình AI):** each task now picks a model **level** — Mạnh (strong), Cân bằng (balanced) or Tiết kiệm (economy) — instead of a hand-made list of models. The system uses the enabled models of that level; if the level has none, it uses the nearest one (cheaper first, then stronger). Switching a model on/off on "Nhà cung cấp & mô hình" now flows into every task at once; no task has to be edited (e.g. turn Sonnet off and Haiku on → tasks run on Haiku).
+- Optional per task: pin one specific model. If that model is switched off, the task goes back to picking by level instead of stopping.
+- "Đang chạy bằng" is computed by the server and says when a task temporarily runs on another level, or why it cannot run (e.g. "Tìm nguồn tham khảo" needs a model that can search the web — Haiku cannot).
+- Providers without an API key are skipped up front instead of being reported as failed fallbacks. Budget near its alert threshold → cheapest level first (replaces the per-route "economy model").
+- Model levels renamed: Cao cấp → Mạnh, Tiêu chuẩn → Cân bằng.
+- Migration (additive) adds `ai_task_routes.tier/kind/requires_web_search/pinned_model_id`; existing routes get the level of their old main model, no pinned model. The old `primary_model_id/economy_model_id/fallback_model_ids` columns stay but are no longer used for routing. API `PATCH ai/routes/{id}` takes `tier` and `pinned_model_id` (the old chain fields are gone); `GET ai/routes` returns `tier`, `pinned_model`, `resolved`.
+
 ## [1.0.12] - 2026-11-07
 - **"Bước tiếp theo" on the article page:** one clear action for where the article is: approve (with the reasons when it cannot be approved yet) → "Đăng lên WordPress" (choose WordPress draft / publish now / schedule in a small dialog, draft by default) → progress, the reason when a publish is stuck, and a link to the post once it is on WordPress.
 - **Fact-check is a warning, not a wall:** claims without a verifying source no longer block approval or publishing. The approver ticks "Tôi đã xem cảnh báo kiểm chứng…" and can approve; sections not re-checked after an edit are a warning. The approval stores the acknowledgement and warnings (audit). Auto-approval is unchanged and still refuses any unverified claim.

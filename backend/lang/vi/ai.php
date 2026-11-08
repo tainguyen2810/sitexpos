@@ -11,6 +11,7 @@ return [
         'input_too_large' => 'Nội dung gửi tới AI vượt giới hạn cho phép.',
         'idempotency_conflict' => 'Idempotency-Key này đã được dùng cho một yêu cầu khác.',
         'price_version_locked' => 'Không thể sửa hoặc xóa phiên bản giá đã có hiệu lực. Hãy tạo phiên bản mới.',
+        'pinned_wrong_kind' => 'Mô hình chỉ định phải cùng loại với tác vụ (văn bản hoặc ảnh).',
         'model_in_use' => 'Mô hình đã từng được gọi hoặc đang dùng trong định tuyến tác vụ. Hãy tắt mô hình thay vì xóa.',
         'provider_builtin' => 'Không thể xóa nhà cung cấp có sẵn; bạn có thể tắt nó.',
         'provider_in_use' => 'Nhà cung cấp còn mô hình. Hãy xóa hoặc chuyển các mô hình trước.',

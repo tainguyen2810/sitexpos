@@ -6,6 +6,7 @@ namespace SiteXPost\Modules\AiGateway\Http\Requests;
 
 use Illuminate\Validation\Rule;
 use SiteXPost\Kernel\Http\Requests\ApiRequest;
+use SiteXPost\Modules\AiGateway\Gateway\ModelSelector;
 
 final class UpdateAiRouteRequest extends ApiRequest
 {
@@ -17,10 +18,8 @@ final class UpdateAiRouteRequest extends ApiRequest
             'description' => ['sometimes', 'nullable', 'string', 'max:255'],
             'queue' => ['sometimes', Rule::in(self::QUEUES)],
             'priority' => ['sometimes', Rule::in(['interactive', 'batch'])],
-            'primary_model_id' => ['sometimes', 'string', Rule::exists('ai_models', 'id')],
-            'economy_model_id' => ['sometimes', 'nullable', 'string', Rule::exists('ai_models', 'id')],
-            'fallback_model_ids' => ['sometimes', 'array', 'max:5'],
-            'fallback_model_ids.*' => ['string', 'distinct', Rule::exists('ai_models', 'id')],
+            'tier' => ['sometimes', Rule::in(ModelSelector::TIERS)],
+            'pinned_model_id' => ['sometimes', 'nullable', 'string', Rule::exists('ai_models', 'id')],
             'max_input_tokens' => ['sometimes', 'integer', 'min:100', 'max:1000000'],
             'max_output_tokens' => ['sometimes', 'integer', 'min:1', 'max:128000'],
             'temperature' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:2'],

@@ -57,11 +57,12 @@ it('sends a test task and tracks tokens and cost', function () {
 });
 
 it('skips providers without a key and falls back (no network)', function () {
-    // seeded route: openai → anthropic → gemini → fake; no keys in tests
+    // seeded route (level "economy"): every provider of the level, fake last; no keys in tests,
+    // so providers without a key are dropped before any attempt
     $result = runAi($this->ws, aiCall('fallback please'));
 
-    expect($result->provider)->toBe('fake')->and($result->usedFallback)->toBeTrue()
-        ->and(collect($result->attempts)->where('error_code', 'provider_not_configured'))->toHaveCount(3);
+    expect($result->provider)->toBe('fake')->and($result->usedFallback)->toBeFalse()
+        ->and(collect($result->attempts)->where('error_code', 'provider_not_configured'))->toHaveCount(0);
     Http::assertNothingSent();
 });
 

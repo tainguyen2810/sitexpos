@@ -197,7 +197,9 @@ function aiModel(string $modelKey): AiModel
 }
 
 /**
- * Point a task route at an ordered list of models (first = primary).
+ * Point a task route at exactly these models: the first is pinned, every
+ * other model is switched off (the listed ones on) so the level-based selection (v1.0.13) can
+ * only fall back to the listed ones.
  *
  * @param  list<string>  $modelKeys
  * @param  array<string, mixed>  $extra
@@ -209,8 +211,11 @@ function routeTask(string $taskKey, array $modelKeys, array $extra = []): AiTask
     $route->forceFill([
         'primary_model_id' => $ids[0],
         'fallback_model_ids' => array_slice($ids, 1),
+        'pinned_model_id' => $ids[0],
         ...$extra,
     ])->save();
+    AiModel::query()->whereNotIn('id', $ids)->update(['is_enabled' => false]);
+    AiModel::query()->whereIn('id', $ids)->update(['is_enabled' => true]);
 
     return $route;
 }

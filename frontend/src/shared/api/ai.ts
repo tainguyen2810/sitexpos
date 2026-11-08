@@ -197,9 +197,13 @@ export interface AiRoute {
   description: string | null
   queue: string
   priority: 'interactive' | 'batch'
-  primary_model: ModelRef | null
-  economy_model: ModelRef | null
-  fallback_models: ModelRef[]
+  /** v1.0.13: the route names a model level; models are picked from it (backend ModelSelector). */
+  tier: ModelTier
+  kind: 'text' | 'image'
+  requires_web_search: boolean
+  /** Optional: tried first; when it cannot run, the level takes over. */
+  pinned_model: ModelRef | null
+  resolved: RouteResolution
   max_input_tokens: number
   max_output_tokens: number
   temperature: number | null
@@ -208,6 +212,30 @@ export interface AiRoute {
   allow_paid_retry: boolean
   is_enabled: boolean
   updated_at: string
+}
+
+export type ModelTier = 'premium' | 'standard' | 'economy'
+export const MODEL_TIERS: ModelTier[] = ['premium', 'standard', 'economy']
+
+export type RouteSkipReason = 'provider_off' | 'no_key' | 'model_off' | 'wrong_kind' | 'no_web_search' | 'no_price' | 'circuit_open'
+
+export interface RouteCandidate {
+  id: string
+  model_key: string
+  display_name: string
+  tier: string
+  provider: string
+  reason: RouteSkipReason | null
+  pinned: boolean
+}
+
+/** Which model really runs now — computed by the server, never guessed in the browser. */
+export interface RouteResolution {
+  status: 'off' | 'exact' | 'substitute' | 'blocked'
+  runs_on: RouteCandidate | null
+  blocked_reason: 'needs_web_search' | 'no_model' | null
+  pinned_reason: RouteSkipReason | null
+  candidates: RouteCandidate[]
 }
 
 export interface AiBudget {
@@ -324,7 +352,7 @@ export const adminAiApi = {
   deletePrice: (modelId: string, priceId: string) => api.delete<void>(`${A}/ai/models/${modelId}/prices/${priceId}`),
 
   routes: () => api.get<Envelope<AiRoute[]>>(`${A}/ai/routes`).then((r) => r.data),
-  updateRoute: (id: string, body: Partial<{ queue: string; priority: string; primary_model_id: string; economy_model_id: string | null; fallback_model_ids: string[]; max_input_tokens: number; max_output_tokens: number; temperature: number | null; timeout_seconds: number | null; max_attempts: number; allow_paid_retry: boolean; is_enabled: boolean }>) =>
+  updateRoute: (id: string, body: Partial<{ queue: string; priority: string; tier: ModelTier; pinned_model_id: string | null; max_input_tokens: number; max_output_tokens: number; temperature: number | null; timeout_seconds: number | null; max_attempts: number; allow_paid_retry: boolean; is_enabled: boolean }>) =>
     api.patch<Envelope<AiRoute>>(`${A}/ai/routes/${id}`, body).then((r) => r.data),
 
   budgets: () => api.get<Envelope<AiBudget[]>>(`${A}/ai/budgets`).then((r) => r.data),

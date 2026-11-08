@@ -197,13 +197,12 @@ v-else v-model="wsDraft[k] as string" type="number" :label="label(k) + (isMoneyK
           <ErrorState v-else-if="routing.error.value" :error="routing.error.value" class="p-5" @retry="routing.run" />
           <div v-else class="overflow-x-auto">
             <table class="data-table w-full min-w-[40rem] text-left text-sm" data-testid="writer-routing">
-              <thead class="border-b border-line text-xs text-ink-muted"><tr><th class="px-5 py-2">{{ t('writerAdmin.task') }}</th><th class="px-2">{{ t('writerAdmin.primary') }}</th><th class="px-2">{{ t('writerAdmin.economy') }}</th><th class="px-2">{{ t('writerAdmin.fallbacks') }}</th><th class="px-5">{{ t('common.status') }}</th></tr></thead>
+              <thead class="border-b border-line text-xs text-ink-muted"><tr><th class="px-5 py-2">{{ t('writerAdmin.task') }}</th><th class="px-2">{{ t('writerAdmin.level') }}</th><th class="px-2">{{ t('writerAdmin.runsOn') }}</th><th class="px-5">{{ t('common.status') }}</th></tr></thead>
               <tbody class="divide-y divide-line">
                 <tr v-for="r in routing.data.value ?? []" :key="r.task_key">
                   <td class="px-5 py-2"><span class="font-mono text-xs">{{ r.task_key }}</span><span class="block text-xs text-ink-muted">{{ t(`writerAdmin.taskLabel.${r.task_key.replace(/\./g, '_')}`, '') }}</span></td>
-                  <td class="px-2">{{ r.primary_model?.display_name ?? '—' }}</td>
-                  <td class="px-2">{{ r.economy_model?.display_name ?? '—' }}</td>
-                  <td class="px-2 tabular-nums">{{ r.fallback_model_ids?.length ?? 0 }}</td>
+                  <td class="px-2">{{ r.tier ? t(`aiAdmin.tiers.${r.tier}`) : '—' }}</td>
+                  <td class="px-2" :class="r.status === 'blocked' ? 'text-danger-700' : r.status === 'substitute' ? 'text-warning-700' : ''">{{ r.runs_on?.display_name ?? (r.status === 'blocked' ? t('writerAdmin.cannotRun') : '—') }}</td>
                   <td class="px-5"><AppBadge :tone="!r.configured ? 'danger' : r.is_enabled ? 'success' : 'warning'">{{ !r.configured ? t('writerAdmin.notConfigured') : r.is_enabled ? t('writerAdmin.enabled') : t('writerAdmin.disabled') }}</AppBadge></td>
                 </tr>
               </tbody>

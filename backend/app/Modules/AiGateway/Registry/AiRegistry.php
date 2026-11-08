@@ -120,8 +120,10 @@ final class AiRegistry
     }
 
     /**
-     * Task routes. Only `system.test` is used in Phase 3; the others are the
-     * routes the content pipeline (later phases) will call.
+     * Task routes. Since v1.0.13 a route runs on a model level (`tier`,
+     * default = the level of `primary`), picked by Gateway\ModelSelector;
+     * `primary`/`economy`/`fallbacks` only fill the legacy columns.
+     * `web_search` => true marks a route whose calls need web search.
      *
      * @return array<string, array<string, mixed>>
      */
@@ -149,7 +151,7 @@ final class AiRegistry
             'writer.research_questions' => ['desc' => 'Writer: research questions for an article', 'queue' => 'research', 'priority' => 'batch',
                 'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'deepseek/deepseek-flash', 'anthropic/claude-sonnet-5-5', 'fake/fake-echo'], 'max_out' => 1500],
             'writer.source_discovery' => ['desc' => 'Writer: candidate source URLs (always fetched and verified by the system)', 'queue' => 'research', 'priority' => 'batch',
-                'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'anthropic/claude-sonnet-5-5', 'fake/fake-echo'], 'max_out' => 1500],
+                'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'anthropic/claude-sonnet-5-5', 'fake/fake-echo'], 'max_out' => 1500, 'web_search' => true],
             'writer.source_analysis' => ['desc' => 'Writer: extract verbatim evidence from retrieved sources', 'queue' => 'research', 'priority' => 'batch',
                 'primary' => 'gemini/gemini-3.8-flash', 'economy' => 'gemini/gemini-3.5-flash-lite', 'fallbacks' => ['openai/gpt-6.1-terra', 'deepseek/deepseek-flash', 'anthropic/claude-sonnet-5-5', 'fake/fake-echo'], 'max_out' => 3000],
             'writer.brief' => ['desc' => 'Writer: content brief from idea + research dossier', 'queue' => 'writing', 'priority' => 'batch',
@@ -258,6 +260,9 @@ final class AiRegistry
                     'description' => $r['desc'],
                     'queue' => $r['queue'],
                     'priority' => $r['priority'],
+                    'tier' => $r['tier'] ?? $models->get($r['primary'])->tier,
+                    'kind' => $models->get($r['primary'])->kind === 'image' ? 'image' : 'text',
+                    'requires_web_search' => (bool) ($r['web_search'] ?? false),
                     'primary_model_id' => $models->get($r['primary'])?->id,
                     'economy_model_id' => $r['economy'] !== null ? $models->get($r['economy'])?->id : null,
                     'fallback_model_ids' => array_values(array_filter(array_map(fn (string $k): ?string => $models->get($k)?->id, $r['fallbacks']))),

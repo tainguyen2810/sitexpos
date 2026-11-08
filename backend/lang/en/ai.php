@@ -11,6 +11,7 @@ return [
         'input_too_large' => 'The content sent to the AI exceeds the allowed limit.',
         'idempotency_conflict' => 'This Idempotency-Key was already used for a different request.',
         'price_version_locked' => 'A price version that is already in effect cannot be changed or deleted. Create a new version.',
+        'pinned_wrong_kind' => 'The pinned model must be the same kind as the task (text or image).',
         'model_in_use' => 'The model has already been called or is used by a task route. Disable it instead of deleting it.',
         'provider_builtin' => 'Built-in providers cannot be deleted; you can disable them.',
         'provider_in_use' => 'The provider still has models. Delete or move them first.',

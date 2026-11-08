@@ -29,7 +29,7 @@ export default {
     writer_brief: 'Content brief', writer_outline: 'Outline', content_draft: 'Writing', writer_claims: 'Claim extraction',
     verification_claims: 'Fact-check', writer_rewrite: 'Rewrite', writer_seo_review: 'SEO review', writer_final_review: 'Final review',
   },
-  primary: 'Primary model', economy: 'Economy model', fallbacks: 'Fallbacks', enabled: 'Enabled', disabled: 'Disabled', notConfigured: 'Not configured',
+  level: 'Level', runsOn: 'Runs on', cannotRun: 'Cannot run', enabled: 'Enabled', disabled: 'Disabled', notConfigured: 'Not configured',
   period: 'Period', totalCost: 'Total AI cost', articles: 'Articles', avgPerArticle: 'Average per article', byDay: 'By day', byTask: 'By task',
   byModel: 'By model', byWorkspace: 'By workspace', type: 'Type', step: 'Step', duration: 'Duration', workflowErrors: 'Failed tasks (7 days)',
   aiErrors: 'AI call errors (7 days)', factCheck: 'Fact-check', partialRuns: '{n} fact-check runs only partially completed', sources: 'Source fetching',

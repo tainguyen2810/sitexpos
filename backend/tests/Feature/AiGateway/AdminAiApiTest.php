@@ -94,18 +94,22 @@ it('versions prices: effective versions are locked, scheduled ones can be remove
     expect($row->price_id)->toBe($effective->id);
 });
 
-it('switches a task route to other models and refuses unknown queues', function () {
+it('sets a task route level and an optional pinned model, and refuses unknown queues', function () {
     $route = AiTaskRoute::query()->where('task_key', 'system.test')->sole();
     $claude = aiModel('anthropic/claude-haiku-5-5');
-    $fake = aiModel('fake/fake-echo');
 
     $this->actingAs($this->admin)->patchJson("/api/admin/v1/ai/routes/{$route->id}", [
-        'primary_model_id' => $claude->id, 'fallback_model_ids' => [$fake->id], 'max_attempts' => 2, 'allow_paid_retry' => true,
+        'tier' => 'premium', 'pinned_model_id' => $claude->id, 'max_attempts' => 2, 'allow_paid_retry' => true,
     ])->assertOk()
-        ->assertJsonPath('data.primary_model.model_key', 'anthropic/claude-haiku-5-5')
-        ->assertJsonPath('data.fallback_models.0.model_key', 'fake/fake-echo')
+        ->assertJsonPath('data.tier', 'premium')
+        ->assertJsonPath('data.pinned_model.model_key', 'anthropic/claude-haiku-5-5')
         ->assertJsonPath('data.allow_paid_retry', true);
 
+    $this->actingAs($this->admin)->patchJson("/api/admin/v1/ai/routes/{$route->id}", ['pinned_model_id' => null])
+        ->assertOk()->assertJsonPath('data.pinned_model', null);
+    $this->actingAs($this->admin)->patchJson("/api/admin/v1/ai/routes/{$route->id}", ['tier' => 'turbo'])->assertStatus(422);
+    $this->actingAs($this->admin)->patchJson("/api/admin/v1/ai/routes/{$route->id}", ['pinned_model_id' => aiModel('fake/fake-image')->id])
+        ->assertStatus(422);
     $this->actingAs($this->admin)->patchJson("/api/admin/v1/ai/routes/{$route->id}", ['queue' => 'nope'])->assertStatus(422);
 });
 
