@@ -4,6 +4,12 @@ Format: `## [version] - YYYY-MM-DD`, one bullet per change. The Upgrade Wizard
 shows the sections between the installed version and the deployed code.
 Bump `config/sitex.php` → `version` together with this file.
 
+## [1.0.14] - 2026-11-08
+- **Fix: long articles failed at "Tự sửa lỗi" with "Tiến trình bị gián đoạn khi đang gọi API tính phí".** One background job (worker limit 300 s) was running every remaining step of "Viết & kiểm chứng" (write → claims → fact-check → self-repair → quality); a long article ran past 300 s, the worker killed the job in the middle of a paid AI call and the run stopped to avoid paying twice. Now each job has a time budget (`SITEX_WORKFLOW_JOB_BUDGET_SECONDS`, default 270 s): an AI call that cannot finish inside it is not started (nothing sent, nothing billed) and the run continues in a new job from where it stopped. Finished steps, written sections and checked claims are kept; a continuation does not use up a retry attempt.
+- Self-repair ("Tự sửa lỗi") can continue half-way: if the re-check of a fixed section was cut off, the next job finishes that check first instead of skipping it — fixed text is never left unchecked. A round counts only after its re-check.
+- Safety stop: a run that keeps continuing without finishing stops after `SITEX_WORKFLOW_MAX_YIELDS` (60) continuations with a clear error.
+- No migration, no new setting needed. Articles that already failed this way: press "Chạy tiếp" — finished work is kept.
+
 ## [1.0.13] - 2026-11-07
 - **Simpler AI model choice (Admin → Cấu hình AI):** each task now picks a model **level** — Mạnh (strong), Cân bằng (balanced) or Tiết kiệm (economy) — instead of a hand-made list of models. The system uses the enabled models of that level; if the level has none, it uses the nearest one (cheaper first, then stronger). Switching a model on/off on "Nhà cung cấp & mô hình" now flows into every task at once; no task has to be edited (e.g. turn Sonnet off and Haiku on → tasks run on Haiku).
 - Optional per task: pin one specific model. If that model is switched off, the task goes back to picking by level instead of stopping.

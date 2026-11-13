@@ -24,7 +24,9 @@ use Throwable;
  * - claim = CAS transition with a lease (locked_by / locked_until);
  * - succeeded steps are checkpoints and never run twice;
  * - recovery re-dispatches runs whose lease expired or whose job was lost;
- * - an interrupted PAID step is not retried unless the definition allows it.
+ * - an interrupted PAID step is not retried unless the definition allows it;
+ * - one queue job never outlives its timeout: when its time budget (JobClock)
+ *   runs low the run yields and continues in a new job from its checkpoints.
  */
 final class WorkflowEngine
 {
@@ -32,6 +34,7 @@ final class WorkflowEngine
         private readonly WorkflowRegistry $registry,
         private readonly WorkflowStateMachine $machine,
         private readonly ConcurrencyLimiter $limiter,
+        private readonly JobClock $clock,
     ) {}
 
     /**
@@ -132,9 +135,11 @@ final class WorkflowEngine
             return;
         }
 
+        $this->clock->start(JobClock::jobBudgetSeconds());
         try {
             $this->claimAndRun($run, $workerToken, $lease);
         } finally {
+            $this->clock->stop();
             $slot->release();
         }
     }
@@ -161,6 +166,7 @@ final class WorkflowEngine
         $steps = $run->steps()->get()->keyBy('key')->all();
         $keys = $definition->steps();
         $outputs = [];
+        $ranHere = 0;
 
         foreach ($keys as $index => $key) {
             $step = $steps[$key] ?? null;
@@ -186,13 +192,25 @@ final class WorkflowEngine
                 return;
             }
 
+            // Not enough time left in this job to start another step: continue in a new job.
+            if ($ranHere > 0 && ($this->clock->remaining() ?? PHP_INT_MAX) < max(5, (int) config('sitex.workflows.min_step_seconds', 45))) {
+                $this->yieldRun($run, $step);
+
+                return;
+            }
+
             $step->forceFill(['status' => StepStatus::Running, 'attempts' => $step->attempts + 1, 'started_at' => now(), 'error_code' => null, 'error_message' => null])->save();
             WorkflowRun::query()->whereKey($run->id)->update(['current_step' => $key, 'locked_until' => now()->addSeconds($lease)]);
             $run->current_step = $key;
             $this->machine->mirror($run, (int) floor($index * 100 / max(1, count($keys))));
 
+            $ranHere++;
             try {
                 $output = $definition->runStep($key, $run, new StepContext($run, $step, $outputs));
+            } catch (StepYield) {
+                $this->yieldRun($run, $step);
+
+                return;
             } catch (StepFailed $e) {
                 $this->handleFailure($run, $step, $e, $definition);
 
@@ -216,6 +234,36 @@ final class WorkflowEngine
             'locked_until' => null,
             'current_step' => null,
         ]);
+    }
+
+    /**
+     * The job's time budget is used up: hand the run to a fresh job. The
+     * step goes back to pending (it was not interrupted — no paid call is in
+     * flight), the yield does not consume a retry attempt, and the next job
+     * resumes from the checkpoints the step already saved.
+     */
+    private function yieldRun(WorkflowRun $run, WorkflowStep $step): void
+    {
+        $step->forceFill(['status' => StepStatus::Pending, 'error_code' => null, 'error_message' => null])->save();
+        $run->refresh();
+
+        // Count this cycle only (a manual retry starts a new budget).
+        $since = $run->events()->where('event', 'manual_retry')->max('created_at') ?? $run->created_at;
+        $yields = $run->events()->where('event', 'yielded')->where('created_at', '>=', $since)->count();
+        if ($yields >= max(1, (int) config('sitex.workflows.max_yields', 60))) {
+            $this->fail($run, $step, new StepFailed('too_many_yields', __('workflows.errors.too_many_yields')));
+
+            return;
+        }
+
+        if ($this->machine->transition($run, WorkflowStatus::Pending, 'yielded', [
+            'attempts' => max(0, $run->attempts - 1),
+            'locked_by' => null,
+            'locked_until' => null,
+            'next_attempt_at' => null,
+        ], ['step' => $step->key, 'yields' => $yields + 1])) {
+            $this->dispatch($run);
+        }
     }
 
     private function handleFailure(WorkflowRun $run, WorkflowStep $step, StepFailed $e, WorkflowDefinition $definition): void

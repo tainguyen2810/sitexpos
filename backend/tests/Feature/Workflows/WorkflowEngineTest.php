@@ -14,6 +14,7 @@ use SiteXPost\Modules\Workflows\Domain\WorkflowRun;
 use SiteXPost\Modules\Workflows\Domain\WorkflowStep;
 use SiteXPost\Modules\Workflows\Engine\IdempotencyConflict;
 use SiteXPost\Modules\Workflows\Engine\InvalidTransition;
+use SiteXPost\Modules\Workflows\Engine\JobClock;
 use SiteXPost\Modules\Workflows\Engine\WorkflowEngine;
 use SiteXPost\Modules\Workflows\Engine\WorkflowStateMachine;
 use SiteXPost\Modules\Workflows\Enums\StepStatus;
@@ -334,4 +335,94 @@ it('prunes old finished runs', function () {
     $this->travel(100)->days();
     $this->artisan('sitex:workflows:prune')->assertSuccessful();
     expect(asTenant($this->ws, fn () => WorkflowRun::query()->count()))->toBe(0);
+});
+
+/*
+ * 1.0.14 — one queue job has a time budget (JobClock). A run never gets
+ * killed mid paid call: it yields and continues in a new job.
+ */
+function almostOutOfTime(float $secondsLeft = 5): void
+{
+    app()->instance(JobClock::class, new class($secondsLeft) extends JobClock
+    {
+        public function __construct(private readonly float $left) {}
+
+        public function start(int $budgetSeconds, ?float $startedAt = null): void
+        {
+            parent::start($budgetSeconds, microtime(true) - $budgetSeconds + $this->left);
+        }
+    });
+}
+
+it('does not start a paid call that cannot finish in this job: the run continues in a new job', function () {
+    routeTask('system.test', ['fake/fake-echo'], ['timeout_seconds' => 60]);
+    Queue::fake();
+    [$run] = startTest($this->ws, 'long job');
+    almostOutOfTime(5);
+
+    executeRun($this->ws, $run->id);
+
+    $run = freshRun($this->ws, $run->id);
+    expect($run->status)->toBe(WorkflowStatus::Pending)
+        ->and($run->attempts)->toBe(0) // a yield is not a failed attempt
+        ->and($run->locked_by)->toBeNull()
+        ->and($run->steps->firstWhere('key', 'generate')->status)->toBe(StepStatus::Pending)
+        ->and(asTenant($this->ws, fn () => AiRequest::query()->count()))->toBe(0) // nothing sent, nothing billed
+        ->and(asTenant($this->ws, fn () => $run->events()->where('event', 'yielded')->count()))->toBe(1)
+        ->and(DeadLetter::query()->count())->toBe(0);
+    Queue::assertPushed(ProcessWorkflow::class, 2); // start + continuation
+
+    app()->instance(JobClock::class, new JobClock); // the new job has a full budget
+    executeRun($this->ws, $run->id);
+
+    $run = freshRun($this->ws, $run->id);
+    expect($run->status)->toBe(WorkflowStatus::Succeeded)
+        ->and(asTenant($this->ws, fn () => AiRequest::query()->sole())->call_key)->toEndWith(':a2');
+});
+
+it('yields between steps when the job budget is low, keeping finished steps as checkpoints', function () {
+    config(['sitex.workflows.min_step_seconds' => 100000]);
+    Queue::fake();
+    [$run] = startTest($this->ws, 'two steps');
+
+    executeRun($this->ws, $run->id);
+
+    $run = freshRun($this->ws, $run->id);
+    expect($run->status)->toBe(WorkflowStatus::Pending)
+        ->and($run->steps->firstWhere('key', 'generate')->status)->toBe(StepStatus::Succeeded)
+        ->and($run->steps->firstWhere('key', 'finalize')->status)->toBe(StepStatus::Pending);
+
+    executeRun($this->ws, $run->id); // first step of a new job always runs
+
+    $run = freshRun($this->ws, $run->id);
+    expect($run->status)->toBe(WorkflowStatus::Succeeded)
+        ->and(asTenant($this->ws, fn () => AiRequest::query()->count()))->toBe(1); // the paid step ran once
+});
+
+it('stops a run that keeps yielding without progress', function () {
+    config(['sitex.workflows.max_yields' => 2]);
+    routeTask('system.test', ['fake/fake-echo'], ['timeout_seconds' => 60]);
+    Queue::fake();
+    [$run] = startTest($this->ws, 'never enough time');
+    almostOutOfTime(5);
+
+    executeRun($this->ws, $run->id);
+    executeRun($this->ws, $run->id);
+    executeRun($this->ws, $run->id);
+
+    $run = freshRun($this->ws, $run->id);
+    expect($run->status)->toBe(WorkflowStatus::Failed)->and($run->error_code)->toBe('too_many_yields')
+        ->and(asTenant($this->ws, fn () => AiRequest::query()->count()))->toBe(0);
+});
+
+it('still fails normally when a single call could never fit in one job (no endless yielding)', function () {
+    routeTask('system.test', ['fake/fake-echo'], ['timeout_seconds' => 290]);
+    Queue::fake();
+    [$run] = startTest($this->ws, 'too slow for any job');
+
+    executeRun($this->ws, $run->id);
+
+    $run = freshRun($this->ws, $run->id);
+    expect(asTenant($this->ws, fn () => $run->events()->where('event', 'yielded')->count()))->toBe(0)
+        ->and($run->status)->not->toBe(WorkflowStatus::Pending);
 });

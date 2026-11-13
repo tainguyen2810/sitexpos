@@ -17,7 +17,10 @@ final class ProcessWorkflow extends TenantJob
     /** Re-delivery after a crash is handled by the engine lease + recovery. */
     public int $tries = 3;
 
-    public int $timeout = 300;
+    /** Worker kill time; JobClock keeps the work of one job below it. */
+    public const TIMEOUT = 300;
+
+    public int $timeout = self::TIMEOUT;
 
     public bool $failOnTimeout = true;
 

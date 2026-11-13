@@ -92,6 +92,13 @@ return [
         'tenant_concurrency' => (int) env('SITEX_WORKFLOW_TENANT_CONCURRENCY', 2),
         // Seconds a worker owns a run before recovery may take it over (> job timeout).
         'lease_seconds' => (int) env('SITEX_WORKFLOW_LEASE_SECONDS', 360),
+        // Work one queue job may do (< job timeout 300 s): a paid call that cannot
+        // finish inside it is not started; the run continues in a new job (JobClock).
+        'job_budget_seconds' => (int) env('SITEX_WORKFLOW_JOB_BUDGET_SECONDS', 270),
+        // A step that only does local work still needs this much time left to start.
+        'min_step_seconds' => (int) env('SITEX_WORKFLOW_MIN_STEP_SECONDS', 45),
+        // Safety stop for a run that keeps yielding without finishing.
+        'max_yields' => (int) env('SITEX_WORKFLOW_MAX_YIELDS', 60),
         'backoff_base_seconds' => (int) env('SITEX_WORKFLOW_BACKOFF_BASE', 15),
         'backoff_max_seconds' => (int) env('SITEX_WORKFLOW_BACKOFF_MAX', 900),
         // Delay before re-checking a run deferred by the tenant concurrency limit.
@@ -160,7 +167,7 @@ return [
 
     // Phase 9 — release version of this code (compared with the version recorded in the
     // database to detect a pending upgrade). Bump together with CHANGELOG.md.
-    'version' => '1.0.13',
+    'version' => '1.0.14',
 
     // Phase 9 — web installer (INSTALLATION-WIZARD.md, INSTALLER-SECURITY.md)
     'installer' => [

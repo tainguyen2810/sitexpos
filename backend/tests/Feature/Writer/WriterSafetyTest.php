@@ -6,6 +6,8 @@ use SiteXPost\Modules\AiGateway\Providers\ProviderException;
 use SiteXPost\Modules\AiGateway\Providers\ProviderRequest;
 use SiteXPost\Modules\AiGateway\Providers\ProviderResponse;
 use SiteXPost\Modules\AiGateway\Providers\Usage;
+use SiteXPost\Modules\Workflows\Domain\WorkflowRun;
+use SiteXPost\Modules\Workflows\Engine\JobClock;
 use SiteXPost\Modules\Writer\Domain\ArticleAiUsage;
 use SiteXPost\Modules\Writer\Domain\ArticleRevision;
 use SiteXPost\Modules\Writer\Domain\FactCheckRun;
@@ -202,4 +204,44 @@ it('does not loop: a section still cut off after the bigger retry fails with inv
     expect($t['ai']->count('article_section'))->toBeLessThanOrEqual(2 * 3); // ≤ 2 calls per workflow attempt
     $a = aJson($t, $id);
     expect($a['status'])->toBe('FAILED');
+});
+
+it('continues the self-repair step in a new job when time runs out mid re-check, never leaving revised text unchecked', function () {
+    $t = writerTenant();
+    $t['ai']->on('article_section', fn (ProviderRequest $r) => ['html' => '<p>Intel AX200 hỗ trợ băng tần 6 GHz.[E'.refIn($r->prompt, 'AX200 does not support').']</p>', 'used_evidence_refs' => [], 'notes' => []]);
+    $t['ai']->on('claims', fn (ProviderRequest $r) => ['claims' => array_values(array_filter([
+        str_contains(ScriptedAi::data($r->prompt), 'Intel AX200 hỗ trợ') ? ['quote' => 'Intel AX200 hỗ trợ băng tần 6 GHz.', 'claim' => 'Intel AX200 hỗ trợ băng tần 6 GHz', 'category' => 'spec', 'risk' => 'HIGH', 'evidence_requirements' => ''] : null,
+        str_contains(ScriptedAi::data($r->prompt), 'Intel AX200 chỉ hỗ trợ') ? ['quote' => 'Intel AX200 chỉ hỗ trợ băng tần 2,4 GHz và 5 GHz.', 'claim' => 'Intel AX200 chỉ hỗ trợ 2,4 GHz và 5 GHz', 'category' => 'spec', 'risk' => 'HIGH', 'evidence_requirements' => ''] : null,
+    ]))]);
+    $t['ai']->on('fact_check', function (ProviderRequest $r) {
+        $claims = json_decode(ScriptedAi::data($r->prompt), true) ?: [];
+        $fixed = str_contains($r->prompt, 'chỉ hỗ trợ');
+
+        return ['results' => array_map(fn ($c) => ['claim' => $c['n'], 'verdict' => $fixed ? 'SUPPORTED' : 'CONTRADICTED', 'supporting_refs' => $fixed ? array_column($c['evidence'] ?? [], 'ref') : [],
+            'contradicting_refs' => $fixed ? [] : array_column($c['evidence'] ?? [], 'ref'), 'date_context' => '', 'explanation' => 'Theo tài liệu.'], $claims)];
+    });
+    $rewrites = 0;
+    $t['ai']->on('rewrite', function () use (&$rewrites) {
+        if (++$rewrites === 1) {
+            // The fix is the last call that fits in this job: the re-check
+            // (claims + fact-check of the fixed section) must go to a new job.
+            app(JobClock::class)->start(270, microtime(true) - 268);
+        }
+
+        return ['html' => '<p>Intel AX200 chỉ hỗ trợ băng tần 2,4 GHz và 5 GHz.</p>', 'changes' => []];
+    });
+
+    $id = createArticle($t, ['review_mode' => 'final_only'])->assertCreated()->json('data.id');
+
+    $a = aJson($t, $id);
+    expect($rewrites)->toBe(1); // the fix was not paid for twice
+    $runs = inResearchTenant($t, fn () => WorkflowRun::query()->where('type', 'writer.draft')->get());
+    expect($a['status'])->toBe('NEEDS_HUMAN_REVIEW')
+        ->and($runs->pluck('status.value')->all())->toBe(['succeeded'])
+        ->and(inResearchTenant($t, fn () => $runs->first()->events()->where('event', 'yielded')->exists()))->toBeTrue()
+        ->and($runs->first()->error_code)->toBeNull();
+    // Every section of the current version is checked; no claim left PENDING.
+    $version = aJson($t, $id, 'versions/'.$a['current_version_id']);
+    expect(collect($version['sections'])->pluck('claims_checked')->unique()->all())->toBe([true])
+        ->and(collect(aJson($t, $id, 'claims'))->pluck('status'))->not->toContain('PENDING');
 });
